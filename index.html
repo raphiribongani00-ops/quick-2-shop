@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habibi Shopping 🛒 — Campus Store</title>
+  <meta name="description" content="Habibi Shopping — the best campus e-commerce store for university students. Food, shoes, clothing and more.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+</head>
+<body>
+
+<!-- ── TOAST ── -->
+<div id="toast" class="toast"></div>
+
+<!-- ── NAV ── -->
+<nav id="navbar">
+  <div class="container nav-inner">
+    <a class="nav-logo" href="#" onclick="navigateTo('home')">
+      <img src="habibiLogo.jpeg" alt="Habibi Logo" class="nav-logo-img">
+      🛒 <span>Habibi</span>Shopping
+    </a>
+
+    <div class="nav-links">
+      <a href="#" data-page="home" class="active" onclick="navigateTo('home'); return false;">Home</a>
+      <a href="#" data-page="home" onclick="navigateTo('home'); document.getElementById('shop-section').scrollIntoView({behavior:'smooth'}); return false;">Shop</a>
+      <a href="#" data-page="orders" onclick="navigateTo('orders'); return false;">My Orders</a>
+    </div>
+
+    <div class="nav-actions">
+      <div id="user-display" style="display:none"></div>
+      <button id="auth-btn" class="btn btn-outline btn-sm" onclick="openAuthModal()">Sign in</button>
+      <button class="nav-icon-btn" onclick="openCart()" title="Cart" style="position:relative;">
+        🛒
+        <span class="cart-count" style="display:none">0</span>
+      </button>
+      <button id="hamburger" class="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ─────────────── PAGE: HOME ─────────────── -->
+<div id="page-home" class="page active">
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-text fade-up">
+          <div class="hero-tag">🎓 Made for Students</div>
+          <h1>Your Campus<br><em>Store</em>, Habibi.</h1>
+          <p>Food, shoes, clothing, stationery and more — delivered right to your res. Built by students, for students.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="document.getElementById('shop-section').scrollIntoView({behavior:'smooth'})">
+              Shop Now →
+            </button>
+            <button class="btn btn-outline" onclick="openCart()">
+              View Cart
+            </button>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <div class="stat-num">12+</div>
+              <div class="stat-label">Products</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-num">8</div>
+              <div class="stat-label">Categories</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-num">R 0.00</div>
+              <div class="stat-label">Flat Delivery</div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-card">
+            <img class="hero-card-img" src="https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=120&q=80" alt="Shawarma">
+            <div class="hero-card-info">
+              <h4>Shawarma Wrap</h4>
+              <p>Hot & fresh on campus</p>
+            </div>
+            <div class="hero-card-price">R45</div>
+          </div>
+          <div class="hero-card">
+            <img class="hero-card-img" src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120&q=80" alt="Shoes">
+            <div class="hero-card-info">
+              <h4>Nike Air Max 90</h4>
+              <p>All sizes available</p>
+            </div>
+            <div class="hero-card-price">R850</div>
+          </div>
+          <div class="hero-card">
+            <img class="hero-card-img" src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&q=80" alt="Headphones">
+            <div class="hero-card-info">
+              <h4>ANC Headphones</h4>
+              <p>Library essential</p>
+            </div>
+            <div class="hero-card-price">R699</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="categories-section" id="categories-section">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">Shop by Category</h2>
+      </div>
+      <div class="categories-grid stagger" id="categories-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOP / PRODUCTS -->
+  <section class="shop-section" id="shop-section">
+    <div class="container">
+      <div class="shop-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Search products…" autocomplete="off">
+        </div>
+        <select id="sort-select" class="sort-select">
+          <option value="default">Sort: Default</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="rating">Top Rated</option>
+          <option value="newest">Newest</option>
+        </select>
+        <span id="results-count" class="results-count"></span>
+      </div>
+      <div class="products-grid" id="products-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-logo">
+            <img src="habibiLogo.jpeg" alt="Habibi Logo" class="footer-logo-img">
+            🛒 Habibi Shopping
+          </div>
+          <p class="footer-tagline">The campus store built by students, for students. Fast delivery to your res door.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Shop</h4>
+          <a href="#" onclick="filterCategory('food', document.querySelector('[data-cat=food]')); navigateTo('home');">Food & Snacks</a>
+          <a href="#" onclick="filterCategory('clothing', document.querySelector('[data-cat=clothing]')); navigateTo('home');">Clothing</a>
+          <a href="#" onclick="filterCategory('electronics', document.querySelector('[data-cat=electronics]')); navigateTo('home');">Electronics</a>
+          <a href="#" onclick="filterCategory('shoes', document.querySelector('[data-cat=shoes]')); navigateTo('home');">Shoes</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="#" onclick="openAuthModal()">Sign In</a>
+          <a href="#" onclick="navigateTo('orders')">My Orders</a>
+          <a href="#" onclick="openCart()">Cart</a>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <a href="https://wa.me/27000000000">WhatsApp Us</a>
+          <a href="mailto:habibishoppingsa@gmail.com">Email</a>
+          <a href="#">Campus pickup info</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Habibi Shopping. Made with ❤️ for students.</span>
+        <span>Delivery at campus and place of accomodation</span>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- /page-home -->
+
+
+<!-- ─────────────── PAGE: CHECKOUT ─────────────── -->
+<div id="page-checkout" class="page">
+  <section class="checkout-section" id="checkout-section">
+    <!-- Rendered by JS -->
+  </section>
+</div>
+
+
+<!-- ─────────────── PAGE: ORDERS ─────────────── -->
+<div id="page-orders" class="page">
+  <section class="orders-section" id="orders-section">
+    <!-- Rendered by JS -->
+  </section>
+</div>
+
+
+<!-- ── CART DRAWER ── -->
+<div id="cart-overlay"></div>
+<div id="cart-drawer">
+  <div class="cart-header">
+    <h2>Your Cart 🛒</h2>
+    <button class="cart-close" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer">
+    <div class="cart-subtotal">
+      <span>Subtotal</span>
+      <span id="cart-subtotal">R0.00</span>
+    </div>
+    <div class="cart-subtotal">
+      <span>Delivery</span>
+      <span id="cart-delivery">Free</span>
+    </div>
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cart-total">R0.00</span>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="closeCart(); navigateTo('checkout');">
+      Checkout →
+    </button>
+    <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="closeCart()">
+      Continue Shopping
+    </button>
+  </div>
+</div>
+
+
+<!-- ── MODAL (Product / Auth) ── -->
+<div id="modal-overlay"></div>
+
+
+<script src="js/app.js"></script>
+</body>
+</html>

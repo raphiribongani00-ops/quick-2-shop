@@ -1,0 +1,214 @@
+{
+  "categories": [
+    {
+      "id": "food",
+      "label": "Food & Snacks",
+      "icon": "🍕"
+    },
+    {
+      "id": "drinks",
+      "label": "Drinks",
+      "icon": "🧃"
+    },
+    {
+      "id": "shoes",
+      "label": "Shoes",
+      "icon": "👟"
+    },
+    {
+      "id": "clothing",
+      "label": "Clothing",
+      "icon": "👕"
+    },
+    {
+      "id": "stationery",
+      "label": "Stationery",
+      "icon": "📚"
+    },
+    {
+      "id": "electronics",
+      "label": "Electronics",
+      "icon": "💻"
+    },
+    {
+      "id": "beauty",
+      "label": "Beauty",
+      "icon": "💄"
+    },
+    {
+      "id": "other",
+      "label": "Other",
+      "icon": "📦"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "Shawarma Wrap",
+      "description": "Classic chicken shawarma with garlic sauce and fries, freshly made on campus.",
+      "price": 45,
+      "category": "food",
+      "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&q=80",
+      "stock": 20,
+      "rating": 4.9,
+      "reviews": 42,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Fruit Juice Combo",
+      "description": "Fresh mango or orange juice, 500ml bottle. Ice cold and ready to drink.",
+      "price": 18,
+      "category": "drinks",
+      "image": "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&q=80",
+      "stock": 50,
+      "rating": 4.7,
+      "reviews": 28,
+      "createdAt": "2024-01-02T00:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "Nike Air Max 90",
+      "description": "Classic Nike Air Max 90 sneakers. Available in sizes 6–12. White/black colourway.",
+      "price": 850,
+      "category": "shoes",
+      "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80",
+      "stock": 8,
+      "rating": 4.8,
+      "reviews": 15,
+      "createdAt": "2024-01-03T00:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "name": "Oversized Hoodie",
+      "description": "Thick cotton hoodie, perfect for winter on campus. Sizes S-XL. Multiple colours.",
+      "price": 220,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=400&q=80",
+      "stock": 15,
+      "rating": 4.6,
+      "reviews": 22,
+      "createdAt": "2024-01-04T00:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "name": "Noodle Cup Pack (x6)",
+      "description": "Six-pack of assorted instant noodles. Late night study fuel. Delivery to res.",
+      "price": 60,
+      "category": "food",
+      "image": "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?w=400&q=80",
+      "stock": 35,
+      "rating": 4.5,
+      "reviews": 61,
+      "createdAt": "2024-01-05T00:00:00.000Z"
+    },
+    {
+      "id": 6,
+      "name": "ANC Headphones",
+      "description": "Wireless noise-cancelling headphones. 30hr battery. Great for the library.",
+      "price": 699,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80",
+      "stock": 5,
+      "rating": 4.7,
+      "reviews": 19,
+      "createdAt": "2024-01-06T00:00:00.000Z"
+    },
+    {
+      "id": 7,
+      "name": "A4 Lecture Pad (x3)",
+      "description": "Pack of 3 A4 lined lecture pads, 100 pages each. Essential for every student.",
+      "price": 55,
+      "category": "stationery",
+      "image": "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=400&q=80",
+      "stock": 40,
+      "rating": 4.4,
+      "reviews": 33,
+      "createdAt": "2024-01-07T00:00:00.000Z"
+    },
+    {
+      "id": 8,
+      "name": "Moisturiser SPF 30",
+      "description": "Lightweight daily moisturiser with SPF 30 sun protection. 100ml. All skin types.",
+      "price": 180,
+      "category": "beauty",
+      "image": "https://images.unsplash.com/photo-1556228578-626a85b21d16?w=400&q=80",
+      "stock": 12,
+      "rating": 4.6,
+      "reviews": 17,
+      "createdAt": "2024-01-08T00:00:00.000Z"
+    },
+    {
+      "id": 9,
+      "name": "Jordaan Slides",
+      "description": "Comfortable slides for campus life. Available in sizes 5–12. Various colours.",
+      "price": 180,
+      "category": "shoes",
+      "image": "https://images.unsplash.com/photo-1603487742131-4160ec999306?w=400&q=80",
+      "stock": 20,
+      "rating": 4.5,
+      "reviews": 25,
+      "createdAt": "2024-01-09T00:00:00.000Z"
+    },
+    {
+      "id": 10,
+      "name": "Red Bull 4-Pack",
+      "description": "Four cans of Red Bull energy drink. Survive your next all-nighter.",
+      "price": 85,
+      "category": "drinks",
+      "image": "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&q=80",
+      "stock": 30,
+      "rating": 4.8,
+      "reviews": 54,
+      "createdAt": "2024-01-10T00:00:00.000Z"
+    },
+    {
+      "id": 11,
+      "name": "USB-C Hub (7-in-1)",
+      "description": "7-in-1 USB-C hub: HDMI, 3x USB-A, SD card, USB-C PD. Perfect for lectures.",
+      "price": 320,
+      "category": "electronics",
+      "image": "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80",
+      "stock": 10,
+      "rating": 4.6,
+      "reviews": 12,
+      "createdAt": "2024-01-11T00:00:00.000Z"
+    },
+    {
+      "id": 12,
+      "name": "Cargo Pants",
+      "description": "Relaxed fit cargo pants with multiple pockets. Sizes 28–36. Khaki or black.",
+      "price": 320,
+      "category": "clothing",
+      "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&q=80",
+      "stock": 18,
+      "rating": 4.5,
+      "reviews": 20,
+      "createdAt": "2024-01-12T00:00:00.000Z"
+    }
+  ],
+  "orders": [],
+  "users": [
+    {
+      "id": 1,
+      "name": "Admin",
+      "email": "raphiribongani00@gmail.com",
+      "password": "admin123",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": 1777121744709,
+      "name": "T RAPHIRI",
+      "email": "raphiritshepang02@gmail.com",
+      "password": "bDSaKtQw34ACy8v",
+      "createdAt": "2026-04-25T12:55:44.709Z"
+    },
+    {
+      "id": 1777122459084,
+      "name": "Bongani Raphiri",
+      "email": "habibishopping@gmail.com",
+      "password": "ayeye",
+      "createdAt": "2026-04-25T13:07:39.085Z"
+    }
+  ]
+}
