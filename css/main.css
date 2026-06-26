@@ -1,4 +1,4 @@
-/* ── Habibi Shopping — Black & White Minimal ── */
+/* ── Quick 2 Shop — Black & White Minimal ── */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -64,6 +64,8 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .badge-brand { background: var(--black); color: var(--white); }
 .badge-success { background: var(--gray-200); color: var(--black); }
 .badge-warn { background: var(--gray-800); color: var(--white); }
+.badge-info { background: var(--gray-200); color: var(--gray-700); }
+.badge-danger { background: #FEE2E2; color: #DC2626; }
 
 .toast { 
   position: fixed; 
@@ -116,6 +118,8 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .btn-sm { padding: 8px 16px; font-size: 13px; }
 .btn-full { width: 100%; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-danger { background: #DC2626; color: white; }
+.btn-danger:hover { background: #B91C1C; }
 
 /* ── NAV ── */
 #navbar {
@@ -135,7 +139,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
   gap: 6px; 
 }
 .nav-logo-img {
-  height: 10px;
+  height: 24px;
   width: auto;
   flex-shrink: 0;
 }
@@ -184,47 +188,59 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .hamburger span { display: block; width: 22px; height: 2px; background: var(--black); }
 
 /* ── HERO ── */
-.hero {
-  min-height: 90vh;
-  padding-top: var(--nav-h);
-  display: flex; align-items: center;
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
+.hero { padding-top: var(--nav-h); }
+
+/* ── SLIDESHOW ── */
+.slideshow-container {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
 }
-.hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
-.hero-tag { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 8px; 
-  background: var(--black); 
-  color: var(--white); 
-  padding: 6px 16px; 
-  border-radius: 99px; 
-  font-size: 13px; 
-  font-weight: 600; 
-  margin-bottom: 20px; 
+.slideshow-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
-.hero h1 { font-size: clamp(38px, 5vw, 60px); font-weight: 800; color: var(--black); margin-bottom: 20px; }
-.hero p { font-size: 17px; color: var(--gray-500); margin-bottom: 32px; max-width: 420px; line-height: 1.7; }
-.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-.hero-stats { display: flex; gap: 32px; margin-top: 40px; }
-.stat-item { text-align: left; }
-.stat-num { font-size: 28px; font-weight: 800; color: var(--black); }
-.stat-label { font-size: 12px; color: var(--gray-500); font-weight: 500; }
-.hero-visual { display: flex; flex-direction: column; gap: 16px; }
-.hero-card { 
-  background: var(--white); 
-  border-radius: var(--radius); 
-  padding: 16px; 
-  border: 1px solid var(--gray-200); 
-  display: flex; 
-  align-items: center; 
-  gap: 14px; 
+.slideshow-slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease;
 }
-.hero-card-img { width: 60px; height: 60px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
-.hero-card-info h4 { font-size: 14px; font-weight: 700; }
-.hero-card-info p { font-size: 12px; color: var(--gray-500); margin: 0; }
-.hero-card-price { font-size: 16px; font-weight: 800; color: var(--black); margin-left: auto; flex-shrink: 0; }
+.slideshow-slide.active { opacity: 1; z-index: 1; }
+.slideshow-caption {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.slideshow-caption.active { opacity: 1; }
+.slideshow-dots {
+  position: absolute;
+  bottom: 10px;
+  right: 20px;
+  display: flex;
+  gap: 6px;
+  z-index: 3;
+}
+.slideshow-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+}
+.slideshow-dot.active { background: #fff; }
 
 /* ── CATEGORIES ── */
 .categories-section { padding: 48px 0 16px; }
@@ -251,7 +267,6 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
   background: var(--black); 
   color: var(--white); 
 }
-.cat-icon { font-size: 28px; line-height: 1; }
 
 /* ── PRODUCT GRID ── */
 .shop-section { padding: 32px 0 80px; }
@@ -289,10 +304,21 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
   flex-direction: column; 
 }
 .product-card:hover { border-color: var(--black); }
-.product-img-wrap { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--gray-100); }
-.product-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-.product-card:hover .product-img-wrap img { transform: scale(1.05); }
-.product-badge { position: absolute; top: 12px; left: 12px; }
+.product-img-wrap { 
+  position: relative; 
+  aspect-ratio: 1/1; /* SQUARE - perfect for 320x320 images */
+  overflow: hidden; 
+  background: var(--gray-100); 
+}
+.product-img-wrap img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: contain; /* Show full image without cropping */
+  transition: transform 0.3s; 
+  background: #f5f5f5;
+}
+.product-card:hover .product-img-wrap img { transform: scale(1.02); }
+.product-badge { position: absolute; top: 12px; left: 12px; z-index: 2; }
 .product-wishlist { 
   position: absolute; 
   top: 12px; 
@@ -309,6 +335,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
   font-size: 16px; 
   cursor: pointer; 
   border: 1px solid var(--gray-200);
+  z-index: 2;
 }
 .product-wishlist:hover { color: var(--black); border-color: var(--black); }
 .product-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
@@ -397,7 +424,14 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .cart-empty p { color: var(--gray-500); margin-top: 8px; font-size: 14px; }
 .cart-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--gray-200); }
 .cart-item:last-child { border-bottom: none; }
-.cart-item-img { width: 70px; height: 70px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.cart-item-img { 
+  width: 70px; 
+  height: 70px; 
+  border-radius: var(--radius-sm); 
+  object-fit: contain; /* Show full image without cropping */
+  flex-shrink: 0; 
+  background: #f5f5f5;
+}
 .cart-item-info { flex: 1; }
 .cart-item-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 .cart-item-price { font-size: 13px; color: var(--gray-500); }
@@ -461,7 +495,15 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 }
 .modal-close:hover { background: var(--black); color: var(--white); }
 .modal-body { padding: 24px; }
-.modal-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 20px; }
+.modal-img { 
+  width: 100%; 
+  max-width: 560px;
+  aspect-ratio: 1/1; /* Square for product images */
+  object-fit: contain; /* Show full image without cropping */
+  border-radius: var(--radius); 
+  margin-bottom: 20px;
+  background: #f5f5f5;
+}
 .modal-product-name { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
 .modal-product-desc { color: var(--gray-500); font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
 .modal-product-price { font-size: 30px; font-weight: 800; color: var(--black); margin-bottom: 20px; }
@@ -546,7 +588,6 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .orders-table td { padding: 16px; border-bottom: 1px solid var(--gray-200); font-size: 14px; vertical-align: middle; }
 .orders-table tr:last-child td { border-bottom: none; }
 .orders-table tr:hover td { background: var(--gray-100); }
-.status-dot { width: 8px; height: 8px; border-radius: 99px; display: inline-block; margin-right: 6px; }
 
 /* ── FOOTER ── */
 footer { background: var(--black); color: var(--white); padding: 60px 0 30px; }
@@ -578,6 +619,14 @@ footer { background: var(--black); color: var(--white); padding: 60px 0 30px; }
   color: var(--gray-500); 
 }
 
+/* ── FOOTER ICONS ── */
+.footer-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
 /* ── PAGE TRANSITIONS ── */
 .page { display: none; }
 .page.active { display: block; }
@@ -602,6 +651,7 @@ footer { background: var(--black); color: var(--white); padding: 60px 0 30px; }
   .checkout-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .order-summary-card { position: static; }
+  .slideshow-container { height: 180px; }
 }
 @media (max-width: 640px) {
   .nav-links { display: none; }
@@ -620,6 +670,373 @@ footer { background: var(--black); color: var(--white); padding: 60px 0 30px; }
   }
   .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
   .footer-grid { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 34px; }
   .form-row { grid-template-columns: 1fr; }
+  .slideshow-container { height: 150px; }
+  .slideshow-caption { bottom: 8px; left: 8px; font-size: 11px; padding: 4px 10px; }
+}
+
+/* ── REWARDS UI ── */
+
+/* Reward Progress in Cart */
+.reward-progress-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+.reward-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.reward-progress-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.reward-balance {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--black);
+}
+
+.reward-tier-badge {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.reward-progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reward-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reward-progress-track {
+  background: var(--gray-200);
+  height: 6px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.reward-progress-fill {
+  background: var(--black);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.reward-progress-helper {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.reward-streak-bonus {
+  font-size: 11px;
+  color: #E67E22;
+  font-weight: 600;
+}
+
+.reward-subscription-badge {
+  font-size: 10px;
+  background: var(--black);
+  color: var(--white);
+  padding: 2px 10px;
+  border-radius: 99px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.reward-progress-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px 0;
+  text-align: center;
+}
+
+/* Rewards in Checkout */
+.reward-checkout-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.reward-checkout-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.reward-checkout-row.total {
+  font-weight: 700;
+  font-size: 16px;
+  border-top: 2px solid var(--gray-200);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.reward-apply-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Rewards Modal */
+.rewards-modal-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.rewards-stat {
+  background: var(--surface);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.rewards-stat-value {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.rewards-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.rewards-progress-section {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.rewards-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rewards-progress-bar {
+  background: var(--gray-200);
+  height: 6px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.rewards-progress-bar-fill {
+  background: var(--black);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.rewards-subscription-section {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.rewards-subscription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rewards-subscription-title {
+  font-weight: 700;
+}
+
+.rewards-subscription-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rewards-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rewards-note {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* Subscription Modal */
+.subscription-card {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subscription-card:hover {
+  border-color: var(--black);
+  transform: translateY(-2px);
+}
+
+.subscription-card.premium {
+  border-color: var(--black);
+  position: relative;
+}
+
+.subscription-card .best-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  background: var(--black);
+  color: white;
+  font-size: 10px;
+  padding: 2px 10px;
+  border-radius: 99px;
+}
+
+.subscription-card .icon {
+  font-size: 24px;
+}
+
+.subscription-card .name {
+  font-weight: 700;
+}
+
+.subscription-card .price {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.subscription-card .price small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.subscription-card ul {
+  text-align: left;
+  font-size: 12px;
+  color: var(--muted);
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.subscription-card ul li {
+  padding: 2px 0;
+}
+
+/* ── REWARDS UI ── */
+
+.reward-progress-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+.reward-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.reward-progress-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.reward-balance {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--black);
+}
+
+.reward-tier-badge {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.reward-progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reward-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reward-progress-track {
+  background: var(--gray-200);
+  height: 6px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.reward-progress-fill {
+  background: var(--black);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.reward-progress-helper {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.reward-streak-bonus {
+  font-size: 11px;
+  color: #E67E22;
+  font-weight: 600;
+}
+
+.reward-subscription-badge {
+  font-size: 10px;
+  background: var(--black);
+  color: var(--white);
+  padding: 2px 10px;
+  border-radius: 99px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.reward-progress-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px 0;
+  text-align: center;
 }

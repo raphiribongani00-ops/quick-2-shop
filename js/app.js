@@ -1,225 +1,945 @@
-/* ── Habibi Shopping — app.js (Server-based version) ── */
+const API = '/api';
 
-const API = 'http://localhost:3000/api';
-
-/* ─── STATE ─── */
 const state = {
   cart: JSON.parse(localStorage.getItem('habibi_cart') || '[]'),
   user: JSON.parse(localStorage.getItem('habibi_user') || 'null'),
   wishlist: JSON.parse(localStorage.getItem('habibi_wishlist') || '[]'),
-  products: [],
-  categories: [],
-  currentCategory: 'all',
-  searchQuery: '',
-  sortBy: 'default',
-  currentPage: 'home',
+  products: [], categories: [],
+  currentCategory: 'all', searchQuery: '', sortBy: 'default', currentPage: 'home',
+  points: 0, discountAmount: 0,
+  rewardBalance: 0,
+  rewardProgress: null,
+  tier: 'bronze',
+  streak: { count: 0, bonusAmount: 0 },
+  subscription: null,
 };
 
-/* ─── CART ─── */
+// ============================================================
+//  CART FUNCTIONS
+// ============================================================
+
 const Cart = {
   save() { localStorage.setItem('habibi_cart', JSON.stringify(state.cart)); },
-  add(product) {
-    const existing = state.cart.find(i => i.id === product.id);
-    if (existing) {
-      existing.qty = Math.min(existing.qty + 1, product.stock);
+  add(p) {
+    const e = state.cart.find(i => i.id === p.id);
+    if (e) {
+      e.qty = Math.min(e.qty + 1, p.stock);
     } else {
-      state.cart.push({ ...product, qty: 1 });
+      state.cart.push({ ...p, qty: 1 });
     }
     this.save();
     updateCartUI();
-    toast(`✅ ${product.name} added to cart`);
+    updateCartRewardProgress();
+    toast(`✅ ${p.name} added`);
   },
   remove(id) {
     state.cart = state.cart.filter(i => i.id !== id);
     this.save();
     updateCartUI();
     renderCartItems();
+    updateCartRewardProgress();
   },
-  updateQty(id, delta) {
-    const item = state.cart.find(i => i.id === id);
-    if (!item) return;
-    item.qty = Math.max(1, Math.min(item.qty + delta, item.stock));
+  updateQty(id, d) {
+    const i = state.cart.find(x => x.id === id);
+    if (!i) return;
+    i.qty = Math.max(1, Math.min(i.qty + d, i.stock));
     this.save();
     updateCartUI();
     renderCartItems();
+    updateCartRewardProgress();
   },
   total() { return state.cart.reduce((s, i) => s + i.price * i.qty, 0); },
   count() { return state.cart.reduce((s, i) => s + i.qty, 0); },
-  clear() { state.cart = []; this.save(); updateCartUI(); renderCartItems(); }
+  clear() {
+    state.cart = [];
+    this.save();
+    updateCartUI();
+    renderCartItems();
+    updateCartRewardProgress();
+  }
 };
 
-/* ─── WISHLIST ─── */
 const Wishlist = {
   save() { localStorage.setItem('habibi_wishlist', JSON.stringify(state.wishlist)); },
   toggle(id) {
-    const idx = state.wishlist.indexOf(id);
-    if (idx > -1) { state.wishlist.splice(idx, 1); toast('💔 Removed from wishlist'); }
-    else { state.wishlist.push(id); toast('❤️ Added to wishlist'); }
+    const i = state.wishlist.indexOf(id);
+    if (i > -1) { state.wishlist.splice(i, 1); toast('💔 Removed'); }
+    else { state.wishlist.push(id); toast('❤️ Added'); }
     this.save();
   },
   has(id) { return state.wishlist.includes(id); }
 };
 
-/* ─── TOAST ─── */
-function toast(msg, duration = 2800) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), duration);
+function toast(m, d = 2800) {
+  const e = document.getElementById('toast');
+  e.textContent = m;
+  e.classList.add('show');
+  clearTimeout(e._t);
+  e._t = setTimeout(() => e.classList.remove('show'), d);
 }
 
-/* ─── API CALLS ─── */
-async function fetchProducts(category = 'all', search = '') {
-  try {
-    let url = `${API}/products?`;
-    if (category !== 'all') url += `category=${category}&`;
-    if (search) url += `search=${encodeURIComponent(search)}`;
-    const res = await fetch(url);
-    
-    if (!res.ok) throw new Error('Failed to fetch products');
-    return await res.json();
-  } catch (error) {
-    console.warn('Server offline, using cached data');
-    // If server is down, use cached products
-    const cached = localStorage.getItem('habibi_products_cache');
-    if (cached) {
-      let products = JSON.parse(cached);
-      // Apply filters locally
-      if (category !== 'all') {
-        products = products.filter(p => p.category === category);
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        products = products.filter(p => 
-          p.name.toLowerCase().includes(q) || 
-          p.description.toLowerCase().includes(q)
-        );
-      }
-      return products;
-    }
-    toast('⚠️ Could not connect to server');
-    return [];
-  }
+// ============================================================
+//  API FUNCTIONS
+// ============================================================
+
+async function fetchProducts(cat = 'all', search = '') {
+  let u = `${API}/products?`;
+  if (cat !== 'all') u += `category=${encodeURIComponent(cat)}&`;
+  if (search) u += `search=${encodeURIComponent(search)}&`;
+  const res = await fetch(u);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 async function fetchCategories() {
-  try {
-    const res = await fetch(`${API}/categories`);
-    if (!res.ok) throw new Error('Failed to fetch categories');
-    return await res.json();
-  } catch {
-    console.warn('Server offline, using default categories');
-    // Fallback categories
-    return [
-      { id: "food", label: "Food & Snacks", icon: "🍕" },
-      { id: "drinks", label: "Drinks", icon: "🧃" },
-      { id: "shoes", label: "Shoes", icon: "👟" },
-      { id: "clothing", label: "Clothing", icon: "👕" },
-      { id: "stationery", label: "Stationery", icon: "📚" },
-      { id: "electronics", label: "Electronics", icon: "💻" },
-      { id: "beauty", label: "Beauty", icon: "💄" },
-      { id: "other", label: "Other", icon: "📦" }
-    ];
-  }
-}
-
-async function placeOrder(orderData) {
-  try {
-    const res = await fetch(`${API}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to place order');
-    }
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || 'Failed to place order');
-  }
-}
-
-async function loginUser(email, password) {
-  const res = await fetch(`${API}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Login failed');
-  }
+  const res = await fetch(`${API}/categories`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-async function registerUser(name, email, password) {
-  const res = await fetch(`${API}/register`, {
+async function placeOrder(d) {
+  const r = await fetch(`${API}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password })
+    body: JSON.stringify(d)
   });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Registration failed');
-  }
-  return res.json();
+  if (!r.ok) throw new Error((await r.json()).error);
+  return r.json();
+}
+
+async function loginUser(e, p) {
+  const r = await fetch(`${API}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: e, password: p })
+  });
+  if (!r.ok) throw new Error((await r.json()).error);
+  return r.json();
+}
+
+async function registerUser(n, e, p) {
+  const r = await fetch(`${API}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: n, email: e, password: p })
+  });
+  if (!r.ok) throw new Error((await r.json()).error);
+  return r.json();
 }
 
 async function fetchOrders() {
+  const res = await fetch(`${API}/orders`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchUserPoints(email) {
+  if (!email) return;
   try {
-    const res = await fetch(`${API}/orders`);
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    return res.json();
-  } catch {
-    toast('⚠️ Could not load orders');
-    return [];
+    const r = await fetch(`${API}/user/points?email=${email}`);
+    if (r.ok) {
+      const d = await r.json();
+      state.points = d.points || 0;
+      updatePointsDisplay();
+    }
+  } catch {}
+}
+
+// ============================================================
+//  REWARD FUNCTIONS
+// ============================================================
+
+async function loadUserRewards() {
+  if (!state.user) return;
+  try {
+    const res = await fetch(`${API}/user/rewards/${state.user._id}`);
+    if (res.ok) {
+      const data = await res.json();
+      state.rewardBalance = data.rewardBalance || 0;
+      state.totalRewardsEarned = data.totalRewardsEarned || 0;
+      state.tier = data.tier || 'bronze';
+      state.streak = data.streak || { count: 0, bonusAmount: 0 };
+      state.subscription = data.subscription || null;
+      state.rewardProgress = data.progress || null;
+      updateRewardUI();
+    }
+  } catch (e) { /* silent fail */ }
+}
+
+async function loadRewardProgress() {
+  if (!state.user) return;
+  try {
+    const res = await fetch(`${API}/user/reward-progress?userId=${state.user._id}`);
+    if (res.ok) {
+      state.rewardProgress = await res.json();
+      updateRewardUI();
+    }
+  } catch (e) { /* silent fail */ }
+}
+
+function updateRewardUI() {
+  const btn = document.getElementById('rewards-btn');
+  if (btn && state.user) {
+    btn.style.display = 'inline-flex';
+    btn.innerHTML = `🎁 R${state.rewardBalance.toFixed(2)}`;
+    btn.title = `${state.tier.charAt(0).toUpperCase() + state.tier.slice(1)} Tier`;
+  }
+  const tierBadge = document.getElementById('tier-badge');
+  if (tierBadge) {
+    const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+    tierBadge.textContent = tierIcons[state.tier] || '🥉';
+  }
+  updateCartRewardProgress();
+}
+
+function getTierIcon(tier) {
+  const icons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+  return icons[tier] || '🥉';
+}
+
+async function redeemRewards() {
+  if (!state.user) {
+    toast('⚠️ Please sign in to redeem rewards');
+    return;
+  }
+  const amount = Math.min(state.rewardBalance, state.rewardBalance);
+  if (amount < 2) {
+    toast('⚠️ Need at least R2 to redeem');
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/user/redeem-rewards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.user.email, amount: amount })
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const data = await res.json();
+    state.rewardBalance = data.remaining;
+    toast(`✅ Redeemed R${amount.toFixed(2)}!`);
+    updateRewardUI();
+    renderCheckout();
+  } catch (err) {
+    toast('❌ ' + err.message);
   }
 }
 
-/* ─── CART UI ─── */
-function updateCartUI() {
-  const count = Cart.count();
-  document.querySelectorAll('.cart-count').forEach(el => {
-    el.textContent = count;
-    el.style.display = count > 0 ? 'flex' : 'none';
-  });
+function showRewardsModal() {
+  const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+  const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' };
+
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>🎁 My Rewards</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div style="text-align:center;padding:16px 0;">
+          <div style="font-size:48px;">${tierIcons[state.tier] || '🥉'}</div>
+          <div style="font-size:32px;font-weight:800;">R${state.rewardBalance.toFixed(2)}</div>
+          <div style="color:var(--muted);">${tierLabels[state.tier] || 'Bronze'} Tier</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0;">
+          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
+            <div style="font-weight:700;font-size:18px;">${state.totalRewardsEarned || 0}</div>
+            <div style="font-size:11px;color:var(--muted);">Rewards Earned</div>
+          </div>
+          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
+            <div style="font-weight:700;font-size:18px;">${state.streak?.count || 0}</div>
+            <div style="font-size:11px;color:var(--muted);">Week Streak</div>
+          </div>
+          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
+            <div style="font-weight:700;font-size:18px;">${state.subscription?.active ? '✅' : '❌'}</div>
+            <div style="font-size:11px;color:var(--muted);">Subscription</div>
+          </div>
+        </div>
+        <div style="background:var(--surface);padding:16px;border-radius:8px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
+            <span>Next Reward</span>
+            <span>${state.rewardProgress?.itemsNeededForNext || '0'} items needed</span>
+          </div>
+          <div style="background:var(--border);height:6px;border-radius:99px;overflow:hidden;">
+            <div style="background:var(--black);height:100%;width:${100 - (state.rewardProgress?.itemsNeededForNext / 10 * 100) || 0}%;border-radius:99px;"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+            ${state.rewardProgress?.eligibleItems || 0} eligible items purchased
+          </div>
+        </div>
+        <div style="background:var(--surface);padding:16px;border-radius:8px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;">⭐ Subscription</div>
+              <div style="font-size:12px;color:var(--muted);">
+                ${state.subscription?.active ? `Active: ${state.subscription.tier}` : 'Not subscribed'}
+              </div>
+            </div>
+            <button class="btn btn-sm ${state.subscription?.active ? 'btn-outline' : 'btn-primary'}"
+                    onclick="closeModal();${state.subscription?.active ? 'showUnsubscribeModal()' : 'showSubscribeModal()'}">
+              ${state.subscription?.active ? 'Manage' : 'Subscribe'}
+            </button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${state.rewardBalance >= 2 ? `
+            <button class="btn btn-primary btn-sm" onclick="closeModal();redeemRewards()">
+              Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
+            </button>
+          ` : `
+            <button class="btn btn-outline btn-sm" disabled style="opacity:0.5;">
+              Need R2 to redeem
+            </button>
+          `}
+          <button class="btn btn-outline btn-sm" onclick="closeModal();loadRewardProgress();">
+            🔄 Refresh
+          </button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:16px;">
+          💡 Every 10 items (R10+) = R2 reward
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
 }
 
-function renderCartItems() {
-  const container = document.getElementById('cart-items');
-  if (!container) return;
-  if (state.cart.length === 0) {
-    container.innerHTML = `<div class="cart-empty">
-      <div style="font-size:48px">🛒</div>
-      <p>Your cart is empty.<br>Start shopping, habibi!</p>
-    </div>`;
-  } else {
-    container.innerHTML = state.cart.map(item => `
-      <div class="cart-item">
-        <img class="cart-item-img" src="${item.image}" alt="${item.name}" onerror="this.src='https://via.placeholder.com/70x70?text=📦'">
-        <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
-          <div class="cart-item-price">R${item.price.toFixed(2)} each</div>
-          <div class="cart-item-controls">
-            <button class="qty-btn" onclick="Cart.updateQty(${item.id}, -1)">−</button>
-            <span class="qty-num">${item.qty}</span>
-            <button class="qty-btn" onclick="Cart.updateQty(${item.id}, 1)">+</button>
-            <button class="remove-item" onclick="Cart.remove(${item.id})">🗑</button>
+function showSubscribeModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="modal-header">
+        <h3>⭐ Subscribe & Save</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="border:2px solid var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;"
+               onclick="subscribeToTier('basic')">
+            <div style="font-size:24px;">📦</div>
+            <div style="font-weight:700;">Basic</div>
+            <div style="font-size:20px;font-weight:800;">R50<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
+            <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
+              <li>✅ R2 monthly bonus</li>
+              <li>✅ Free delivery</li>
+              <li>✅ 5% off all orders</li>
+            </ul>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();subscribeToTier('basic')">Subscribe</button>
+          </div>
+          <div style="border:2px solid var(--black);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;"
+               onclick="subscribeToTier('premium')">
+            <span style="position:absolute;top:-8px;right:8px;background:var(--black);color:white;font-size:10px;padding:2px 10px;border-radius:99px;">BEST</span>
+            <div style="font-size:24px;">💎</div>
+            <div style="font-weight:700;">Premium</div>
+            <div style="font-size:20px;font-weight:800;">R100<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
+            <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
+              <li>✅ R5 monthly bonus</li>
+              <li>✅ Free delivery</li>
+              <li>✅ 10% off all orders</li>
+              <li>✅ Free item monthly</li>
+            </ul>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();subscribeToTier('premium')">Subscribe</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">
+          Cancel anytime. No commitment.
+        </p>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function subscribeToTier(tier) {
+  if (!state.user) {
+    toast('⚠️ Please sign in first');
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/user/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: state.user._id, tier: tier })
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const data = await res.json();
+    toast(`✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} tier activated!`);
+    closeModal();
+    await loadUserRewards();
+    updateRewardUI();
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
+
+function showUnsubscribeModal() {
+  document.getElementById('confirm-title').textContent = 'Cancel Subscription?';
+  document.getElementById('confirm-msg').textContent = 'You will lose all subscription benefits immediately.';
+  document.getElementById('confirm-ok').textContent = 'Cancel';
+  document.getElementById('confirm-ok').className = 'btn btn-danger';
+  document.getElementById('confirm-ok').onclick = async () => {
+    closeConfirm();
+    try {
+      const res = await fetch(`${API}/user/unsubscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: state.user._id })
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast('✅ Subscription cancelled');
+      await loadUserRewards();
+      updateRewardUI();
+    } catch (err) {
+      toast('❌ ' + err.message);
+    }
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+
+// ============================================================
+//  FIXED: STARS HTML - Handles invalid ratings
+// ============================================================
+
+function starsHTML(rating) {
+  // Ensure rating is a valid number between 0 and 5
+  const numRating = Number(rating);
+  if (isNaN(numRating) || numRating < 0) return '☆☆☆☆☆';
+  if (numRating > 5) return '★★★★★';
+  
+  const full = Math.round(numRating);
+  const empty = Math.max(0, 5 - full);
+  
+  return '★'.repeat(full) + '☆'.repeat(empty);
+}
+
+// ============================================================
+//  PRODUCTS & CATEGORIES
+// ============================================================
+
+async function loadProducts() {
+  const g = document.getElementById('products-grid');
+  if (g) g.innerHTML = '<div style="text-align:center;padding:60px;">Loading products…</div>';
+
+  try {
+    let url = `${API}/products?`;
+    if (state.currentCategory && state.currentCategory !== 'all') {
+      url += `category=${encodeURIComponent(state.currentCategory)}&`;
+    }
+    if (state.searchQuery && state.searchQuery.trim()) {
+      url += `search=${encodeURIComponent(state.searchQuery.trim())}&`;
+    }
+    url = url.replace(/[?&]$/, '');
+
+    console.log('📦 Fetching products from:', url);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+    }
+
+    const p = await response.json();
+    console.log('📦 Products response:', p);
+    
+    if (!p || !Array.isArray(p)) {
+      console.warn('⚠️ Products response is not an array:', p);
+      state.products = [];
+      renderProducts([]);
+      return;
+    }
+    
+    console.log('📦 Products loaded:', p.length, 'for category:', state.currentCategory);
+    state.products = p;
+    renderProducts(p);
+    
+  } catch (err) {
+    console.error('❌ Failed to load products:', err);
+    if (g) {
+      g.innerHTML = `
+        <div class="no-results">
+          <div style="font-size:48px">⚠️</div>
+          <h3>Could not load products</h3>
+          <p style="color:var(--muted);font-size:14px;">${err.message || 'Please check your connection'}</p>
+          <button class="btn btn-outline btn-sm" onclick="loadProducts()" style="margin-top:12px;">🔄 Retry</button>
+        </div>
+      `;
+    }
+    state.products = [];
+  }
+}
+
+function renderProducts(products) {
+  const g = document.getElementById('products-grid');
+  const ce = document.getElementById('results-count');
+  if (!g) {
+    console.warn('⚠️ products-grid element not found');
+    return;
+  }
+
+  if (!products || !Array.isArray(products)) {
+    console.warn('⚠️ products is not an array:', products);
+    products = [];
+  }
+
+  console.log('🎨 Rendering', products.length, 'products');
+
+  if (products.length === 0) {
+    g.innerHTML = `
+      <div class="no-results">
+        <div style="font-size:48px">🔍</div>
+        <h3>No products found</h3>
+        <p style="color:var(--muted);font-size:14px;">
+          ${state.currentCategory !== 'all' ? `No products in "${state.currentCategory}" category` : 'Try adjusting your search'}
+        </p>
+      </div>
+    `;
+    if (ce) ce.textContent = '0 items';
+    return;
+  }
+
+  let s = [...products];
+  if (state.sortBy === 'price-asc') s.sort((a, b) => (a.price || 0) - (b.price || 0));
+  else if (state.sortBy === 'price-desc') s.sort((a, b) => (b.price || 0) - (a.price || 0));
+  else if (state.sortBy === 'rating') s.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (state.sortBy === 'newest') s.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  if (ce) ce.textContent = `${s.length} item${s.length !== 1 ? 's' : ''}`;
+
+  g.className = 'products-grid stagger';
+  
+  let html = '';
+  s.forEach((p, index) => {
+    const productId = p._id || p.id || `prod-${index}`;
+    const imageUrl = p.image || 'https://via.placeholder.com/320x320?text=📦';
+    const stock = p.stock !== undefined ? p.stock : 0;
+    const isOutOfStock = stock === 0;
+    const lowStock = stock > 0 && stock <= 5;
+    const rating = p.rating || 0;
+    const reviews = p.reviews || 0;
+    const price = p.price || 0;
+    const name = p.name || 'Unnamed Product';
+    const category = p.category || 'Other';
+    const description = p.description || '';
+
+    html += `
+      <div class="product-card" onclick="openProductModal('${productId}')">
+        <div class="product-img-wrap">
+          <img src="${imageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/320x320?text=📦'">
+          ${lowStock && !isOutOfStock ? `<span class="product-badge badge badge-warn">Only ${stock} left</span>` : ''}
+          ${isOutOfStock ? `<span class="product-badge badge" style="background:#f1f1f1">Out of stock</span>` : ''}
+          <button class="product-wishlist" onclick="event.stopPropagation();toggleWishlist('${productId}',this)">
+            ${Wishlist.has(productId) ? '❤️' : '🤍'}
+          </button>
+        </div>
+        <div class="product-body">
+          <div class="product-cat">${category}</div>
+          <div class="product-name">${name}</div>
+          ${description ? `<div class="product-desc">${description}</div>` : ''}
+          <div class="product-rating">
+            <span class="stars">${starsHTML(rating)}</span>
+            <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
+          </div>
+          <div class="product-footer">
+            <div class="product-price">R${Number(price).toFixed(2)}</div>
+            <button class="add-to-cart ${isOutOfStock ? 'out-of-stock' : ''}"
+                    onclick="event.stopPropagation();addToCartById('${productId}')"
+                    ${isOutOfStock ? 'disabled' : ''}>
+              +
+            </button>
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+  });
+
+  g.innerHTML = html;
+  console.log('🎨 Products rendered:', s.length);
+}
+
+async function renderCategories() {
+  try {
+    console.log('🏷️ Fetching categories...');
+    const response = await fetch(`${API}/categories`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const cats = await response.json();
+    console.log('🏷️ Categories loaded:', cats.length);
+    state.categories = cats;
+
+    const g = document.getElementById('categories-grid');
+    if (!g) return;
+
+    if (!cats || cats.length === 0) {
+      g.innerHTML = `
+        <div class="cat-card" style="grid-column:1/-1;cursor:default;border-color:var(--gray-200);">
+          No categories found. Add some in the admin panel.
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <div class="cat-card active" data-cat="all" onclick="filterCategory('all',this)">
+        <span style="font-size:20px;">📋</span>
+        All
+      </div>
+    `;
+
+    cats.forEach(c => {
+      const icon = c.icon || '🏷️';
+      const label = c.label || c.id;
+      const catId = c.id;
+      
+      html += `
+        <div class="cat-card" data-cat="${catId}" onclick="filterCategory('${catId}',this)">
+          <span style="font-size:20px;">${icon}</span>
+          ${label}
+        </div>
+      `;
+    });
+
+    g.innerHTML = html;
+    console.log('🏷️ Categories rendered:', cats.length + 1, 'including "All"');
+    
+  } catch (err) {
+    console.error('❌ Failed to load categories:', err);
+    const g = document.getElementById('categories-grid');
+    if (g) {
+      g.innerHTML = `
+        <div class="cat-card" style="grid-column:1/-1;cursor:default;border-color:var(--gray-200);">
+          ⚠️ Could not load categories
+        </div>
+      `;
+    }
   }
-  const subtotal = Cart.total();
-  const delivery = subtotal > 0 ? 25 : 0;
-  document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
-  document.getElementById('cart-delivery').textContent = delivery > 0 ? `R${delivery.toFixed(2)}` : 'Free';
-  document.getElementById('cart-total').textContent = `R${(subtotal + delivery).toFixed(2)}`;
+}
+
+function filterCategory(cat, el) {
+  console.log('🔍 Filtering by category:', cat);
+  state.currentCategory = cat;
+  state.searchQuery = '';
+  
+  const si = document.getElementById('search-input');
+  if (si) si.value = '';
+  
+  document.querySelectorAll('.cat-card').forEach(c => {
+    c.classList.remove('active');
+  });
+  
+  if (el) {
+    el.classList.add('active');
+  }
+  
+  loadProducts();
+  
+  const shopSection = document.getElementById('shop-section');
+  if (shopSection) {
+    setTimeout(() => {
+      shopSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
+}
+
+function addToCartById(id) {
+  console.log('🛒 Adding to cart by ID:', id);
+  const p = state.products.find(p => {
+    return p._id === id || 
+           p.id === id || 
+           String(p._id) === String(id) ||
+           String(p.id) === String(id);
+  });
+  
+  if (p) {
+    console.log('🛒 Found product:', p.name);
+    Cart.add(p);
+  } else {
+    console.warn('⚠️ Product not found with ID:', id);
+    toast('⚠️ Product not found');
+  }
+}
+
+// ============================================================
+//  PRODUCT MODAL
+// ============================================================
+
+function openProductModal(id) {
+  console.log('🔍 Opening product modal for ID:', id);
+  
+  const p = state.products.find(x => {
+    return x._id === id || 
+           x.id === id || 
+           String(x._id) === String(id) ||
+           String(x.id) === String(id);
+  });
+  
+  if (!p) {
+    console.warn('⚠️ Product not found for modal:', id);
+    toast('⚠️ Product not found');
+    return;
+  }
+
+  console.log('🔍 Product found:', p.name);
+
+  const imageUrl = p.image || 'https://via.placeholder.com/560x560?text=No+Image';
+  const price = p.price || 0;
+  const rating = p.rating || 0;
+  const reviews = p.reviews || 0;
+  const stock = p.stock || 0;
+  const productId = p._id || p.id;
+
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <span class="badge badge-brand">${p.category || 'Other'}</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <img class="modal-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/560x560?text=📦'">
+        <div class="modal-product-name">${p.name || 'Unnamed Product'}</div>
+        <div class="product-rating">
+          <span class="stars">${starsHTML(rating)}</span>
+          <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
+        </div>
+        <div class="modal-product-desc">${p.description || ''}</div>
+        <div class="modal-product-price">R${Number(price).toFixed(2)}</div>
+        ${stock === 0 ? '<div style="color:red;font-weight:600;margin-bottom:16px;">Out of Stock</div>' : ''}
+        <div class="modal-actions">
+          <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose('${productId}')" ${stock === 0 ? 'disabled' : ''}>
+            🛒 Add to Cart
+          </button>
+          <button class="btn btn-outline" onclick="toggleWishlistModal('${productId}',this)">
+            ${Wishlist.has(productId) ? '❤️' : '🤍'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function addToCartAndClose(id) {
+  const p = state.products.find(x => {
+    return x._id === id || 
+           x.id === id || 
+           String(x._id) === String(id) ||
+           String(x.id) === String(id);
+  });
+  if (p) {
+    Cart.add(p);
+    closeModal();
+  } else {
+    toast('⚠️ Product not found');
+  }
+}
+
+function toggleWishlistModal(id, b) {
+  Wishlist.toggle(id);
+  b.textContent = Wishlist.has(id) ? '❤️' : '🤍';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ============================================================
+//  SLIDESHOW
+// ============================================================
+
+let slideInterval = null;
+
+async function loadHeroSlideshow() {
+  const w = document.getElementById('slideshow-wrapper');
+  const d = document.getElementById('slideshow-dots');
+
+  if (!w || !d) {
+    console.warn('⚠️ Slideshow elements not found');
+    return;
+  }
+
+  w.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray-500);">Loading slides...</div>';
+  d.innerHTML = '';
+
+  try {
+    console.log('🖼️ Fetching slides...');
+    const response = await fetch(`${API}/slides`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const slides = await response.json();
+    console.log('🖼️ Slides loaded:', slides.length);
+
+    if (!slides || slides.length === 0) {
+      w.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:18px;">
+          📸 No slides available
+        </div>
+      `;
+      return;
+    }
+
+    w.innerHTML = slides.map((slide, index) => {
+      const isActive = index === 0 ? 'active' : '';
+      const imageUrl = slide.image || 'https://via.placeholder.com/1920x300?text=Slide';
+      return `
+        <img class="slideshow-slide ${isActive}"
+             src="${imageUrl}"
+             alt="${slide.caption || 'Slide'}"
+             ${slide.link ? `onclick="window.open('${slide.link}','_blank')" style="cursor:pointer;"` : ''}>
+        ${slide.caption ? `<div class="slideshow-caption ${isActive}">${slide.caption}</div>` : ''}
+      `;
+    }).join('');
+
+    d.innerHTML = slides.map((_, index) => {
+      const isActive = index === 0 ? 'active' : '';
+      return `<div class="slideshow-dot ${isActive}" onclick="goToSlide(${index})"></div>`;
+    }).join('');
+
+    if (slideInterval) clearInterval(slideInterval);
+    let currentSlide = 0;
+
+    slideInterval = setInterval(() => {
+      const totalSlides = slides.length;
+      if (totalSlides === 0) return;
+      currentSlide = (currentSlide + 1) % totalSlides;
+      goToSlide(currentSlide);
+    }, 5000);
+
+  } catch (err) {
+    console.error('❌ Failed to load slides:', err);
+    w.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:18px;">
+        📸 Could not load slides
+      </div>
+    `;
+  }
+}
+
+function goToSlide(index) {
+  const slides = document.querySelectorAll('.slideshow-slide');
+  const captions = document.querySelectorAll('.slideshow-caption');
+  const dots = document.querySelectorAll('.slideshow-dot');
+
+  slides.forEach((s, i) => s.classList.toggle('active', i === index));
+  captions.forEach((c, i) => c.classList.toggle('active', i === index));
+  dots.forEach((d, i) => d.classList.toggle('active', i === index));
+}
+
+// ============================================================
+//  CART UI
+// ============================================================
+
+function updateCartUI() {
+  const c = Cart.count();
+  document.querySelectorAll('.cart-count').forEach(el => {
+    el.textContent = c;
+    el.style.display = c > 0 ? 'flex' : 'none';
+  });
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer && drawer.classList.contains('open')) {
+    updateCartRewardProgress();
+  }
+}
+
+function updateCartRewardProgress() {
+  const progressContainer = document.getElementById('reward-progress-container');
+  if (!progressContainer) return;
+
+  const eligibleItems = state.cart.filter(item => item.price >= 10);
+  const eligibleCount = eligibleItems.length;
+  const sets = Math.floor(eligibleCount / 10);
+  const remaining = eligibleCount % 10;
+  const progress = Math.round((remaining / 10) * 100);
+
+  let streakBonus = 0;
+  if (state.streak && state.streak.count >= 3) {
+    streakBonus = state.streak.bonusAmount || 5;
+  }
+
+  progressContainer.innerHTML = `
+    <div class="reward-progress-card">
+      <div class="reward-progress-header">
+        <div class="reward-progress-title">
+          <span>🎁 Rewards</span>
+          <span class="reward-balance">R${state.rewardBalance.toFixed(2)}</span>
+        </div>
+        <div class="reward-tier-badge" id="tier-badge">
+          ${getTierIcon(state.tier)}
+        </div>
+      </div>
+
+      ${state.cart.length > 0 ? `
+        <div class="reward-progress-body">
+          <div class="reward-progress-info">
+            <span>${eligibleCount}/10 items for R2</span>
+            <span>${sets} rewards earned</span>
+          </div>
+          <div class="reward-progress-track">
+            <div class="reward-progress-fill" style="width: ${progress}%"></div>
+          </div>
+          <div class="reward-progress-helper">
+            ${remaining === 0 ? '✅ Ready for reward!' : `Add ${10 - remaining} more items for R2`}
+          </div>
+          ${streakBonus > 0 ? `<div class="reward-streak-bonus">🔥 ${state.streak.count} week streak! +R${streakBonus.toFixed(2)} bonus</div>` : ''}
+          ${state.subscription?.active ? `<div class="reward-subscription-badge">⭐ ${state.subscription.tier} subscriber</div>` : ''}
+        </div>
+      ` : `
+        <div class="reward-progress-empty">
+          Add items to your cart to earn rewards!
+        </div>
+      `}
+
+      ${state.rewardBalance >= 2 ? `
+        <button class="btn btn-sm btn-primary" onclick="redeemRewards()" style="margin-top:8px;width:100%;">
+          Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderCartItems() {
+  const c = document.getElementById('cart-items');
+  if (!c) return;
+
+  if (state.cart.length === 0) {
+    c.innerHTML = `
+      <div class="cart-empty">
+        <div style="font-size:48px">🛒</div>
+        <p>Your cart is empty.</p>
+      </div>
+    `;
+    return;
+  }
+
+  c.innerHTML = state.cart.map(i => `
+    <div class="cart-item">
+      <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${i.name}</div>
+        <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
+        <div class="cart-item-controls">
+          <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
+          <span class="qty-num">${i.qty}</span>
+          <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
+          <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  const t = Cart.total();
+  document.getElementById('cart-subtotal').textContent = `R${t.toFixed(2)}`;
+  document.getElementById('cart-delivery').textContent = 'Free';
+
+  const discount = state.discountAmount || 0;
+  const finalTotal = Math.max(0, t - discount);
+  document.getElementById('cart-total').textContent = `R${finalTotal.toFixed(2)}`;
 }
 
 function openCart() {
@@ -227,6 +947,19 @@ function openCart() {
   document.getElementById('cart-overlay').classList.add('open');
   document.getElementById('cart-drawer').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  if (state.user) {
+    loadRewardProgress();
+  }
+
+  const footer = document.querySelector('.cart-footer');
+  if (footer && !document.getElementById('reward-progress-container')) {
+    const container = document.createElement('div');
+    container.id = 'reward-progress-container';
+    container.style.marginBottom = '12px';
+    footer.parentNode.insertBefore(container, footer);
+    updateCartRewardProgress();
+  }
 }
 
 function closeCart() {
@@ -235,365 +968,403 @@ function closeCart() {
   document.body.style.overflow = '';
 }
 
-/* ─── PRODUCTS ─── */
-function starsHTML(rating) {
-  return '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
-}
+// ============================================================
+//  CHECKOUT
+// ============================================================
 
-function renderProducts(products) {
-  const grid = document.getElementById('products-grid');
-  const countEl = document.getElementById('results-count');
-  if (!grid) return;
+function renderCheckout() {
+  const s = document.getElementById('checkout-section');
+  if (!s) return;
 
-  let sorted = [...products];
-  if (state.sortBy === 'price-asc') sorted.sort((a, b) => a.price - b.price);
-  else if (state.sortBy === 'price-desc') sorted.sort((a, b) => b.price - a.price);
-  else if (state.sortBy === 'rating') sorted.sort((a, b) => b.rating - a.rating);
-  else if (state.sortBy === 'newest') sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const subtotal = Cart.total();
+  const discount = state.discountAmount || 0;
+  const rewardDiscount = Math.min(state.rewardBalance, subtotal);
+  const total = Math.max(0, subtotal - discount - rewardDiscount);
 
-  if (countEl) countEl.textContent = `${sorted.length} item${sorted.length !== 1 ? 's' : ''}`;
-
-  if (sorted.length === 0) {
-    grid.innerHTML = `<div class="no-results">
-      <div style="font-size:48px;margin-bottom:12px">🔍</div>
-      <h3>No products found</h3>
-      <p>Try a different search or category</p>
-    </div>`;
-    return;
+  let subscriptionDiscount = 0;
+  let subscriptionPercent = 0;
+  if (state.subscription?.active && state.subscription.config?.discountPercent) {
+    subscriptionPercent = state.subscription.config.discountPercent;
+    subscriptionDiscount = (subtotal * subscriptionPercent) / 100;
   }
 
-  grid.className = 'products-grid stagger';
-  grid.innerHTML = sorted.map(p => `
-    <div class="product-card" onclick="openProductModal(${p.id})">
-      <div class="product-img-wrap">
-        <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=📦'">
-        ${p.stock < 5 && p.stock > 0 ? `<span class="product-badge badge badge-warn">Only ${p.stock} left</span>` : ''}
-        ${p.stock === 0 ? `<span class="product-badge badge" style="background:#f1f1f1;color:#999">Out of stock</span>` : ''}
-        <button class="product-wishlist" onclick="event.stopPropagation(); toggleWishlist(${p.id}, this)">${Wishlist.has(p.id) ? '❤️' : '🤍'}</button>
-      </div>
-      <div class="product-body">
-        <div class="product-cat">${p.category}</div>
-        <div class="product-name">${p.name}</div>
-        <div class="product-desc">${p.description}</div>
-        <div class="product-rating">
-          <span class="stars">${starsHTML(p.rating)}</span>
-          <span>${p.rating} (${p.reviews})</span>
+  s.innerHTML = `
+    <div class="container">
+      <h1>Checkout</h1>
+      ${state.cart.length === 0 ? '<div style="text-align:center;padding:80px;"><h3>Cart empty</h3></div>' : `
+        <div class="checkout-grid">
+          <div>
+            <div class="checkout-card">
+              <h3>📱 Delivery Details</h3>
+              <div class="form-group"><label>WhatsApp *</label><input class="form-input" id="co-phone" type="tel" value="${state.user?.phone||''}"></div>
+              <div class="form-group"><label>Address *</label><textarea class="form-input" id="co-address">${state.user?.address||''}</textarea><button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button><input type="hidden" id="co-coordinates"></div>
+              <div class="form-group"><label>Notes</label><textarea class="form-input" id="co-notes"></textarea></div>
+            </div>
+
+            <div class="checkout-card">
+              <h3>🎁 Rewards & Savings</h3>
+              ${state.user ? `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                  <span>Reward Balance</span>
+                  <span><strong>R${state.rewardBalance.toFixed(2)}</strong></span>
+                </div>
+                ${state.rewardBalance >= 2 ? `
+                  <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button class="btn btn-primary btn-sm" onclick="redeemRewards()" style="flex:1;">
+                      Apply R${Math.min(state.rewardBalance, subtotal).toFixed(2)} off
+                    </button>
+                  </div>
+                ` : '<p style="font-size:12px;color:var(--muted);">Earn R2 for every 10 items</p>'}
+              ` : '<p style="font-size:12px;color:var(--muted);">Sign in to use rewards</p>'}
+            </div>
+          </div>
+
+          <div class="order-summary-card">
+            <h3>Order Summary</h3>
+            ${state.cart.map(i => `<div class="order-line"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}
+            ${subscriptionDiscount > 0 ? `<div class="order-line" style="color:green;"><span>${state.subscription.tier} Discount (${subscriptionPercent}%)</span><span>-R${subscriptionDiscount.toFixed(2)}</span></div>` : ''}
+            ${discount > 0 ? `<div class="order-line" style="color:green;"><span>Points Discount</span><span>-R${discount.toFixed(2)}</span></div>` : ''}
+            ${rewardDiscount > 0 ? `<div class="order-line" style="color:green;"><span>🎁 Reward Discount</span><span>-R${rewardDiscount.toFixed(2)}</span></div>` : ''}
+            <div class="order-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
+            <p>🚚 Free Delivery</p>
+            <button class="btn btn-primary btn-full" id="place-order-btn" onclick="submitOrder()">Place Order</button>
+            <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">You'll see your order summary after placing.</p>
+          </div>
         </div>
-        <div class="product-footer">
-          <div class="product-price">R${p.price.toFixed(2)}</div>
-          <button class="add-to-cart ${p.stock === 0 ? 'out-of-stock' : ''}" onclick="event.stopPropagation(); addToCartById(${p.id})" title="Add to cart" ${p.stock === 0 ? 'disabled' : ''}>+</button>
+      `}
+    </div>`;
+}
+
+async function submitOrder() {
+  const p = document.getElementById('co-phone')?.value.trim();
+  const a = document.getElementById('co-address')?.value.trim();
+  const c = document.getElementById('co-coordinates')?.value.trim();
+  const n = document.getElementById('co-notes')?.value.trim();
+  const btn = document.getElementById('place-order-btn');
+
+  if (!p || !a) { toast('⚠️ Fill required fields'); return; }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.textContent = 'Placing Order…';
+
+  const subtotal = Cart.total();
+  const discount = state.discountAmount || 0;
+  const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
+  const total = Math.max(0, subtotal - discount - rewardDiscount);
+
+  try {
+    const o = await placeOrder({
+      customer: { name: state.user?.name || 'Guest', email: state.user?.email || '', phone: p, address: a, coordinates: c, notes: n },
+      items: state.cart,
+      total: total,
+      subtotal: subtotal,
+      discount: discount,
+      rewardDiscount: rewardDiscount,
+      paymentMethod: 'cash',
+      userId: state.user?._id || null
+    });
+    Cart.clear();
+    state.discountAmount = 0;
+    state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
+    showOrderSuccessSummary(o, total);
+    fetchUserPoints(state.user?.email);
+    updateRewardUI();
+  } catch {
+    toast('❌ Failed to place order. Please try again.');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = 'Place Order';
+  }
+}
+
+function showOrderSuccessSummary(o, a) {
+  const s = document.getElementById('checkout-section');
+  s.innerHTML = `
+    <div class="container">
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:56px;margin-bottom:16px;">✅</div>
+        <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
+        <p style="color:var(--muted);margin-bottom:32px;">Thank you for your order. We'll contact you shortly.</p>
+        <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
+          <div class="card-body">
+            <h3 style="margin-bottom:16px;">📋 Order Summary</h3>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Order ID</span><span>${o.id}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Status</span><span class="badge badge-warn">Pending</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">WhatsApp</span><span>${o.customer?.phone}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Address</span><span>${o.customer?.address}</span></div>
+            <div style="margin-top:16px;"><h4 style="margin-bottom:8px;">🛒 Items</h4>${(o.items||[]).map(i => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}</div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--gray-300);margin-top:12px;font-weight:800;font-size:18px;"><span>Total</span><span>R${a.toFixed(2)}</span></div>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="navigateTo('home')">🏠 Continue Shopping</button>
+          <button class="btn btn-outline" onclick="navigateTo('orders')">📋 My Orders</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function toggleWishlist(id, btn) {
-  Wishlist.toggle(id);
-  btn.textContent = Wishlist.has(id) ? '❤️' : '🤍';
+// ============================================================
+//  ORDERS
+// ============================================================
+
+async function renderOrdersPage() {
+  const s = document.getElementById('orders-section');
+  if (!s) return;
+  if (!state.user) { s.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>'; return; }
+  s.innerHTML = '<div class="container"><div style="text-align:center;padding:60px;">Loading…</div></div>';
+  try {
+    const orders = await fetchOrders();
+    const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
+    s.innerHTML = `
+      <div class="container">
+        <h1>My Orders</h1>
+        ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
+          <table class="orders-table">
+            <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${myOrders.reverse().map(o => {
+                const canCancel = o.status === 'pending' || o.status === 'paid';
+                const showInvoice = o.status === 'paid' || o.status === 'completed';
+                return `<tr>
+                  <td style="font-weight:700;">${o.id}</td>
+                  <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+                  <td>${o.items?.length||0}</td>
+                  <td><strong>R${o.total?.toFixed(2)}</strong></td>
+                  <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status}</span></td>
+                  <td><div style="display:flex;gap:6px;">
+                    ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
+                    ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
+                  </div></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+      </div>`;
+  } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
 }
 
-function addToCartById(id) {
-  const p = state.products.find(p => p.id === id);
-  if (p) Cart.add(p);
+async function cancelOrder(orderId) {
+  if (!confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${API}/orders/${orderId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); toast('❌ ' + err.error); return; }
+    toast('🗑 Order cancelled');
+    renderOrdersPage();
+  } catch { toast('❌ Failed to cancel order'); }
 }
 
-async function loadProducts() {
-  const grid = document.getElementById('products-grid');
-  if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">Loading products…</div>`;
-  const products = await fetchProducts(state.currentCategory, state.searchQuery);
-  state.products = products;
-  // Cache products for offline use
-  localStorage.setItem('habibi_products_cache', JSON.stringify(products));
-  renderProducts(products);
-}
-
-/* ─── CATEGORIES ─── */
-async function renderCategories() {
-  const cats = await fetchCategories();
-  state.categories = cats;
-  const grid = document.getElementById('categories-grid');
-  if (!grid) return;
-  grid.innerHTML = `
-    <div class="cat-card active" data-cat="all" onclick="filterCategory('all', this)">
-      <span class="cat-icon">🛒</span>All
-    </div>
-    ${cats.map(c => `
-      <div class="cat-card" data-cat="${c.id}" onclick="filterCategory('${c.id}', this)">
-        <span class="cat-icon">${c.icon}</span>${c.label}
-      </div>
-    `).join('')}
-  `;
-}
-
-function filterCategory(cat, el) {
-  state.currentCategory = cat;
-  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  loadProducts();
-}
-
-/* ─── PRODUCT MODAL ─── */
-function openProductModal(id) {
-  const product = state.products.find(p => p.id === id);
-  if (!product) return;
-  const overlay = document.getElementById('modal-overlay');
-  overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal-header">
-        <span class="badge badge-brand">${product.category}</span>
-        <button class="modal-close" onclick="closeModal()">✕</button>
-      </div>
+function viewInvoice(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header"><h3>📄 Invoice</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
       <div class="modal-body">
-        <img class="modal-img" src="${product.image}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/560x315?text=📦'">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div class="modal-product-name">${product.name}</div>
-          ${product.stock < 5 && product.stock > 0 ? `<span class="badge badge-warn">Only ${product.stock} left!</span>` : ''}
-          ${product.stock === 0 ? `<span class="badge" style="background:#eee;color:#999">Out of stock</span>` : ''}
-        </div>
-        <div class="product-rating" style="margin-bottom:12px;">
-          <span class="stars">${starsHTML(product.rating)}</span>
-          <span>${product.rating} out of 5 (${product.reviews} reviews)</span>
-        </div>
-        <div class="modal-product-desc">${product.description}</div>
-        <div class="modal-product-price">R${product.price.toFixed(2)}</div>
-        <div class="modal-actions">
-          <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>
-            🛒 Add to Cart
-          </button>
-          <button class="btn btn-outline" onclick="toggleWishlistModal(${product.id}, this)">
-            ${Wishlist.has(product.id) ? '❤️' : '🤍'}
-          </button>
-        </div>
+        <img src="habibiLogo.png" style="width:50px;"><div style="font-weight:700;">Quick 2 Shop</div>
+        <table>${i}</table>
+        <p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p>
+        <p>${order.customer?.name||'Customer'}</p>
+        <p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p>
+        <p>${order.id}</p>
+        <button class="btn btn-primary btn-sm" onclick="downloadPDF(${JSON.stringify(order).replace(/"/g,'&quot;')})">📥 Download PDF</button>
       </div>
-    </div>
-  `;
-  overlay.classList.add('open');
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
-// Fix for: Passing product object in onclick was causing issues
-function addToCartAndClose(id) {
-  const product = state.products.find(p => p.id === id);
-  if (product) {
-    Cart.add(product);
-    closeModal();
-  }
+async function downloadPDF(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Inter}.invoice{max-width:380px;margin:0 auto;padding:24px}.logo img{width:60px}.store-name{font-size:18px;font-weight:700}table{width:100%}</style></head><body><div class="invoice"><div class="logo"><img src="habibiLogo.png"><div class="store-name">Quick 2 Shop</div></div><table>${i}</table><p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p><p>${order.customer?.name||'Customer'}</p><p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p><p>${order.id}</p></div></body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(h);
+  w.document.close();
+  setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
 }
 
-function toggleWishlistModal(id, btn) {
-  Wishlist.toggle(id);
-  btn.textContent = Wishlist.has(id) ? '❤️' : '🤍';
-}
+// ============================================================
+//  AUTH FUNCTIONS
+// ============================================================
 
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-/* ─── AUTH MODAL (FIXED & IMPROVED) ─── */
 function openAuthModal() {
-  const overlay = document.getElementById('modal-overlay');
-  overlay.innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 style="font-family:var(--font-head);font-size:20px;font-weight:800;">Welcome to Habibi 🛒</h3>
-        <button class="modal-close" onclick="closeModal()">✕</button>
-      </div>
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Welcome 🛒</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
       <div class="modal-body">
         <div class="auth-tabs">
-          <button class="auth-tab active" onclick="switchAuthTab('login', this)">Sign In</button>
-          <button class="auth-tab" onclick="switchAuthTab('register', this)">Register</button>
+          <button class="auth-tab active" onclick="switchAuthTab('login',this)">Sign In</button>
+          <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
         </div>
-        <div id="auth-form-wrap">
-          ${loginForm()}
-        </div>
-        <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:16px;">
-          Demo account: test@habibi.co.za / test123
-        </p>
+        <div id="auth-form-wrap">${loginForm()}</div>
       </div>
-    </div>
-  `;
-  overlay.classList.add('open');
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  
-  // Focus on first input
-  setTimeout(() => {
-    const firstInput = document.querySelector('#auth-form-wrap input');
-    if (firstInput) firstInput.focus();
-  }, 300);
 }
 
 function loginForm() {
-  return `
-    <form id="auth-form" onsubmit="event.preventDefault(); submitLogin();">
-      <div id="auth-error" class="form-error" style="display:none;margin-bottom:12px;"></div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="auth-email" type="email" placeholder="your@email.com" autocomplete="email" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button>
-    </form>
-  `;
+  return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
 }
 
 function registerForm() {
-  return `
-    <form id="auth-form" onsubmit="event.preventDefault(); submitRegister();">
-      <div id="auth-error" class="form-error" style="display:none;margin-bottom:12px;"></div>
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input class="form-input" id="auth-name" type="text" placeholder="Your name" autocomplete="name" required>
+  return `<form onsubmit="event.preventDefault();submitRegister();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="auth-name" required></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" id="auth-password-confirm" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button></form>`;
+}
+
+function switchAuthTab(t, el) {
+  document.querySelectorAll('.auth-tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('auth-form-wrap').innerHTML = t === 'login' ? loginForm() : registerForm();
+}
+
+function showForgotPasswordForm() {
+  document.getElementById('auth-form-wrap').innerHTML = `
+    <form onsubmit="event.preventDefault();requestOTP();">
+      <div id="auth-error" class="form-error" style="display:none;"></div>
+      <div id="auth-success" class="form-error" style="display:none;color:green;"></div>
+      <p>Enter your email for an OTP.</p>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reset-email" type="email" required></div>
+      <div id="otp-fields" style="display:none;">
+        <div class="form-group"><label class="form-label">OTP</label><input class="form-input" id="reset-otp" maxlength="6"></div>
+        <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="reset-new-password" type="password"></div>
+        <div class="form-group"><label class="form-label">Confirm</label><input class="form-input" id="reset-confirm-password" type="password"></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="auth-email" type="email" placeholder="your@email.com" autocomplete="email" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="auth-password" type="password" placeholder="Create a password (min 4 characters)" autocomplete="new-password" required minlength="4">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Confirm Password</label>
-        <input class="form-input" id="auth-password-confirm" type="password" placeholder="Confirm your password" autocomplete="new-password" required minlength="4">
-      </div>
-      <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button>
+      <button type="submit" class="btn btn-primary btn-full" id="reset-submit-btn">Send OTP</button>
     </form>
+    <p style="text-align:center;margin-top:14px;"><a href="#" onclick="switchAuthTab('login',document.querySelector('.auth-tab:first-child'))">← Back</a></p>
   `;
 }
 
-function switchAuthTab(tab, el) {
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('auth-form-wrap').innerHTML = tab === 'login' ? loginForm() : registerForm();
-  
-  // Focus on first input
-  setTimeout(() => {
-    const firstInput = document.querySelector('#auth-form-wrap input');
-    if (firstInput) firstInput.focus();
-  }, 100);
+let resetEmail = '';
+
+async function requestOTP() {
+  const e = document.getElementById('reset-email').value.trim(), err = document.getElementById('auth-error'), ok = document.getElementById('auth-success'), btn = document.getElementById('reset-submit-btn');
+  err.style.display = 'none';
+  ok.style.display = 'none';
+  if (!e) { err.textContent = 'Enter email'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${API}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: e })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    resetEmail = e;
+    document.getElementById('otp-fields').style.display = 'block';
+    btn.textContent = 'Reset Password';
+    btn.setAttribute('onclick', 'event.preventDefault();verifyOTPAndReset()');
+    ok.textContent = 'OTP sent!';
+    ok.style.display = 'block';
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; }
+}
+
+async function verifyOTPAndReset() {
+  const o = document.getElementById('reset-otp').value.trim(),
+    np = document.getElementById('reset-new-password').value,
+    cp = document.getElementById('reset-confirm-password').value,
+    err = document.getElementById('auth-error'),
+    ok = document.getElementById('auth-success'),
+    btn = document.getElementById('reset-submit-btn');
+  if (!o || !np || !cp) { err.textContent = 'All fields required'; err.style.display = 'block'; return; }
+  if (np !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch(`${API}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, otp: o, newPassword: np })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    ok.textContent = 'Password reset!';
+    ok.style.display = 'block';
+    setTimeout(() => switchAuthTab('login', document.querySelector('.auth-tab:first-child')), 2000);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
 }
 
 async function submitLogin() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const errEl = document.getElementById('auth-error');
-  const submitBtn = document.getElementById('auth-submit-btn');
-  
-  // Clear previous error
-  errEl.style.display = 'none';
-  
-  // Validate
-  if (!email || !password) {
-    errEl.textContent = 'Please fill in all fields';
-    errEl.style.display = 'block';
-    return;
-  }
-  
-  // Show loading state
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Signing in…';
-  
+  const e = document.getElementById('auth-email').value.trim(),
+    p = document.getElementById('auth-password').value,
+    err = document.getElementById('auth-error'),
+    btn = document.getElementById('auth-submit-btn');
+  err.style.display = 'none';
+  if (!e || !p) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
   try {
-    const user = await loginUser(email, password);
-    state.user = user;
-    localStorage.setItem('habibi_user', JSON.stringify(user));
+    const u = await loginUser(e, p);
+    state.user = u;
+    localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
-    toast(`👋 Welcome back, ${user.name}!`);
-    
-    // If user was trying to checkout, redirect to checkout
-    if (state.currentPage === 'checkout') {
-      navigateTo('checkout');
-    }
-  } catch (e) {
-    errEl.textContent = e.message || 'Login failed';
-    errEl.style.display = 'block';
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Sign In';
-  }
+    await loadUserRewards();
+    toast(`👋 Welcome, ${u.name}!`);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
 
 async function submitRegister() {
-  const name = document.getElementById('auth-name')?.value?.trim();
-  const email = document.getElementById('auth-email')?.value?.trim();
-  const password = document.getElementById('auth-password')?.value;
-  const passwordConfirm = document.getElementById('auth-password-confirm')?.value;
-  const errEl = document.getElementById('auth-error');
-  const submitBtn = document.getElementById('auth-submit-btn');
-  
-  // Clear previous error
-  errEl.style.display = 'none';
-  
-  // Validate
-  if (!name || !email || !password || !passwordConfirm) {
-    errEl.textContent = 'Please fill in all fields';
-    errEl.style.display = 'block';
-    return;
-  }
-  
-  if (password.length < 4) {
-    errEl.textContent = 'Password must be at least 4 characters';
-    errEl.style.display = 'block';
-    return;
-  }
-  
-  if (password !== passwordConfirm) {
-    errEl.textContent = 'Passwords do not match';
-    errEl.style.display = 'block';
-    return;
-  }
-  
-  // Show loading state
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Creating account…';
-  
+  const n = document.getElementById('auth-name')?.value?.trim(),
+    e = document.getElementById('auth-email')?.value?.trim(),
+    p = document.getElementById('auth-password')?.value,
+    cp = document.getElementById('auth-password-confirm')?.value,
+    err = document.getElementById('auth-error'),
+    btn = document.getElementById('auth-submit-btn');
+  err.style.display = 'none';
+  if (!n || !e || !p || !cp) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
+  if (p !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
   try {
-    const user = await registerUser(name, email, password);
-    state.user = user;
-    localStorage.setItem('habibi_user', JSON.stringify(user));
+    const u = await registerUser(n, e, p);
+    state.user = u;
+    localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
-    toast(`🎉 Welcome to Habibi, ${user.name}!`);
-    
-    // If user was trying to checkout, redirect to checkout
-    if (state.currentPage === 'checkout') {
-      navigateTo('checkout');
-    }
-  } catch (e) {
-    errEl.textContent = e.message || 'Registration failed';
-    errEl.style.display = 'block';
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Create Account';
-  }
+    await loadUserRewards();
+    toast(`🎉 Welcome, ${u.name}!`);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Create Account'; }
 }
 
 function logout() {
   state.user = null;
+  state.points = 0;
+  state.rewardBalance = 0;
   localStorage.removeItem('habibi_user');
   updateAuthUI();
-  toast('👋 Signed out. Come back soon!');
+  toast('👋 Signed out');
   navigateTo('home');
 }
 
+function updatePointsDisplay() {
+  const btn = document.getElementById('points-btn');
+  if (btn && state.user) {
+    btn.style.display = 'inline-flex';
+    btn.innerHTML = `🎁 ${state.points} Pts`;
+  }
+}
+
 function updateAuthUI() {
-  const btn = document.getElementById('auth-btn');
-  const userDisplay = document.getElementById('user-display');
+  const btn = document.getElementById('auth-btn'), userDisplay = document.getElementById('user-display');
   if (state.user) {
     if (btn) btn.style.display = 'none';
     if (userDisplay) {
       userDisplay.style.display = 'flex';
       userDisplay.innerHTML = `
         <div class="user-info">
+          <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
+            🎁 R${state.rewardBalance.toFixed(2)}
+          </button>
           <div class="user-avatar">${state.user.name[0].toUpperCase()}</div>
-          <span style="font-size:14px;font-weight:600">${state.user.name.split(' ')[0]}</span>
-          <button class="btn btn-sm btn-outline" onclick="logout()" style="margin-left:4px">Sign out</button>
+          <span>${state.user.name.split(' ')[0]}</span>
+          <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
         </div>
       `;
     }
@@ -603,293 +1374,172 @@ function updateAuthUI() {
   }
 }
 
-// Check if user is logged in (for protected pages)
-function requireAuth() {
-  if (!state.user) {
-    toast('⚠️ Please sign in to continue');
-    openAuthModal();
-    return false;
-  }
-  return true;
-}
+// ============================================================
+//  POINTS
+// ============================================================
 
-/* ─── CHECKOUT ─── */
-function renderCheckout() {
-  const section = document.getElementById('checkout-section');
-  if (!section) return;
-  const total = Cart.total();
-  const delivery = total > 0 ? 25 : 0;
-  section.innerHTML = `
-    <div class="container">
-      <h1 style="font-family:var(--font-head);font-size:32px;margin-bottom:32px;">Checkout</h1>
-      ${state.cart.length === 0 ? `
-        <div style="text-align:center;padding:80px 20px;">
-          <div style="font-size:56px;margin-bottom:16px">🛒</div>
-          <h3 style="font-family:var(--font-head);font-size:22px;">Your cart is empty</h3>
-          <p style="color:var(--muted);margin:12px 0 24px;">Add some products before checking out</p>
-          <button class="btn btn-primary" onclick="navigateTo('home')">Browse Products</button>
-        </div>
-      ` : `
-        <div class="checkout-grid">
-          <div>
-            ${!state.user ? `
-              <div class="checkout-card" style="background:var(--brand-light);border-color:var(--brand);">
-                <p style="color:var(--brand-dark);font-weight:600;margin-bottom:12px;">👋 Sign in for faster checkout</p>
-                <button class="btn btn-primary btn-sm" onclick="openAuthModal()">Sign In / Register</button>
-              </div>
-            ` : ''}
-            
-            <div class="checkout-card">
-              <h3>Delivery Details</h3>
-              <div class="form-group">
-                <label class="form-label">Full Name</label>
-                <input class="form-input" id="co-name" placeholder="Your full name" value="${state.user ? state.user.name : ''}">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Email</label>
-                <input class="form-input" id="co-email" type="email" placeholder="your@email.com" value="${state.user ? state.user.email : ''}">
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Campus / Building</label>
-                  <input class="form-input" id="co-building" placeholder="e.g. Res Block C">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Room / Floor</label>
-                  <input class="form-input" id="co-room" placeholder="e.g. Room 204">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Phone (WhatsApp)</label>
-                <input class="form-input" id="co-phone" type="tel" placeholder="+27 ...">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Notes for seller</label>
-                <textarea class="form-input" id="co-notes" rows="2" placeholder="Any special requests…"></textarea>
-              </div>
-            </div>
-
-            <div class="checkout-card">
-              <h3>Payment</h3>
-              <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">Pay on delivery. We accept cash, EFT, or SnapScan.</p>
-              <div style="display:flex;gap:12px;">
-                <div style="flex:1;padding:14px;border:2px solid var(--brand);border-radius:var(--radius-sm);text-align:center;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--brand);">💵 Cash</div>
-                <div style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--muted);">🏦 EFT</div>
-                <div style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--muted);">📱 SnapScan</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="order-summary-card">
-            <h3 style="font-family:var(--font-head);font-size:18px;font-weight:800;margin-bottom:20px;">Order Summary</h3>
-            ${state.cart.map(item => `
-              <div class="order-line">
-                <span>${item.name} × ${item.qty}</span>
-                <span>R${(item.price * item.qty).toFixed(2)}</span>
-              </div>
-            `).join('')}
-            <div class="order-line" style="color:var(--muted);margin-top:8px;">
-              <span>Subtotal</span><span>R${total.toFixed(2)}</span>
-            </div>
-            <div class="order-line" style="color:var(--muted);">
-              <span>Delivery</span><span>R${delivery.toFixed(2)}</span>
-            </div>
-            <div class="order-line total">
-              <span>Total</span><span style="color:var(--brand);">R${(total + delivery).toFixed(2)}</span>
-            </div>
-            <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="submitOrder()">
-              Place Order →
-            </button>
-            <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px;">Pay on delivery. No card needed.</p>
-          </div>
-        </div>
-      `}
-    </div>
-  `;
-}
-
-async function submitOrder() {
-  const name = document.getElementById('co-name')?.value.trim();
-  const email = document.getElementById('co-email')?.value.trim();
-  const building = document.getElementById('co-building')?.value.trim();
-  const room = document.getElementById('co-room')?.value.trim();
-  const phone = document.getElementById('co-phone')?.value.trim();
-  const notes = document.getElementById('co-notes')?.value.trim();
-
-  if (!name || !email || !building || !phone) {
-    toast('⚠️ Please fill in all required fields');
-    return;
-  }
-
-  try {
-    const order = await placeOrder({
-      customer: { name, email, building, room, phone, notes },
-      items: state.cart,
-      total: Cart.total() + 25,
-      userId: state.user?.id || null
-    });
-    Cart.clear();
-    toast(`🎉 Order ${order.id} placed! We'll WhatsApp you shortly.`, 4000);
-    setTimeout(() => navigateTo('orders'), 1200);
-  } catch (error) {
-    toast('❌ Failed to place order. Is the server running?');
-  }
-}
-
-/* ─── ORDERS PAGE ─── */
-async function renderOrdersPage() {
-  if (!requireAuth()) {
-    navigateTo('home');
-    return;
-  }
-  
-  const section = document.getElementById('orders-section');
-  if (!section) return;
-  section.innerHTML = `<div class="container"><div style="text-align:center;padding:60px;color:var(--muted)">Loading orders…</div></div>`;
-  try {
-    const orders = await fetchOrders();
-    const myOrders = state.user
-      ? orders.filter(o => o.userId === state.user.id || o.customer?.email === state.user?.email)
-      : [];
-    section.innerHTML = `
-      <div class="container">
-        <h1 style="font-family:var(--font-head);font-size:32px;margin-bottom:8px;">My Orders</h1>
-        <p style="color:var(--muted);margin-bottom:32px;">Track your orders and delivery status</p>
-        ${myOrders.length === 0 ? `
-          <div style="text-align:center;padding:80px 20px;">
-            <div style="font-size:56px;margin-bottom:16px">📦</div>
-            <h3 style="font-family:var(--font-head);font-size:22px;">No orders yet</h3>
-            <p style="color:var(--muted);margin:12px 0 24px;">Your order history will appear here</p>
-            <button class="btn btn-primary" onclick="navigateTo('home')">Start Shopping</button>
-          </div>
-        ` : `
-          <div style="overflow-x:auto;">
-            <table class="orders-table">
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Date</th>
-                  <th>Items</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${myOrders.reverse().map(o => `
-                  <tr>
-                    <td style="font-family:var(--font-head);font-weight:700;">${o.id}</td>
-                    <td style="color:var(--muted);">${new Date(o.createdAt).toLocaleDateString('en-ZA')}</td>
-                    <td>${o.items?.length || 0} item${o.items?.length !== 1 ? 's' : ''}</td>
-                    <td style="font-family:var(--font-head);font-weight:700;">R${o.total?.toFixed(2)}</td>
-                    <td>
-                      <span class="badge ${o.status === 'pending' ? 'badge-warn' : 'badge-success'}">
-                        <span class="status-dot" style="background:${o.status === 'pending' ? '#F7C23E' : '#1A7A4A'}"></span>
-                        ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `}
+function showPointsModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body" style="text-align:center;padding:24px;">
+        <div style="font-size:48px;">🎁</div>
+        <div style="font-size:32px;font-weight:800;">${state.points||0} Points</div>
+        <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
+        <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
+        <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
+        ${(state.points||0)>=10?`<button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
       </div>
-    `;
-  } catch {
-    section.innerHTML = `<div class="container"><p style="color:var(--muted);text-align:center;padding:60px;">Could not load orders. Is the server running?</p></div>`;
-  }
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-/* ─── ROUTING ─── */
-function navigateTo(page) {
-  state.currentPage = page;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById(`page-${page}`);
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-links a').forEach(a => {
-    a.classList.toggle('active', a.dataset.page === page);
+function usePointsNow() { closeModal(); navigateTo('checkout'); setTimeout(() => { if (state.points >= 10) redeemAllPoints(); }, 500); }
+
+function redeemAllPoints() {
+  if (state.points < 10) { toast('Need at least 10 points'); return; }
+  fetch(`${API}/user/redeem-points`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: state.user.email, points: state.points })
+  }).then(r => r.json()).then(d => {
+    if (d.success) { state.discountAmount = state.points; state.points = 0; updatePointsDisplay(); renderCheckout(); toast(`✅ R${d.redeemed.toFixed(2)} off!`); }
+    else { toast('❌ ' + d.error); }
   });
+}
+
+// ============================================================
+//  LOCATION
+// ============================================================
+
+async function shareLocation() {
+  if (!navigator.geolocation) { toast('⚠️ Not supported'); return; }
+  const b = document.getElementById('location-btn');
+  b.disabled = true;
+  b.textContent = 'Getting…';
+  navigator.geolocation.getCurrentPosition(async (p) => {
+    const c = `${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}`;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}`);
+      const d = await r.json();
+      document.getElementById('co-address').value = d.display_name || `📍 ${c}`;
+      document.getElementById('co-coordinates').value = c;
+    } catch {
+      document.getElementById('co-address').value = `📍 ${c}`;
+      document.getElementById('co-coordinates').value = c;
+    }
+    b.disabled = false;
+    b.textContent = '📍 Share My Location';
+  }, () => { b.disabled = false; b.textContent = '📍 Share My Location'; toast('⚠️ Failed') });
+}
+
+// ============================================================
+//  ABOUT & TERMS
+// ============================================================
+
+function showAboutUs() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>About Quick 2 Shop</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <p><strong>Quick 2 Shop</strong> is your community store — fresh food, clothing, electronics & more delivered to your door.</p>
+        <p>📞 WhatsApp: <strong>072 405 2868</strong></p>
+        <p>📧 habibishoppingsa@gmail.com</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function showTerms() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Terms & Conditions</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <h4>1. Orders</h4><p>Subject to availability.</p>
+        <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
+        <h4>3. Payment</h4><p>Cash on delivery.</p>
+        <h4>4. Delivery</h4><p>Free in our area.</p>
+        <h4>5. Returns</h4><p>Within 24 hours.</p>
+        <h4>6. Privacy</h4><p>Never shared.</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// ============================================================
+//  ROUTING
+// ============================================================
+
+function navigateTo(p) {
+  state.currentPage = p;
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  const t = document.getElementById(`page-${p}`);
+  if (t) t.classList.add('active');
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.dataset.page === p));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   closeCart();
-  if (page === 'checkout') renderCheckout();
-  if (page === 'orders') renderOrdersPage();
+  if (p === 'home') { loadProducts(); loadHeroSlideshow(); }
+  if (p === 'checkout') renderCheckout();
+  if (p === 'orders') renderOrdersPage();
 }
 
-/* ─── INIT ─── */
+// ============================================================
+//  INIT
+// ============================================================
+
 async function init() {
   updateCartUI();
   updateAuthUI();
 
-  await renderCategories();
-  await loadProducts();
-
-  // Check if user is coming back to an existing session
-  const savedUser = localStorage.getItem('habibi_user');
-  if (savedUser) {
+  const u = localStorage.getItem('habibi_user');
+  if (u) {
     try {
-      state.user = JSON.parse(savedUser);
+      state.user = JSON.parse(u);
+      await loadUserRewards();
     } catch {
       localStorage.removeItem('habibi_user');
     }
   }
 
-  // Navbar scroll effect
-  window.addEventListener('scroll', () => {
-    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
-  });
+  await renderCategories();
+  await loadProducts();
+  await loadHeroSlideshow();
 
-  // Search
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    let debounce;
-    searchInput.addEventListener('input', (e) => {
-      clearTimeout(debounce);
+  window.addEventListener('scroll', () =>
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20)
+  );
+
+  const si = document.getElementById('search-input');
+  if (si) {
+    let d;
+    si.addEventListener('input', e => {
+      clearTimeout(d);
       state.searchQuery = e.target.value;
-      debounce = setTimeout(() => loadProducts(), 350);
+      d = setTimeout(() => loadProducts(), 350);
     });
   }
 
-  // Sort
-  const sortSelect = document.getElementById('sort-select');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', (e) => {
+  const ss = document.getElementById('sort-select');
+  if (ss) {
+    ss.addEventListener('change', e => {
       state.sortBy = e.target.value;
       renderProducts(state.products);
     });
   }
 
-  // Close modal on overlay click
-  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
-
-  // Cart overlay click
   document.getElementById('cart-overlay').addEventListener('click', closeCart);
-
-  // Keyboard close
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); closeCart(); }
   });
-
-  // Mobile menu
-  document.getElementById('hamburger')?.addEventListener('click', () => {
-    document.querySelector('.nav-links').classList.toggle('mobile-open');
-  });
-  
-  // Allow pressing Enter to submit auth forms
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.getElementById('modal-overlay').classList.contains('open')) {
-      const activeTab = document.querySelector('.auth-tab.active');
-      if (activeTab) {
-        e.preventDefault();
-        if (activeTab.textContent.includes('Sign In')) {
-          submitLogin();
-        } else {
-          submitRegister();
-        }
-      }
-    }
-  });
+  document.getElementById('hamburger')?.addEventListener('click', () =>
+    document.querySelector('.nav-links').classList.toggle('mobile-open')
+  );
 }
 
 document.addEventListener('DOMContentLoaded', init);
