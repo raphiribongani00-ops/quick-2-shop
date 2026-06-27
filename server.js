@@ -12,7 +12,7 @@ const MONGO_URI = 'mongodb://habibishoppingsa_db_user:ZCy1lEJmeMDIRHjJ@ac-fwxjva
 
 const EMAIL_FROM = '"Quick 2 Shop" <habibishoppingsa@gmail.com>';
 const EMAIL_USER = 'habibishoppingsa@gmail.com';
-const EMAIL_PASS = 'zfubjwqpnfncjsjf';
+const EMAIL_PASS = 'xeujezeumwllgppk';
 
 let transporter = null;
 let emailConfigured = false;
