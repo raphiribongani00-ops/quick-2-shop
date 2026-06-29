@@ -15,6 +15,19 @@ const state = {
 };
 
 // ============================================================
+//  GENERATE PAYMENT REFERENCE
+// ============================================================
+
+let paymentReference = '';
+
+function generatePaymentReference() {
+  const prefix = 'PAY';
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `${prefix}-${timestamp}-${random}`;
+}
+
+// ============================================================
 //  CART FUNCTIONS
 // ============================================================
 
@@ -986,6 +999,11 @@ function renderCheckout() {
   const s = document.getElementById('checkout-section');
   if (!s) return;
 
+  // Generate payment reference for this checkout session
+  if (!paymentReference) {
+    paymentReference = generatePaymentReference();
+  }
+
   const subtotal = Cart.total();
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
@@ -1046,15 +1064,14 @@ function renderCheckout() {
                 <div style="background:#fff5f5;padding:16px;border-radius:8px;margin-bottom:16px;">
                   <p style="font-weight:600;color:#DC2626;">Please make your payment immediately and upload proof of payment below.</p>
                   <p style="font-size:13px;color:var(--muted);">
-                    Your <strong>Order Reference</strong> will be shown after you place the order.
-                    Use it as your payment reference.
+                    Use this <strong>Payment Reference</strong> when making your payment.
                   </p>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                   <div><strong>Bank:</strong> Standard Bank</div>
                   <div><strong>Account Number:</strong> 10217451673</div>
                   <div><strong>Account Type:</strong> Current Account</div>
-                  <div><strong>Reference:</strong> <span style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:700;font-family:monospace;">Your Order ID after placing</span></div>
+                  <div><strong>Reference:</strong> <span style="background:var(--gray-100);padding:4px 12px;border-radius:4px;font-weight:700;font-family:monospace;font-size:16px;color:#DC2626;">${paymentReference}</span></div>
                 </div>
                 <div class="form-group" style="margin-top:16px;">
                   <label>Upload Proof of Payment (POP) *</label>
@@ -1199,12 +1216,19 @@ async function submitOrder() {
       userId: state.user?._id || null
     };
 
-    // Add POP if Payshap
-    if (paymentMethod === 'payshap' && popBase64) {
+    // Add payment reference for Payshap
+    if (paymentMethod === 'payshap') {
+      if (!paymentReference) {
+        paymentReference = generatePaymentReference();
+      }
+      orderData.paymentReference = paymentReference;
       orderData.proofOfPayment = popBase64;
     }
 
     const o = await placeOrder(orderData);
+    
+    // Reset payment reference for next order
+    paymentReference = '';
     
     Cart.clear();
     state.discountAmount = 0;
@@ -1231,11 +1255,11 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
   
   const paymentMessage = paymentMethod === 'cash' 
     ? 'Pay on delivery. Our driver will contact you.'
-    : 'Payment verified. We\'ll start preparing your order.';
+    : 'We will verify your payment and start preparing your order.';
   
   const paymentStatus = paymentMethod === 'cash' 
     ? '<span class="badge badge-warn">Pending (Cash)</span>'
-    : '<span class="badge badge-warn">Awaiting POP Verification</span>';
+    : '<span class="badge badge-warn">Awaiting Payment Verification</span>';
 
   s.innerHTML = `
     <div class="container">
@@ -1259,9 +1283,13 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
               <span style="font-weight:600;">Payment Method</span>
               <span>💳 Payshap / Instant EFT</span>
             </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Reference</span>
+              <span style="font-family:monospace;font-weight:700;background:#fff5f5;padding:2px 8px;border-radius:4px;border:1px solid #ffcccc;">${o.paymentReference || 'N/A'}</span>
+            </div>
             <div style="background:#fff5f5;padding:12px;border-radius:8px;margin:8px 0;border:1px solid #ffcccc;">
               <p style="font-size:13px;color:#DC2626;font-weight:600;">📌 Use this reference for your payment:</p>
-              <p style="font-size:20px;font-weight:800;text-align:center;font-family:monospace;">${o.id}</p>
+              <p style="font-size:20px;font-weight:800;text-align:center;font-family:monospace;color:#DC2626;">${o.paymentReference || 'N/A'}</p>
               <p style="font-size:12px;color:var(--muted);text-align:center;">Standard Bank: 10217451673</p>
             </div>
             ` : `
@@ -1293,7 +1321,10 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
             </div>
             ${paymentMethod === 'payshap' ? `
               <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
-                ⚠️ Your order will be processed once POP is verified.
+                ⚠️ Your order will be processed once payment is verified.
+              </p>
+              <p style="font-size:12px;color:var(--muted);text-align:center;">
+                Use <strong>${o.paymentReference || 'N/A'}</strong> as your payment reference.
               </p>
             ` : `
               <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
