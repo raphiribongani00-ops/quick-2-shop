@@ -397,18 +397,15 @@ function showUnsubscribeModal() {
 function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
 
 // ============================================================
-//  FIXED: STARS HTML - Handles invalid ratings
+//  STARS HTML
 // ============================================================
 
 function starsHTML(rating) {
-  // Ensure rating is a valid number between 0 and 5
   const numRating = Number(rating);
   if (isNaN(numRating) || numRating < 0) return '☆☆☆☆☆';
   if (numRating > 5) return '★★★★★';
-  
   const full = Math.round(numRating);
   const empty = Math.max(0, 5 - full);
-  
   return '★'.repeat(full) + '☆'.repeat(empty);
 }
 
@@ -969,7 +966,20 @@ function closeCart() {
 }
 
 // ============================================================
-//  CHECKOUT
+//  FILE TO BASE64 HELPER
+// ============================================================
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================
+//  PAYMENT METHODS & CHECKOUT (UPDATED)
 // ============================================================
 
 function renderCheckout() {
@@ -981,6 +991,9 @@ function renderCheckout() {
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
   const total = Math.max(0, subtotal - discount - rewardDiscount);
 
+  // Check if cash is allowed (max R80 for items only)
+  const cashAllowed = subtotal <= 80;
+  
   let subscriptionDiscount = 0;
   let subscriptionPercent = 0;
   if (state.subscription?.active && state.subscription.config?.discountPercent) {
@@ -1001,6 +1014,54 @@ function renderCheckout() {
               <div class="form-group"><label>Notes</label><textarea class="form-input" id="co-notes"></textarea></div>
             </div>
 
+            <!-- Payment Method Selection -->
+            <div class="checkout-card">
+              <h3>💳 Payment Method</h3>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- Cash Option -->
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${cashAllowed ? 'var(--gray-200)' : '#ffcccc'};border-radius:8px;${cashAllowed ? 'cursor:pointer;' : 'opacity:0.5;'}">
+                  <input type="radio" id="payment-cash" name="payment-method" value="cash" ${cashAllowed ? 'checked' : 'disabled'} onchange="togglePaymentMethod('cash')">
+                  <label for="payment-cash" style="cursor:${cashAllowed ? 'pointer' : 'not-allowed'};flex:1;">
+                    <div style="font-weight:600;">💵 Cash on Delivery</div>
+                    <div style="font-size:13px;color:var(--muted);">Pay when your order arrives</div>
+                    ${!cashAllowed ? `<div style="color:#DC2626;font-size:12px;font-weight:600;margin-top:4px;">⚠️ Cash only available for orders under R80. Current cart: R${subtotal.toFixed(2)}</div>` : ''}
+                  </label>
+                </div>
+
+                <!-- Payshap / Instant EFT Option -->
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--gray-200);border-radius:8px;cursor:pointer;">
+                  <input type="radio" id="payment-payshap" name="payment-method" value="payshap" onchange="togglePaymentMethod('payshap')">
+                  <label for="payment-payshap" style="cursor:pointer;flex:1;">
+                    <div style="font-weight:600;">💳 Payshap / Instant EFT</div>
+                    <div style="font-size:13px;color:var(--muted);">Pay instantly via Standard Bank Instant EFT</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payshap Payment Details (shown when selected) -->
+            <div id="payshap-details" style="display:none;">
+              <div class="checkout-card" style="border:2px solid #ff4444;">
+                <h3 style="color:#DC2626;">⚠️ Important: Instant EFT Payment</h3>
+                <div style="background:#fff5f5;padding:16px;border-radius:8px;margin-bottom:16px;">
+                  <p style="font-weight:600;color:#DC2626;">Please make your payment immediately and upload proof of payment below.</p>
+                  <p style="font-size:13px;color:var(--muted);">Use your <strong>Order Reference</strong> as the payment reference.</p>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div><strong>Bank:</strong> Standard Bank</div>
+                  <div><strong>Account Number:</strong> 10217451673</div>
+                  <div><strong>Account Type:</strong> Current Account</div>
+                  <div><strong>Reference:</strong> <span id="order-ref-display" style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:700;">ORD-XXXXXXXX</span></div>
+                </div>
+                <div class="form-group" style="margin-top:16px;">
+                  <label>Upload Proof of Payment (POP) *</label>
+                  <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;">
+                  <small style="color:var(--muted);">Upload a screenshot or photo of your payment confirmation.</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Rewards Section -->
             <div class="checkout-card">
               <h3>🎁 Rewards & Savings</h3>
               ${state.user ? `
@@ -1025,15 +1086,56 @@ function renderCheckout() {
             ${subscriptionDiscount > 0 ? `<div class="order-line" style="color:green;"><span>${state.subscription.tier} Discount (${subscriptionPercent}%)</span><span>-R${subscriptionDiscount.toFixed(2)}</span></div>` : ''}
             ${discount > 0 ? `<div class="order-line" style="color:green;"><span>Points Discount</span><span>-R${discount.toFixed(2)}</span></div>` : ''}
             ${rewardDiscount > 0 ? `<div class="order-line" style="color:green;"><span>🎁 Reward Discount</span><span>-R${rewardDiscount.toFixed(2)}</span></div>` : ''}
+            <div class="order-line" style="font-weight:600;border-top:2px solid var(--gray-300);padding-top:12px;margin-top:12px;">
+              <span>Subtotal (Items Only)</span>
+              <span>R${subtotal.toFixed(2)}</span>
+            </div>
+            <div class="order-line" style="color:var(--muted);">
+              <span>Delivery Fee</span>
+              <span>Free</span>
+            </div>
             <div class="order-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
             <p>🚚 Free Delivery</p>
+            
+            <!-- Payment method indicator -->
+            <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
+              💳 Payment: <span id="selected-payment-label">Cash on Delivery</span>
+            </div>
+            
             <button class="btn btn-primary btn-full" id="place-order-btn" onclick="submitOrder()">Place Order</button>
             <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">You'll see your order summary after placing.</p>
           </div>
         </div>
       `}
     </div>`;
+
+  // Auto-select default payment method
+  if (cashAllowed) {
+    document.getElementById('payment-cash').checked = true;
+    document.getElementById('selected-payment-label').textContent = 'Cash on Delivery';
+  } else {
+    document.getElementById('payment-payshap').checked = true;
+    document.getElementById('selected-payment-label').textContent = 'Payshap / Instant EFT';
+    togglePaymentMethod('payshap');
+  }
 }
+
+function togglePaymentMethod(method) {
+  const payshapDetails = document.getElementById('payshap-details');
+  const label = document.getElementById('selected-payment-label');
+  
+  if (method === 'payshap') {
+    payshapDetails.style.display = 'block';
+    label.textContent = 'Payshap / Instant EFT';
+  } else {
+    payshapDetails.style.display = 'none';
+    label.textContent = 'Cash on Delivery';
+  }
+}
+
+// ============================================================
+//  SUBMIT ORDER (UPDATED)
+// ============================================================
 
 async function submitOrder() {
   const p = document.getElementById('co-phone')?.value.trim();
@@ -1042,60 +1144,157 @@ async function submitOrder() {
   const n = document.getElementById('co-notes')?.value.trim();
   const btn = document.getElementById('place-order-btn');
 
+  // Get payment method
+  const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'cash';
+  
+  // Get POP file if Payshap
+  let popBase64 = null;
+  if (paymentMethod === 'payshap') {
+    const popInput = document.getElementById('co-pop');
+    if (popInput && popInput.files && popInput.files.length > 0) {
+      popBase64 = await fileToBase64(popInput.files[0]);
+    } else {
+      toast('⚠️ Please upload proof of payment for Payshap orders');
+      return;
+    }
+  }
+
   if (!p || !a) { toast('⚠️ Fill required fields'); return; }
+
+  // Check cash limit
+  const subtotal = Cart.total();
+  if (paymentMethod === 'cash' && subtotal > 80) {
+    toast('⚠️ Cash orders cannot exceed R80. Please use Payshap or remove items.');
+    return;
+  }
 
   btn.disabled = true;
   btn.style.opacity = '0.5';
   btn.textContent = 'Placing Order…';
 
-  const subtotal = Cart.total();
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
   const total = Math.max(0, subtotal - discount - rewardDiscount);
 
   try {
-    const o = await placeOrder({
-      customer: { name: state.user?.name || 'Guest', email: state.user?.email || '', phone: p, address: a, coordinates: c, notes: n },
+    const orderData = {
+      customer: { 
+        name: state.user?.name || 'Guest', 
+        email: state.user?.email || '', 
+        phone: p, 
+        address: a, 
+        coordinates: c, 
+        notes: n 
+      },
       items: state.cart,
       total: total,
       subtotal: subtotal,
       discount: discount,
       rewardDiscount: rewardDiscount,
-      paymentMethod: 'cash',
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === 'cash' ? 'pending' : 'pending_payment',
       userId: state.user?._id || null
-    });
+    };
+
+    // Add POP if Payshap
+    if (paymentMethod === 'payshap' && popBase64) {
+      orderData.proofOfPayment = popBase64;
+    }
+
+    const o = await placeOrder(orderData);
+    
     Cart.clear();
     state.discountAmount = 0;
     state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
-    showOrderSuccessSummary(o, total);
+    
+    showOrderSuccessSummary(o, total, paymentMethod);
     fetchUserPoints(state.user?.email);
     updateRewardUI();
-  } catch {
-    toast('❌ Failed to place order. Please try again.');
+    
+  } catch (err) {
+    toast('❌ Failed to place order: ' + err.message);
     btn.disabled = false;
     btn.style.opacity = '1';
     btn.textContent = 'Place Order';
   }
 }
 
-function showOrderSuccessSummary(o, a) {
+// ============================================================
+//  ORDER SUCCESS SUMMARY (UPDATED)
+// ============================================================
+
+function showOrderSuccessSummary(o, total, paymentMethod) {
   const s = document.getElementById('checkout-section');
+  
+  const paymentMessage = paymentMethod === 'cash' 
+    ? 'Pay on delivery. Our driver will contact you.'
+    : 'Payment verified. We\'ll start preparing your order.';
+  
+  const paymentStatus = paymentMethod === 'cash' 
+    ? '<span class="badge badge-warn">Pending (Cash)</span>'
+    : '<span class="badge badge-warn">Awaiting POP Verification</span>';
+
   s.innerHTML = `
     <div class="container">
       <div style="text-align:center;padding:40px 20px;">
         <div style="font-size:56px;margin-bottom:16px;">✅</div>
         <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
-        <p style="color:var(--muted);margin-bottom:32px;">Thank you for your order. We'll contact you shortly.</p>
+        <p style="color:var(--muted);margin-bottom:32px;">${paymentMessage}</p>
         <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
           <div class="card-body">
             <h3 style="margin-bottom:16px;">📋 Order Summary</h3>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Order ID</span><span>${o.id}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Status</span><span class="badge badge-warn">Pending</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">WhatsApp</span><span>${o.customer?.phone}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);"><span style="font-weight:600;">Address</span><span>${o.customer?.address}</span></div>
-            <div style="margin-top:16px;"><h4 style="margin-bottom:8px;">🛒 Items</h4>${(o.items||[]).map(i => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}</div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--gray-300);margin-top:12px;font-weight:800;font-size:18px;"><span>Total</span><span>R${a.toFixed(2)}</span></div>
-            <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Order ID</span>
+              <span style="font-family:monospace;font-weight:700;">${o.id}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Status</span>
+              ${paymentStatus}
+            </div>
+            ${paymentMethod === 'payshap' ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Method</span>
+              <span>💳 Payshap / Instant EFT</span>
+            </div>
+            <div style="background:#fff5f5;padding:12px;border-radius:8px;margin:8px 0;border:1px solid #ffcccc;">
+              <p style="font-size:13px;color:#DC2626;font-weight:600;">📌 Use this reference for your payment:</p>
+              <p style="font-size:20px;font-weight:800;text-align:center;font-family:monospace;">${o.id}</p>
+              <p style="font-size:12px;color:var(--muted);text-align:center;">Standard Bank: 10217451673</p>
+            </div>
+            ` : `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Method</span>
+              <span>💵 Cash on Delivery</span>
+            </div>
+            `}
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">WhatsApp</span>
+              <span>${o.customer?.phone}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Address</span>
+              <span>${o.customer?.address}</span>
+            </div>
+            <div style="margin-top:16px;">
+              <h4 style="margin-bottom:8px;">🛒 Items</h4>
+              ${(o.items||[]).map(i => `
+                <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;">
+                  <span>${i.name} × ${i.qty}</span>
+                  <span>R${(i.price*i.qty).toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--gray-300);margin-top:12px;font-weight:800;font-size:18px;">
+              <span>Total</span>
+              <span>R${total.toFixed(2)}</span>
+            </div>
+            ${paymentMethod === 'payshap' ? `
+              <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
+                ⚠️ Your order will be processed once POP is verified.
+              </p>
+            ` : `
+              <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
+            `}
           </div>
         </div>
         <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
@@ -1124,17 +1323,19 @@ async function renderOrdersPage() {
         <h1>My Orders</h1>
         ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
           <table class="orders-table">
-            <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               ${myOrders.reverse().map(o => {
-                const canCancel = o.status === 'pending' || o.status === 'paid';
+                const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
                 const showInvoice = o.status === 'paid' || o.status === 'completed';
+                const paymentLabel = o.paymentMethod === 'cash' ? '💵 Cash' : '💳 Payshap';
                 return `<tr>
-                  <td style="font-weight:700;">${o.id}</td>
+                  <td style="font-weight:700;font-size:12px;">${o.id}</td>
                   <td>${new Date(o.createdAt).toLocaleDateString()}</td>
                   <td>${o.items?.length||0}</td>
                   <td><strong>R${o.total?.toFixed(2)}</strong></td>
-                  <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status}</span></td>
+                  <td><span class="badge ${o.paymentMethod === 'cash' ? 'badge-success' : 'badge-info'}">${paymentLabel}</span></td>
+                  <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
                   <td><div style="display:flex;gap:6px;">
                     ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
                     ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
@@ -1459,7 +1660,7 @@ function showTerms() {
       <div class="modal-body">
         <h4>1. Orders</h4><p>Subject to availability.</p>
         <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
-        <h4>3. Payment</h4><p>Cash on delivery.</p>
+        <h4>3. Payment</h4><p>Cash on delivery or Instant EFT.</p>
         <h4>4. Delivery</h4><p>Free in our area.</p>
         <h4>5. Returns</h4><p>Within 24 hours.</p>
         <h4>6. Privacy</h4><p>Never shared.</p>
