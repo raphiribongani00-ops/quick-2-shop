@@ -291,18 +291,26 @@ async function seedDefaultData() {
         image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=320&q=80", 
         description: "Full cream butter spread",
         featured: false,
+        special: null,
         reviews: 0,
         createdAt: new Date().toISOString() 
       },
       { 
-        name: "Fruit Juice 500ml", 
-        price: 18, 
-        stock: 50, 
+        name: "Coca-Cola Original Taste 2L", 
+        price: 31, 
+        stock: 100, 
         category: "drinks", 
-        rating: 4.7, 
+        rating: 5, 
         image: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=320&q=80", 
-        description: "Fresh mango juice",
+        description: "Classic Coke 2L bottle",
         featured: false,
+        special: {
+          type: 'bulk',
+          quantity: 2,
+          price: 55,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          label: 'Buy 2 for R55'
+        },
         reviews: 0,
         createdAt: new Date().toISOString() 
       },
@@ -315,6 +323,7 @@ async function seedDefaultData() {
         image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=320&q=80", 
         description: "Classic sneakers",
         featured: true,
+        special: null,
         reviews: 0,
         createdAt: new Date().toISOString() 
       }
@@ -428,27 +437,22 @@ async function sendDeliveryNotification(order) {
 }
 
 // ============================================================
-//  PRODUCTS API (FIXED)
+//  PRODUCTS API
 // ============================================================
 
 app.get('/api/products', async (req, res) => {
   try {
     const query = {};
-    console.log('📦 Products request params:', req.query);
     
-    // Category filter
     if (req.query.category && req.query.category !== 'all') {
       const category = decodeURIComponent(req.query.category);
       query.category = category;
-      console.log('🔍 Filtering by category:', category);
     }
     
-    // Featured filter
     if (req.query.featured === 'true') {
       query.featured = true;
     }
     
-    // Search filter
     let products;
     try {
       if (req.query.search && req.query.search.trim()) {
@@ -469,20 +473,16 @@ app.get('/api/products', async (req, res) => {
       products = [];
     }
     
-    // Make sure products is always an array
     if (!products || !Array.isArray(products)) {
       products = [];
     }
     
-    // Add id field for frontend compatibility
     const formatted = products.map(p => ({
       ...p,
       id: p._id ? p._id.toString() : p.id || 'unknown'
     }));
     
-    console.log(`📦 Returning ${formatted.length} products for category:`, query.category || 'all');
     res.json(formatted);
-    
   } catch (err) {
     console.error('❌ Products error:', err);
     res.json([]);
@@ -505,6 +505,7 @@ app.post('/api/products', async (req, res) => {
     const np = {
       ...req.body,
       featured: req.body.featured || false,
+      special: req.body.special || null,
       createdAt: new Date().toISOString()
     };
     const result = await db.collection('products').insertOne(np);
@@ -549,7 +550,7 @@ app.get('/api/featured-products', async (req, res) => {
 });
 
 // ============================================================
-//  ORDERS API (WITH REWARDS)
+//  ORDERS API
 // ============================================================
 
 app.get('/api/orders', async (req, res) => {

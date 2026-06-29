@@ -1778,3 +1778,276 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================================
+//  SPECIALS HELPERS
+// ============================================================
+
+function getProductSpecial(product) {
+  if (!product || !product.special) return null;
+  const special = product.special;
+  // Check if special is still valid
+  if (special.expiresAt && new Date(special.expiresAt) < new Date()) {
+    return null; // Expired
+  }
+  return special;
+}
+
+function getSpecialPrice(product, quantity) {
+  const special = getProductSpecial(product);
+  if (!special) return product.price * quantity;
+  
+  const sets = Math.floor(quantity / special.quantity);
+  const remainder = quantity % special.quantity;
+  return (sets * special.price) + (remainder * product.price);
+}
+
+function getSpecialLabel(product) {
+  const special = getProductSpecial(product);
+  if (!special) return null;
+  return special.label;
+}
+
+function isSpecialActive(product) {
+  return getProductSpecial(product) !== null;
+}
+
+// ============================================================
+//  UPDATE RENDER PRODUCTS WITH SPECIALS
+// ============================================================
+
+// Replace your existing renderProducts function with this updated version
+function renderProducts(products) {
+  const g = document.getElementById('products-grid');
+  const ce = document.getElementById('results-count');
+  if (!g) return;
+
+  if (!products || !Array.isArray(products)) {
+    products = [];
+  }
+
+  if (products.length === 0) {
+    g.innerHTML = `<div class="no-results"><div style="font-size:48px">🔍</div><h3>No products found</h3><p style="color:var(--muted);font-size:14px;">${state.currentCategory !== 'all' ? `No products in "${state.currentCategory}" category` : 'Try adjusting your search'}</p></div>`;
+    if (ce) ce.textContent = '0 items';
+    return;
+  }
+
+  let s = [...products];
+  if (state.sortBy === 'price-asc') s.sort((a, b) => (a.price || 0) - (b.price || 0));
+  else if (state.sortBy === 'price-desc') s.sort((a, b) => (b.price || 0) - (a.price || 0));
+  else if (state.sortBy === 'rating') s.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (state.sortBy === 'newest') s.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  if (ce) ce.textContent = `${s.length} item${s.length !== 1 ? 's' : ''}`;
+
+  g.className = 'products-grid stagger';
+  
+  let html = '';
+  s.forEach((p, index) => {
+    const productId = p._id || p.id || `prod-${index}`;
+    const imageUrl = p.image || 'https://via.placeholder.com/320x320?text=📦';
+    const stock = p.stock !== undefined ? p.stock : 0;
+    const isOutOfStock = stock === 0;
+    const lowStock = stock > 0 && stock <= 5;
+    const rating = p.rating || 0;
+    const reviews = p.reviews || 0;
+    const price = p.price || 0;
+    const name = p.name || 'Unnamed Product';
+    const category = p.category || 'Other';
+    const description = p.description || '';
+    
+    // Check for special
+    const special = getProductSpecial(p);
+    const isSpecialActive = special !== null;
+    const specialLabel = isSpecialActive ? special.label : '';
+    
+    // Calculate display price
+    let displayPrice = price;
+    let specialDisplay = '';
+    if (isSpecialActive) {
+      displayPrice = special.price;
+      specialDisplay = `
+        <div style="background:#E67E22;color:#fff;padding:4px 10px;border-radius:4px;font-size:12px;font-weight:700;margin-top:4px;">
+          🔥 ${specialLabel}
+        </div>`;
+    }
+
+    html += `
+      <div class="product-card" onclick="openProductModal('${productId}')">
+        <div class="product-img-wrap">
+          <img src="${imageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/320x320?text=📦'">
+          ${isSpecialActive ? `<span class="product-badge badge" style="background:#E67E22;color:#fff;font-weight:700;">🔥 DEAL</span>` : ''}
+          ${lowStock && !isOutOfStock ? `<span class="product-badge badge badge-warn">Only ${stock} left</span>` : ''}
+          ${isOutOfStock ? `<span class="product-badge badge" style="background:#f1f1f1">Out of stock</span>` : ''}
+          <button class="product-wishlist" onclick="event.stopPropagation();toggleWishlist('${productId}',this)">
+            ${Wishlist.has(productId) ? '❤️' : '🤍'}
+          </button>
+        </div>
+        <div class="product-body">
+          <div class="product-cat">${category}</div>
+          <div class="product-name">${name}</div>
+          ${specialDisplay}
+          ${description ? `<div class="product-desc">${description}</div>` : ''}
+          <div class="product-rating">
+            <span class="stars">${starsHTML(rating)}</span>
+            <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
+          </div>
+          <div class="product-footer">
+            <div class="product-price">
+              ${isSpecialActive ? 
+                `<span style="text-decoration:line-through;font-size:14px;color:var(--muted);font-weight:400;">R${Number(price).toFixed(2)}</span>
+                 <span style="color:#E67E22;font-size:20px;">R${Number(displayPrice).toFixed(2)}</span>
+                 <span style="font-size:11px;color:var(--muted);display:block;">${specialLabel}</span>` :
+                `R${Number(price).toFixed(2)}`
+              }
+            </div>
+            <button class="add-to-cart ${isOutOfStock ? 'out-of-stock' : ''}"
+                    onclick="event.stopPropagation();addToCartById('${productId}')"
+                    ${isOutOfStock ? 'disabled' : ''}>
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  g.innerHTML = html;
+}
+
+// ============================================================
+//  UPDATE PRODUCT MODAL WITH SPECIALS
+// ============================================================
+
+// Replace your existing openProductModal function
+function openProductModal(id) {
+  const p = state.products.find(x => {
+    return x._id === id || x.id === id || String(x._id) === String(id) || String(x.id) === String(id);
+  });
+  
+  if (!p) {
+    toast('⚠️ Product not found');
+    return;
+  }
+
+  const imageUrl = p.image || 'https://via.placeholder.com/560x560?text=No+Image';
+  const price = p.price || 0;
+  const rating = p.rating || 0;
+  const reviews = p.reviews || 0;
+  const stock = p.stock || 0;
+  const productId = p._id || p.id;
+  
+  // Check special
+  const special = getProductSpecial(p);
+  const isSpecialActive = special !== null;
+  const specialDisplay = isSpecialActive ? 
+    `<div style="background:#E67E22;color:#fff;padding:8px 16px;border-radius:8px;margin-bottom:16px;font-weight:700;font-size:16px;">
+      🔥 ${special.label} — SAVE R${((price * special.quantity) - special.price).toFixed(2)}
+      ${special.expiresAt ? `<div style="font-size:12px;font-weight:400;opacity:0.8;">Expires: ${new Date(special.expiresAt).toLocaleDateString()}</div>` : ''}
+    </div>` : '';
+
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <span class="badge badge-brand">${p.category || 'Other'}</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <img class="modal-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/560x560?text=📦'">
+        <div class="modal-product-name">${p.name || 'Unnamed Product'}</div>
+        <div class="product-rating">
+          <span class="stars">${starsHTML(rating)}</span>
+          <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
+        </div>
+        ${specialDisplay}
+        <div class="modal-product-desc">${p.description || ''}</div>
+        <div class="modal-product-price">
+          ${isSpecialActive ? 
+            `<span style="text-decoration:line-through;font-size:20px;color:var(--muted);font-weight:400;">R${Number(price).toFixed(2)}</span>
+             <span style="color:#E67E22;font-size:36px;">R${Number(special.price).toFixed(2)}</span>
+             <div style="font-size:14px;color:var(--muted);">${special.label}</div>` :
+            `R${Number(price).toFixed(2)}`
+          }
+        </div>
+        ${stock === 0 ? '<div style="color:red;font-weight:600;margin-bottom:16px;">Out of Stock</div>' : ''}
+        <div class="modal-actions">
+          <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose('${productId}')" ${stock === 0 ? 'disabled' : ''}>
+            🛒 Add to Cart
+          </button>
+          <button class="btn btn-outline" onclick="toggleWishlistModal('${productId}',this)">
+            ${Wishlist.has(productId) ? '❤️' : '🤍'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// ============================================================
+//  UPDATE CART RENDER WITH SPECIALS
+// ============================================================
+
+// Replace your existing renderCartItems function
+function renderCartItems() {
+  const c = document.getElementById('cart-items');
+  if (!c) return;
+
+  if (state.cart.length === 0) {
+    c.innerHTML = `<div class="cart-empty"><div style="font-size:48px">🛒</div><p>Your cart is empty.</p></div>`;
+    return;
+  }
+
+  c.innerHTML = state.cart.map(i => {
+    const product = state.products.find(p => (p._id || p.id) === i.id);
+    const special = getProductSpecial(product);
+    const isSpecialActive = special !== null;
+    
+    let displayTotal = i.price * i.qty;
+    let specialLabel = '';
+    if (isSpecialActive && i.qty >= special.quantity) {
+      const sets = Math.floor(i.qty / special.quantity);
+      const remainder = i.qty % special.quantity;
+      displayTotal = (sets * special.price) + (remainder * i.price);
+      specialLabel = `🔥 ${special.label} applied!`;
+    }
+    
+    return `
+      <div class="cart-item">
+        <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${i.name}</div>
+          <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
+          ${specialLabel ? `<div style="font-size:12px;color:#E67E22;font-weight:700;">${specialLabel}</div>` : ''}
+          <div class="cart-item-controls">
+            <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
+            <span class="qty-num">${i.qty}</span>
+            <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
+            <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Calculate totals with specials
+  let subtotal = 0;
+  state.cart.forEach(i => {
+    const product = state.products.find(p => (p._id || p.id) === i.id);
+    const special = getProductSpecial(product);
+    
+    if (special && i.qty >= special.quantity) {
+      const sets = Math.floor(i.qty / special.quantity);
+      const remainder = i.qty % special.quantity;
+      subtotal += (sets * special.price) + (remainder * i.price);
+    } else {
+      subtotal += i.price * i.qty;
+    }
+  });
+  
+  const total = subtotal;
+  document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
+  document.getElementById('cart-delivery').textContent = 'Free';
+  document.getElementById('cart-total').textContent = `R${total.toFixed(2)}`;
+}
