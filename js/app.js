@@ -979,7 +979,7 @@ function fileToBase64(file) {
 }
 
 // ============================================================
-//  PAYMENT METHODS & CHECKOUT (UPDATED)
+//  PAYMENT METHODS & CHECKOUT
 // ============================================================
 
 function renderCheckout() {
@@ -1045,13 +1045,16 @@ function renderCheckout() {
                 <h3 style="color:#DC2626;">⚠️ Important: Instant EFT Payment</h3>
                 <div style="background:#fff5f5;padding:16px;border-radius:8px;margin-bottom:16px;">
                   <p style="font-weight:600;color:#DC2626;">Please make your payment immediately and upload proof of payment below.</p>
-                  <p style="font-size:13px;color:var(--muted);">Use your <strong>Order Reference</strong> as the payment reference.</p>
+                  <p style="font-size:13px;color:var(--muted);">
+                    Your <strong>Order Reference</strong> will be shown after you place the order.
+                    Use it as your payment reference.
+                  </p>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                   <div><strong>Bank:</strong> Standard Bank</div>
                   <div><strong>Account Number:</strong> 10217451673</div>
                   <div><strong>Account Type:</strong> Current Account</div>
-                  <div><strong>Reference:</strong> <span id="order-ref-display" style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:700;">ORD-XXXXXXXX</span></div>
+                  <div><strong>Reference:</strong> <span style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:700;font-family:monospace;">Your Order ID after placing</span></div>
                 </div>
                 <div class="form-group" style="margin-top:16px;">
                   <label>Upload Proof of Payment (POP) *</label>
@@ -1134,7 +1137,7 @@ function togglePaymentMethod(method) {
 }
 
 // ============================================================
-//  SUBMIT ORDER (UPDATED)
+//  SUBMIT ORDER
 // ============================================================
 
 async function submitOrder() {
@@ -1220,7 +1223,7 @@ async function submitOrder() {
 }
 
 // ============================================================
-//  ORDER SUCCESS SUMMARY (UPDATED)
+//  ORDER SUCCESS SUMMARY
 // ============================================================
 
 function showOrderSuccessSummary(o, total, paymentMethod) {
