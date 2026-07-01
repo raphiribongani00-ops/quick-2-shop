@@ -2,11 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <title>Quick 2 Shop 🛒 — Community Store</title>
   <meta name="description" content="Quick 2 Shop — your community store. Food, shoes, clothing and more delivered to your doorstep.">
-  <link rel="stylesheet" href="css/main.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
@@ -15,7 +18,7 @@
 <nav id="navbar">
   <div class="container nav-inner">
     <a class="nav-logo" href="#" onclick="navigateTo('home')">
-      <img src="habibiLogo.png" alt="Quick 2 Shop Logo" class="nav-logo-img">
+      <img src="habibiLogo.png" alt="Quick 2 Shop Logo" class="nav-logo-img" onerror="this.style.display='none'">
       🛒 <span>Quick</span>2 Shop
     </a>
     <div class="nav-links">
@@ -26,7 +29,7 @@
     <div class="nav-actions">
       <div id="user-display" style="display:none"></div>
       <button id="auth-btn" class="btn btn-outline btn-sm" onclick="openAuthModal()">Sign in</button>
-      <button class="nav-icon-btn" onclick="openCart()" title="Cart" style="position:relative;">
+      <button class="nav-icon-btn" onclick="openCart()" title="Cart" aria-label="Open shopping cart">
         🛒
         <span class="cart-count" style="display:none">0</span>
       </button>
@@ -51,7 +54,7 @@
   <section class="categories-section" id="categories-section">
     <div class="container">
       <div class="section-head">
-        <h2 class="section-title">Shop by Category</h2>
+        <h2 class="section-title">Shop by <span class="highlight">Category</span></h2>
       </div>
       <div class="categories-grid stagger" id="categories-grid"></div>
     </div>
@@ -84,17 +87,18 @@
       <div class="footer-grid">
         <div>
           <div class="footer-logo">
-            <img src="habibiLogo.png" alt="Quick 2 Shop Logo" class="footer-logo-img">
-            🛒 Quick 2 Shop
+            <img src="habibiLogo.png" alt="Quick 2 Shop Logo" class="footer-logo-img" onerror="this.style.display='none'">
+            🛒 <span>Quick</span>2 Shop
           </div>
           <p class="footer-tagline">Your community store — fast delivery, cash on delivery.</p>
         </div>
         <div class="footer-col">
           <h4>Shop</h4>
-          <a href="#" onclick="filterCategory('food', document.querySelector('[data-cat=food]')); navigateTo('home');">Food & Snacks</a>
-          <a href="#" onclick="filterCategory('clothing', document.querySelector('[data-cat=clothing]')); navigateTo('home');">Clothing</a>
-          <a href="#" onclick="filterCategory('electronics', document.querySelector('[data-cat=electronics]')); navigateTo('home');">Electronics</a>
-          <a href="#" onclick="filterCategory('shoes', document.querySelector('[data-cat=shoes]')); navigateTo('home');">Shoes</a>
+          <a href="#" onclick="state.currentCategory='food'; loadProducts(); navigateTo('home'); return false;">🍕 Food & Snacks</a>
+          <a href="#" onclick="state.currentCategory='clothing'; loadProducts(); navigateTo('home'); return false;">👕 Clothing</a>
+          <a href="#" onclick="state.currentCategory='electronics'; loadProducts(); navigateTo('home'); return false;">💻 Electronics</a>
+          <a href="#" onclick="state.currentCategory='shoes'; loadProducts(); navigateTo('home'); return false;">👟 Shoes</a>
+          <a href="#" onclick="state.currentCategory='drinks'; loadProducts(); navigateTo('home'); return false;">🧃 Drinks</a>
         </div>
         <div class="footer-col">
           <h4>Account</h4>
@@ -104,14 +108,18 @@
         </div>
         <div class="footer-col">
           <h4>Contact</h4>
-          <a href="https://wa.me/27724052868"><img src="whatsappIcon.webp" alt="WhatsApp" class="footer-icon"> 072 405 2868</a>
-          <a href="mailto:habibishoppingsa@gmail.com"><img src="mailIcon.webp" alt="Email" class="footer-icon"> Email</a>
+          <a href="https://wa.me/27724052868" target="_blank" rel="noopener">
+            <img src="whatsappIcon.webp" alt="WhatsApp" class="footer-icon" onerror="this.style.display='none'"> 072 405 2868
+          </a>
+          <a href="mailto:habibishoppingsa@gmail.com">
+            <img src="mailIcon.webp" alt="Email" class="footer-icon" onerror="this.style.display='none'"> Email Us
+          </a>
           <a href="#" onclick="showAboutUs()">About Us</a>
           <a href="#" onclick="showTerms()">Terms & Conditions</a>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2026 Quick 2 Shop. Made with ❤️ for the community.</span>
+        <span>© 2026 Quick 2 Shop. Made with <span class="heart">❤️</span> for the community.</span>
       </div>
     </div>
   </footer>
@@ -126,20 +134,38 @@
   <section class="orders-section" id="orders-section"></section>
 </div>
 
+<!-- CART DRAWER -->
 <div id="cart-overlay"></div>
 <div id="cart-drawer">
-  <div class="cart-header"><h2>Your Cart 🛒</h2><button class="cart-close" onclick="closeCart()">✕</button></div>
+  <div class="cart-header">
+    <h2>Your Cart 🛒 <span class="count" id="cart-header-count"></span></h2>
+    <button class="cart-close" onclick="closeCart()" aria-label="Close cart">✕</button>
+  </div>
   <div class="cart-items" id="cart-items"></div>
   <div class="cart-footer">
     <div class="cart-subtotal"><span>Subtotal</span><span id="cart-subtotal">R0.00</span></div>
-    <div class="cart-subtotal"><span>Delivery</span><span id="cart-delivery">Free</span></div>
-    <div class="cart-total"><span>Total</span><span id="cart-total">R0.00</span></div>
-    <button class="btn btn-primary btn-full" onclick="closeCart(); navigateTo('checkout');">Checkout →</button>
+    <div class="cart-subtotal delivery"><span>🚚 Delivery</span><span id="cart-delivery">R20.00</span></div>
+    <div id="cart-delivery-note" style="font-size:11px;color:var(--orange);text-align:center;margin-bottom:6px;"></div>
+    <div class="cart-total"><span>Total</span><span class="amount" id="cart-total">R0.00</span></div>
+    <button class="btn btn-orange btn-full" onclick="closeCart(); navigateTo('checkout');">Checkout →</button>
     <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="closeCart()">Continue Shopping</button>
   </div>
 </div>
 
+<!-- MODAL OVERLAY -->
 <div id="modal-overlay"></div>
+
+<!-- CONFIRM OVERLAY -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/app.js"></script>
 </body>

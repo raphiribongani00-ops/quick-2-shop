@@ -1,5 +1,12 @@
 const API = '/api';
 
+// ============================================================
+//  DELIVERY FEE CONFIGURATION
+// ============================================================
+
+const DELIVERY_FEE = 20;
+const FREE_DELIVERY_THRESHOLD = 0; // Set to 0 to always charge R20
+
 const state = {
   cart: JSON.parse(localStorage.getItem('habibi_cart') || '[]'),
   user: JSON.parse(localStorage.getItem('habibi_user') || 'null'),
@@ -25,6 +32,37 @@ function generatePaymentReference() {
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   return `${prefix}-${timestamp}-${random}`;
+}
+
+// ============================================================
+//  SPECIALS HELPERS
+// ============================================================
+
+function getProductSpecial(product) {
+  if (!product || !product.special) return null;
+  const special = product.special;
+  if (special.expiresAt && new Date(special.expiresAt) < new Date()) {
+    return null;
+  }
+  return special;
+}
+
+function getSpecialPrice(product, quantity) {
+  const special = getProductSpecial(product);
+  if (!special) return product.price * quantity;
+  const sets = Math.floor(quantity / special.quantity);
+  const remainder = quantity % special.quantity;
+  return (sets * special.price) + (remainder * product.price);
+}
+
+function getSpecialLabel(product) {
+  const special = getProductSpecial(product);
+  if (!special) return null;
+  return special.label;
+}
+
+function isSpecialActive(product) {
+  return getProductSpecial(product) !== null;
 }
 
 // ============================================================
@@ -61,7 +99,21 @@ const Cart = {
     renderCartItems();
     updateCartRewardProgress();
   },
-  total() { return state.cart.reduce((s, i) => s + i.price * i.qty, 0); },
+  total() { 
+    let subtotal = 0;
+    state.cart.forEach(item => {
+      const product = state.products.find(p => (p._id || p.id) === item.id);
+      const special = getProductSpecial(product);
+      if (special && item.qty >= special.quantity) {
+        const sets = Math.floor(item.qty / special.quantity);
+        const remainder = item.qty % special.quantity;
+        subtotal += (sets * special.price) + (remainder * item.price);
+      } else {
+        subtotal += item.price * item.qty;
+      }
+    });
+    return subtotal;
+  },
   count() { return state.cart.reduce((s, i) => s + i.qty, 0); },
   clear() {
     state.cart = [];
@@ -69,6 +121,16 @@ const Cart = {
     updateCartUI();
     renderCartItems();
     updateCartRewardProgress();
+  },
+  deliveryFee() {
+    const subtotal = this.total();
+    if (FREE_DELIVERY_THRESHOLD > 0 && subtotal >= FREE_DELIVERY_THRESHOLD) {
+      return 0;
+    }
+    return DELIVERY_FEE;
+  },
+  totalWithDelivery() {
+    return this.total() + this.deliveryFee();
   }
 };
 
@@ -250,20 +312,20 @@ function showRewardsModal() {
       <div class="modal-body" style="padding:24px;">
         <div style="text-align:center;padding:16px 0;">
           <div style="font-size:48px;">${tierIcons[state.tier] || '🥉'}</div>
-          <div style="font-size:32px;font-weight:800;">R${state.rewardBalance.toFixed(2)}</div>
+          <div style="font-size:32px;font-weight:800;color:var(--orange);">R${state.rewardBalance.toFixed(2)}</div>
           <div style="color:var(--muted);">${tierLabels[state.tier] || 'Bronze'} Tier</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0;">
           <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;">${state.totalRewardsEarned || 0}</div>
+            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.totalRewardsEarned || 0}</div>
             <div style="font-size:11px;color:var(--muted);">Rewards Earned</div>
           </div>
           <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;">${state.streak?.count || 0}</div>
+            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.streak?.count || 0}</div>
             <div style="font-size:11px;color:var(--muted);">Week Streak</div>
           </div>
           <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;">${state.subscription?.active ? '✅' : '❌'}</div>
+            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.subscription?.active ? '✅' : '❌'}</div>
             <div style="font-size:11px;color:var(--muted);">Subscription</div>
           </div>
         </div>
@@ -272,8 +334,8 @@ function showRewardsModal() {
             <span>Next Reward</span>
             <span>${state.rewardProgress?.itemsNeededForNext || '0'} items needed</span>
           </div>
-          <div style="background:var(--border);height:6px;border-radius:99px;overflow:hidden;">
-            <div style="background:var(--black);height:100%;width:${100 - (state.rewardProgress?.itemsNeededForNext / 10 * 100) || 0}%;border-radius:99px;"></div>
+          <div style="background:var(--gray-200);height:6px;border-radius:99px;overflow:hidden;">
+            <div style="background:var(--orange);height:100%;width:${100 - (state.rewardProgress?.itemsNeededForNext / 10 * 100) || 0}%;border-radius:99px;"></div>
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px;">
             ${state.rewardProgress?.eligibleItems || 0} eligible items purchased
@@ -287,7 +349,7 @@ function showRewardsModal() {
                 ${state.subscription?.active ? `Active: ${state.subscription.tier}` : 'Not subscribed'}
               </div>
             </div>
-            <button class="btn btn-sm ${state.subscription?.active ? 'btn-outline' : 'btn-primary'}"
+            <button class="btn btn-sm ${state.subscription?.active ? 'btn-outline' : 'btn-orange'}"
                     onclick="closeModal();${state.subscription?.active ? 'showUnsubscribeModal()' : 'showSubscribeModal()'}">
               ${state.subscription?.active ? 'Manage' : 'Subscribe'}
             </button>
@@ -295,7 +357,7 @@ function showRewardsModal() {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           ${state.rewardBalance >= 2 ? `
-            <button class="btn btn-primary btn-sm" onclick="closeModal();redeemRewards()">
+            <button class="btn btn-orange btn-sm" onclick="closeModal();redeemRewards()">
               Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
             </button>
           ` : `
@@ -329,27 +391,27 @@ function showSubscribeModal() {
                onclick="subscribeToTier('basic')">
             <div style="font-size:24px;">📦</div>
             <div style="font-weight:700;">Basic</div>
-            <div style="font-size:20px;font-weight:800;">R50<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
+            <div style="font-size:20px;font-weight:800;color:var(--orange);">R50<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
             <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
               <li>✅ R2 monthly bonus</li>
               <li>✅ Free delivery</li>
               <li>✅ 5% off all orders</li>
             </ul>
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();subscribeToTier('basic')">Subscribe</button>
+            <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();subscribeToTier('basic')">Subscribe</button>
           </div>
-          <div style="border:2px solid var(--black);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;"
+          <div style="border:2px solid var(--orange);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;"
                onclick="subscribeToTier('premium')">
-            <span style="position:absolute;top:-8px;right:8px;background:var(--black);color:white;font-size:10px;padding:2px 10px;border-radius:99px;">BEST</span>
+            <span style="position:absolute;top:-8px;right:8px;background:var(--orange);color:white;font-size:10px;padding:2px 10px;border-radius:99px;">BEST</span>
             <div style="font-size:24px;">💎</div>
             <div style="font-weight:700;">Premium</div>
-            <div style="font-size:20px;font-weight:800;">R100<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
+            <div style="font-size:20px;font-weight:800;color:var(--orange);">R100<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
             <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
               <li>✅ R5 monthly bonus</li>
               <li>✅ Free delivery</li>
               <li>✅ 10% off all orders</li>
               <li>✅ Free item monthly</li>
             </ul>
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();subscribeToTier('premium')">Subscribe</button>
+            <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();subscribeToTier('premium')">Subscribe</button>
           </div>
         </div>
         <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">
@@ -529,11 +591,25 @@ function renderProducts(products) {
     const name = p.name || 'Unnamed Product';
     const category = p.category || 'Other';
     const description = p.description || '';
+    
+    // Check for special
+    const special = getProductSpecial(p);
+    const isSpecialActive = special !== null;
+    const specialLabel = isSpecialActive ? special.label : '';
+    
+    let specialDisplay = '';
+    if (isSpecialActive) {
+      specialDisplay = `
+        <div class="special-deal">
+          🔥 ${specialLabel}
+        </div>`;
+    }
 
     html += `
       <div class="product-card" onclick="openProductModal('${productId}')">
         <div class="product-img-wrap">
           <img src="${imageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/320x320?text=📦'">
+          ${isSpecialActive ? `<span class="product-badge badge-orange">🔥 DEAL</span>` : ''}
           ${lowStock && !isOutOfStock ? `<span class="product-badge badge badge-warn">Only ${stock} left</span>` : ''}
           ${isOutOfStock ? `<span class="product-badge badge" style="background:#f1f1f1">Out of stock</span>` : ''}
           <button class="product-wishlist" onclick="event.stopPropagation();toggleWishlist('${productId}',this)">
@@ -543,13 +619,21 @@ function renderProducts(products) {
         <div class="product-body">
           <div class="product-cat">${category}</div>
           <div class="product-name">${name}</div>
+          ${specialDisplay}
           ${description ? `<div class="product-desc">${description}</div>` : ''}
           <div class="product-rating">
             <span class="stars">${starsHTML(rating)}</span>
             <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
           </div>
           <div class="product-footer">
-            <div class="product-price">R${Number(price).toFixed(2)}</div>
+            <div class="product-price">
+              ${isSpecialActive ? 
+                `<span class="original">R${Number(price).toFixed(2)}</span>
+                 <span class="special-price">R${Number(special.price).toFixed(2)}</span>
+                 <span class="special-label">${specialLabel}</span>` :
+                `R${Number(price).toFixed(2)}`
+              }
+            </div>
             <button class="add-to-cart ${isOutOfStock ? 'out-of-stock' : ''}"
                     onclick="event.stopPropagation();addToCartById('${productId}')"
                     ${isOutOfStock ? 'disabled' : ''}>
@@ -592,7 +676,7 @@ async function renderCategories() {
 
     let html = `
       <div class="cat-card active" data-cat="all" onclick="filterCategory('all',this)">
-        <span style="font-size:20px;">📋</span>
+        <span class="cat-icon">📋</span>
         All
       </div>
     `;
@@ -604,7 +688,7 @@ async function renderCategories() {
       
       html += `
         <div class="cat-card" data-cat="${catId}" onclick="filterCategory('${catId}',this)">
-          <span style="font-size:20px;">${icon}</span>
+          <span class="cat-icon">${icon}</span>
           ${label}
         </div>
       `;
@@ -698,6 +782,15 @@ function openProductModal(id) {
   const reviews = p.reviews || 0;
   const stock = p.stock || 0;
   const productId = p._id || p.id;
+  
+  // Check special
+  const special = getProductSpecial(p);
+  const isSpecialActive = special !== null;
+  const specialDisplay = isSpecialActive ? 
+    `<div class="modal-special-banner">
+      🔥 ${special.label} — SAVE R${((price * special.quantity) - special.price).toFixed(2)}
+      ${special.expiresAt ? `<div class="expiry">Expires: ${new Date(special.expiresAt).toLocaleDateString()}</div>` : ''}
+    </div>` : '';
 
   document.getElementById('modal-overlay').innerHTML = `
     <div class="modal">
@@ -712,8 +805,16 @@ function openProductModal(id) {
           <span class="stars">${starsHTML(rating)}</span>
           <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
         </div>
+        ${specialDisplay}
         <div class="modal-product-desc">${p.description || ''}</div>
-        <div class="modal-product-price">R${Number(price).toFixed(2)}</div>
+        <div class="modal-product-price">
+          ${isSpecialActive ? 
+            `<span class="original">R${Number(price).toFixed(2)}</span>
+             <span class="special">R${Number(special.price).toFixed(2)}</span>
+             <div style="font-size:14px;color:var(--muted);">${special.label}</div>` :
+            `R${Number(price).toFixed(2)}`
+          }
+        </div>
         ${stock === 0 ? '<div style="color:red;font-weight:600;margin-bottom:16px;">Out of Stock</div>' : ''}
         <div class="modal-actions">
           <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose('${productId}')" ${stock === 0 ? 'disabled' : ''}>
@@ -905,7 +1006,7 @@ function updateCartRewardProgress() {
       `}
 
       ${state.rewardBalance >= 2 ? `
-        <button class="btn btn-sm btn-primary" onclick="redeemRewards()" style="margin-top:8px;width:100%;">
+        <button class="btn btn-sm btn-orange" onclick="redeemRewards()" style="margin-top:8px;width:100%;">
           Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
         </button>
       ` : ''}
@@ -927,29 +1028,57 @@ function renderCartItems() {
     return;
   }
 
-  c.innerHTML = state.cart.map(i => `
-    <div class="cart-item">
-      <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
-      <div class="cart-item-info">
-        <div class="cart-item-name">${i.name}</div>
-        <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
-        <div class="cart-item-controls">
-          <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
-          <span class="qty-num">${i.qty}</span>
-          <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
-          <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
+  c.innerHTML = state.cart.map(i => {
+    const product = state.products.find(p => (p._id || p.id) === i.id);
+    const special = getProductSpecial(product);
+    const isSpecialActive = special !== null;
+    
+    let displayTotal = i.price * i.qty;
+    let specialLabel = '';
+    if (isSpecialActive && i.qty >= special.quantity) {
+      const sets = Math.floor(i.qty / special.quantity);
+      const remainder = i.qty % special.quantity;
+      displayTotal = (sets * special.price) + (remainder * i.price);
+      specialLabel = `🔥 ${special.label} applied!`;
+    }
+    
+    return `
+      <div class="cart-item">
+        <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${i.name}</div>
+          <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
+          ${specialLabel ? `<div class="cart-item-special">${specialLabel}</div>` : ''}
+          <div class="cart-item-controls">
+            <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
+            <span class="qty-num">${i.qty}</span>
+            <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
+            <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
-  const t = Cart.total();
-  document.getElementById('cart-subtotal').textContent = `R${t.toFixed(2)}`;
-  document.getElementById('cart-delivery').textContent = 'Free';
-
-  const discount = state.discountAmount || 0;
-  const finalTotal = Math.max(0, t - discount);
-  document.getElementById('cart-total').textContent = `R${finalTotal.toFixed(2)}`;
+  // Calculate totals with specials
+  const subtotal = Cart.total();
+  const deliveryFee = Cart.deliveryFee();
+  const total = subtotal + deliveryFee;
+  
+  const deliveryDisplay = deliveryFee === 0 ? 'Free' : `R${deliveryFee.toFixed(2)}`;
+  const freeDeliveryNote = FREE_DELIVERY_THRESHOLD > 0 && subtotal >= FREE_DELIVERY_THRESHOLD ? 
+    '🎉 Free delivery!' : 
+    FREE_DELIVERY_THRESHOLD > 0 ? `Add R${(FREE_DELIVERY_THRESHOLD - subtotal).toFixed(2)} more for free delivery` : '';
+  
+  document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
+  document.getElementById('cart-delivery').textContent = deliveryDisplay;
+  document.getElementById('cart-total').textContent = `R${total.toFixed(2)}`;
+  
+  const deliveryNote = document.getElementById('cart-delivery-note');
+  if (deliveryNote) {
+    deliveryNote.textContent = freeDeliveryNote;
+    deliveryNote.style.display = freeDeliveryNote ? 'block' : 'none';
+  }
 }
 
 function openCart() {
@@ -999,17 +1128,16 @@ function renderCheckout() {
   const s = document.getElementById('checkout-section');
   if (!s) return;
 
-  // Generate payment reference for this checkout session
   if (!paymentReference) {
     paymentReference = generatePaymentReference();
   }
 
   const subtotal = Cart.total();
+  const deliveryFee = Cart.deliveryFee();
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
-  const total = Math.max(0, subtotal - discount - rewardDiscount);
+  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
 
-  // Check if cash is allowed (max R80 for items only)
   const cashAllowed = subtotal <= 80;
   
   let subscriptionDiscount = 0;
@@ -1018,10 +1146,16 @@ function renderCheckout() {
     subscriptionPercent = state.subscription.config.discountPercent;
     subscriptionDiscount = (subtotal * subscriptionPercent) / 100;
   }
+  
+  const freeDelivery = deliveryFee === 0;
+  const deliveryDisplay = freeDelivery ? 'Free' : `R${deliveryFee.toFixed(2)}`;
+  const freeDeliveryNote = FREE_DELIVERY_THRESHOLD > 0 && subtotal >= FREE_DELIVERY_THRESHOLD ? 
+    '🎉 Free delivery applied!' : 
+    FREE_DELIVERY_THRESHOLD > 0 ? `Add R${(FREE_DELIVERY_THRESHOLD - subtotal).toFixed(2)} more for free delivery` : '';
 
   s.innerHTML = `
     <div class="container">
-      <h1>Checkout</h1>
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">Checkout</h1>
       ${state.cart.length === 0 ? '<div style="text-align:center;padding:80px;"><h3>Cart empty</h3></div>' : `
         <div class="checkout-grid">
           <div>
@@ -1032,11 +1166,9 @@ function renderCheckout() {
               <div class="form-group"><label>Notes</label><textarea class="form-input" id="co-notes"></textarea></div>
             </div>
 
-            <!-- Payment Method Selection -->
             <div class="checkout-card">
               <h3>💳 Payment Method</h3>
               <div style="display:flex;flex-direction:column;gap:12px;">
-                <!-- Cash Option -->
                 <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${cashAllowed ? 'var(--gray-200)' : '#ffcccc'};border-radius:8px;${cashAllowed ? 'cursor:pointer;' : 'opacity:0.5;'}">
                   <input type="radio" id="payment-cash" name="payment-method" value="cash" ${cashAllowed ? 'checked' : 'disabled'} onchange="togglePaymentMethod('cash')">
                   <label for="payment-cash" style="cursor:${cashAllowed ? 'pointer' : 'not-allowed'};flex:1;">
@@ -1046,7 +1178,6 @@ function renderCheckout() {
                   </label>
                 </div>
 
-                <!-- Payshap / Instant EFT Option -->
                 <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--gray-200);border-radius:8px;cursor:pointer;">
                   <input type="radio" id="payment-payshap" name="payment-method" value="payshap" onchange="togglePaymentMethod('payshap')">
                   <label for="payment-payshap" style="cursor:pointer;flex:1;">
@@ -1057,7 +1188,6 @@ function renderCheckout() {
               </div>
             </div>
 
-            <!-- Payshap Payment Details (shown when selected) -->
             <div id="payshap-details" style="display:none;">
               <div class="checkout-card" style="border:2px solid #ff4444;">
                 <h3 style="color:#DC2626;">⚠️ Important: Instant EFT Payment</h3>
@@ -1081,17 +1211,16 @@ function renderCheckout() {
               </div>
             </div>
 
-            <!-- Rewards Section -->
             <div class="checkout-card">
               <h3>🎁 Rewards & Savings</h3>
               ${state.user ? `
                 <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
                   <span>Reward Balance</span>
-                  <span><strong>R${state.rewardBalance.toFixed(2)}</strong></span>
+                  <span><strong style="color:var(--orange);">R${state.rewardBalance.toFixed(2)}</strong></span>
                 </div>
                 ${state.rewardBalance >= 2 ? `
                   <div style="display:flex;gap:8px;margin-top:8px;">
-                    <button class="btn btn-primary btn-sm" onclick="redeemRewards()" style="flex:1;">
+                    <button class="btn btn-orange btn-sm" onclick="redeemRewards()" style="flex:1;">
                       Apply R${Math.min(state.rewardBalance, subtotal).toFixed(2)} off
                     </button>
                   </div>
@@ -1110,26 +1239,25 @@ function renderCheckout() {
               <span>Subtotal (Items Only)</span>
               <span>R${subtotal.toFixed(2)}</span>
             </div>
-            <div class="order-line" style="color:var(--muted);">
-              <span>Delivery Fee</span>
-              <span>Free</span>
+            <div class="order-line" style="color:var(--orange);font-weight:600;">
+              <span>🚚 Delivery Fee</span>
+              <span>${deliveryDisplay}</span>
             </div>
-            <div class="order-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
-            <p>🚚 Free Delivery</p>
+            ${freeDeliveryNote ? `<div style="font-size:12px;color:var(--orange);text-align:center;margin:4px 0;">${freeDeliveryNote}</div>` : ''}
+            <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
+            <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px;">${freeDelivery ? '🚚 Free delivery applied!' : '🚚 R20 delivery fee applies'}</p>
             
-            <!-- Payment method indicator -->
             <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
               💳 Payment: <span id="selected-payment-label">Cash on Delivery</span>
             </div>
             
-            <button class="btn btn-primary btn-full" id="place-order-btn" onclick="submitOrder()">Place Order</button>
+            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">Place Order — R${total.toFixed(2)}</button>
             <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">You'll see your order summary after placing.</p>
           </div>
         </div>
       `}
     </div>`;
 
-  // Auto-select default payment method
   if (cashAllowed) {
     document.getElementById('payment-cash').checked = true;
     document.getElementById('selected-payment-label').textContent = 'Cash on Delivery';
@@ -1164,10 +1292,8 @@ async function submitOrder() {
   const n = document.getElementById('co-notes')?.value.trim();
   const btn = document.getElementById('place-order-btn');
 
-  // Get payment method
   const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'cash';
   
-  // Get POP file if Payshap
   let popBase64 = null;
   if (paymentMethod === 'payshap') {
     const popInput = document.getElementById('co-pop');
@@ -1181,7 +1307,6 @@ async function submitOrder() {
 
   if (!p || !a) { toast('⚠️ Fill required fields'); return; }
 
-  // Check cash limit
   const subtotal = Cart.total();
   if (paymentMethod === 'cash' && subtotal > 80) {
     toast('⚠️ Cash orders cannot exceed R80. Please use Payshap or remove items.');
@@ -1194,7 +1319,8 @@ async function submitOrder() {
 
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
-  const total = Math.max(0, subtotal - discount - rewardDiscount);
+  const deliveryFee = Cart.deliveryFee();
+  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
 
   try {
     const orderData = {
@@ -1209,6 +1335,7 @@ async function submitOrder() {
       items: state.cart,
       total: total,
       subtotal: subtotal,
+      deliveryFee: deliveryFee,
       discount: discount,
       rewardDiscount: rewardDiscount,
       paymentMethod: paymentMethod,
@@ -1216,7 +1343,6 @@ async function submitOrder() {
       userId: state.user?._id || null
     };
 
-    // Add payment reference for Payshap
     if (paymentMethod === 'payshap') {
       if (!paymentReference) {
         paymentReference = generatePaymentReference();
@@ -1227,14 +1353,13 @@ async function submitOrder() {
 
     const o = await placeOrder(orderData);
     
-    // Reset payment reference for next order
     paymentReference = '';
     
     Cart.clear();
     state.discountAmount = 0;
     state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
     
-    showOrderSuccessSummary(o, total, paymentMethod);
+    showOrderSuccessSummary(o, total, paymentMethod, deliveryFee);
     fetchUserPoints(state.user?.email);
     updateRewardUI();
     
@@ -1250,7 +1375,7 @@ async function submitOrder() {
 //  ORDER SUCCESS SUMMARY
 // ============================================================
 
-function showOrderSuccessSummary(o, total, paymentMethod) {
+function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
   const s = document.getElementById('checkout-section');
   
   const paymentMessage = paymentMethod === 'cash' 
@@ -1260,6 +1385,8 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
   const paymentStatus = paymentMethod === 'cash' 
     ? '<span class="badge badge-warn">Pending (Cash)</span>'
     : '<span class="badge badge-warn">Awaiting Payment Verification</span>';
+
+  const deliveryDisplay = deliveryFee === 0 ? 'Free' : `R${(deliveryFee || 20).toFixed(2)}`;
 
   s.innerHTML = `
     <div class="container">
@@ -1315,9 +1442,17 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
                 </div>
               `).join('')}
             </div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--gray-300);margin-top:12px;font-weight:800;font-size:18px;">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Subtotal</span>
+              <span>R${(o.subtotal || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);color:var(--orange);font-weight:600;">
+              <span>🚚 Delivery Fee</span>
+              <span>${deliveryDisplay}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--orange);margin-top:12px;font-weight:800;font-size:18px;">
               <span>Total</span>
-              <span>R${total.toFixed(2)}</span>
+              <span style="color:var(--orange);">R${total.toFixed(2)}</span>
             </div>
             ${paymentMethod === 'payshap' ? `
               <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
@@ -1332,7 +1467,7 @@ function showOrderSuccessSummary(o, total, paymentMethod) {
           </div>
         </div>
         <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="navigateTo('home')">🏠 Continue Shopping</button>
+          <button class="btn btn-orange" onclick="navigateTo('home')">🏠 Continue Shopping</button>
           <button class="btn btn-outline" onclick="navigateTo('orders')">📋 My Orders</button>
         </div>
       </div>
@@ -1354,30 +1489,32 @@ async function renderOrdersPage() {
     const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
     s.innerHTML = `
       <div class="container">
-        <h1>My Orders</h1>
+        <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">My Orders</h1>
         ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
-          <table class="orders-table">
-            <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              ${myOrders.reverse().map(o => {
-                const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
-                const showInvoice = o.status === 'paid' || o.status === 'completed';
-                const paymentLabel = o.paymentMethod === 'cash' ? '💵 Cash' : '💳 Payshap';
-                return `<tr>
-                  <td style="font-weight:700;font-size:12px;">${o.id}</td>
-                  <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-                  <td>${o.items?.length||0}</td>
-                  <td><strong>R${o.total?.toFixed(2)}</strong></td>
-                  <td><span class="badge ${o.paymentMethod === 'cash' ? 'badge-success' : 'badge-info'}">${paymentLabel}</span></td>
-                  <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
-                  <td><div style="display:flex;gap:6px;">
-                    ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
-                    ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
-                  </div></td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>`}
+          <div style="overflow-x:auto;">
+            <table class="orders-table">
+              <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${myOrders.reverse().map(o => {
+                  const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
+                  const showInvoice = o.status === 'paid' || o.status === 'completed';
+                  const paymentLabel = o.paymentMethod === 'cash' ? '💵 Cash' : '💳 Payshap';
+                  return `<tr>
+                    <td style="font-weight:700;font-size:12px;">${o.id}</td>
+                    <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>${o.items?.length||0}</td>
+                    <td><strong>R${o.total?.toFixed(2)}</strong></td>
+                    <td><span class="badge ${o.paymentMethod === 'cash' ? 'badge-success' : 'badge-info'}">${paymentLabel}</span></td>
+                    <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
+                    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
+                      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
+                    </div></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`}
       </div>`;
   } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
 }
@@ -1619,11 +1756,11 @@ function showPointsModal() {
       <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
       <div class="modal-body" style="text-align:center;padding:24px;">
         <div style="font-size:48px;">🎁</div>
-        <div style="font-size:32px;font-weight:800;">${state.points||0} Points</div>
+        <div style="font-size:32px;font-weight:800;color:var(--orange);">${state.points||0} Points</div>
         <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
         <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
         <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
-        ${(state.points||0)>=10?`<button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
+        ${(state.points||0)>=10?`<button class="btn btn-orange btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
       </div>
     </div>`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -1722,6 +1859,24 @@ function navigateTo(p) {
 }
 
 // ============================================================
+//  MOBILE MENU
+// ============================================================
+
+function toggleMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.toggle('mobile-open');
+  hamburger.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.remove('mobile-open');
+  hamburger.classList.remove('active');
+}
+
+// ============================================================
 //  INIT
 // ============================================================
 
@@ -1743,9 +1898,9 @@ async function init() {
   await loadProducts();
   await loadHeroSlideshow();
 
-  window.addEventListener('scroll', () =>
-    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20)
-  );
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  });
 
   const si = document.getElementById('search-input');
   if (si) {
@@ -1770,284 +1925,17 @@ async function init() {
   });
   document.getElementById('cart-overlay').addEventListener('click', closeCart);
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeCart(); }
+    if (e.key === 'Escape') { closeModal(); closeCart(); closeMobileMenu(); }
   });
-  document.getElementById('hamburger')?.addEventListener('click', () =>
-    document.querySelector('.nav-links').classList.toggle('mobile-open')
-  );
+  
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileMenu);
+  }
+  
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', closeMobileMenu);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
-// ============================================================
-//  SPECIALS HELPERS
-// ============================================================
-
-function getProductSpecial(product) {
-  if (!product || !product.special) return null;
-  const special = product.special;
-  // Check if special is still valid
-  if (special.expiresAt && new Date(special.expiresAt) < new Date()) {
-    return null; // Expired
-  }
-  return special;
-}
-
-function getSpecialPrice(product, quantity) {
-  const special = getProductSpecial(product);
-  if (!special) return product.price * quantity;
-  
-  const sets = Math.floor(quantity / special.quantity);
-  const remainder = quantity % special.quantity;
-  return (sets * special.price) + (remainder * product.price);
-}
-
-function getSpecialLabel(product) {
-  const special = getProductSpecial(product);
-  if (!special) return null;
-  return special.label;
-}
-
-function isSpecialActive(product) {
-  return getProductSpecial(product) !== null;
-}
-
-// ============================================================
-//  UPDATE RENDER PRODUCTS WITH SPECIALS
-// ============================================================
-
-// Replace your existing renderProducts function with this updated version
-function renderProducts(products) {
-  const g = document.getElementById('products-grid');
-  const ce = document.getElementById('results-count');
-  if (!g) return;
-
-  if (!products || !Array.isArray(products)) {
-    products = [];
-  }
-
-  if (products.length === 0) {
-    g.innerHTML = `<div class="no-results"><div style="font-size:48px">🔍</div><h3>No products found</h3><p style="color:var(--muted);font-size:14px;">${state.currentCategory !== 'all' ? `No products in "${state.currentCategory}" category` : 'Try adjusting your search'}</p></div>`;
-    if (ce) ce.textContent = '0 items';
-    return;
-  }
-
-  let s = [...products];
-  if (state.sortBy === 'price-asc') s.sort((a, b) => (a.price || 0) - (b.price || 0));
-  else if (state.sortBy === 'price-desc') s.sort((a, b) => (b.price || 0) - (a.price || 0));
-  else if (state.sortBy === 'rating') s.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  else if (state.sortBy === 'newest') s.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-  if (ce) ce.textContent = `${s.length} item${s.length !== 1 ? 's' : ''}`;
-
-  g.className = 'products-grid stagger';
-  
-  let html = '';
-  s.forEach((p, index) => {
-    const productId = p._id || p.id || `prod-${index}`;
-    const imageUrl = p.image || 'https://via.placeholder.com/320x320?text=📦';
-    const stock = p.stock !== undefined ? p.stock : 0;
-    const isOutOfStock = stock === 0;
-    const lowStock = stock > 0 && stock <= 5;
-    const rating = p.rating || 0;
-    const reviews = p.reviews || 0;
-    const price = p.price || 0;
-    const name = p.name || 'Unnamed Product';
-    const category = p.category || 'Other';
-    const description = p.description || '';
-    
-    // Check for special
-    const special = getProductSpecial(p);
-    const isSpecialActive = special !== null;
-    const specialLabel = isSpecialActive ? special.label : '';
-    
-    // Calculate display price
-    let displayPrice = price;
-    let specialDisplay = '';
-    if (isSpecialActive) {
-      displayPrice = special.price;
-      specialDisplay = `
-        <div style="background:#E67E22;color:#fff;padding:4px 10px;border-radius:4px;font-size:12px;font-weight:700;margin-top:4px;">
-          🔥 ${specialLabel}
-        </div>`;
-    }
-
-    html += `
-      <div class="product-card" onclick="openProductModal('${productId}')">
-        <div class="product-img-wrap">
-          <img src="${imageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/320x320?text=📦'">
-          ${isSpecialActive ? `<span class="product-badge badge" style="background:#E67E22;color:#fff;font-weight:700;">🔥 DEAL</span>` : ''}
-          ${lowStock && !isOutOfStock ? `<span class="product-badge badge badge-warn">Only ${stock} left</span>` : ''}
-          ${isOutOfStock ? `<span class="product-badge badge" style="background:#f1f1f1">Out of stock</span>` : ''}
-          <button class="product-wishlist" onclick="event.stopPropagation();toggleWishlist('${productId}',this)">
-            ${Wishlist.has(productId) ? '❤️' : '🤍'}
-          </button>
-        </div>
-        <div class="product-body">
-          <div class="product-cat">${category}</div>
-          <div class="product-name">${name}</div>
-          ${specialDisplay}
-          ${description ? `<div class="product-desc">${description}</div>` : ''}
-          <div class="product-rating">
-            <span class="stars">${starsHTML(rating)}</span>
-            <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
-          </div>
-          <div class="product-footer">
-            <div class="product-price">
-              ${isSpecialActive ? 
-                `<span style="text-decoration:line-through;font-size:14px;color:var(--muted);font-weight:400;">R${Number(price).toFixed(2)}</span>
-                 <span style="color:#E67E22;font-size:20px;">R${Number(displayPrice).toFixed(2)}</span>
-                 <span style="font-size:11px;color:var(--muted);display:block;">${specialLabel}</span>` :
-                `R${Number(price).toFixed(2)}`
-              }
-            </div>
-            <button class="add-to-cart ${isOutOfStock ? 'out-of-stock' : ''}"
-                    onclick="event.stopPropagation();addToCartById('${productId}')"
-                    ${isOutOfStock ? 'disabled' : ''}>
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-
-  g.innerHTML = html;
-}
-
-// ============================================================
-//  UPDATE PRODUCT MODAL WITH SPECIALS
-// ============================================================
-
-// Replace your existing openProductModal function
-function openProductModal(id) {
-  const p = state.products.find(x => {
-    return x._id === id || x.id === id || String(x._id) === String(id) || String(x.id) === String(id);
-  });
-  
-  if (!p) {
-    toast('⚠️ Product not found');
-    return;
-  }
-
-  const imageUrl = p.image || 'https://via.placeholder.com/560x560?text=No+Image';
-  const price = p.price || 0;
-  const rating = p.rating || 0;
-  const reviews = p.reviews || 0;
-  const stock = p.stock || 0;
-  const productId = p._id || p.id;
-  
-  // Check special
-  const special = getProductSpecial(p);
-  const isSpecialActive = special !== null;
-  const specialDisplay = isSpecialActive ? 
-    `<div style="background:#E67E22;color:#fff;padding:8px 16px;border-radius:8px;margin-bottom:16px;font-weight:700;font-size:16px;">
-      🔥 ${special.label} — SAVE R${((price * special.quantity) - special.price).toFixed(2)}
-      ${special.expiresAt ? `<div style="font-size:12px;font-weight:400;opacity:0.8;">Expires: ${new Date(special.expiresAt).toLocaleDateString()}</div>` : ''}
-    </div>` : '';
-
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal">
-      <div class="modal-header">
-        <span class="badge badge-brand">${p.category || 'Other'}</span>
-        <button class="modal-close" onclick="closeModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <img class="modal-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/560x560?text=📦'">
-        <div class="modal-product-name">${p.name || 'Unnamed Product'}</div>
-        <div class="product-rating">
-          <span class="stars">${starsHTML(rating)}</span>
-          <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
-        </div>
-        ${specialDisplay}
-        <div class="modal-product-desc">${p.description || ''}</div>
-        <div class="modal-product-price">
-          ${isSpecialActive ? 
-            `<span style="text-decoration:line-through;font-size:20px;color:var(--muted);font-weight:400;">R${Number(price).toFixed(2)}</span>
-             <span style="color:#E67E22;font-size:36px;">R${Number(special.price).toFixed(2)}</span>
-             <div style="font-size:14px;color:var(--muted);">${special.label}</div>` :
-            `R${Number(price).toFixed(2)}`
-          }
-        </div>
-        ${stock === 0 ? '<div style="color:red;font-weight:600;margin-bottom:16px;">Out of Stock</div>' : ''}
-        <div class="modal-actions">
-          <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose('${productId}')" ${stock === 0 ? 'disabled' : ''}>
-            🛒 Add to Cart
-          </button>
-          <button class="btn btn-outline" onclick="toggleWishlistModal('${productId}',this)">
-            ${Wishlist.has(productId) ? '❤️' : '🤍'}
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-// ============================================================
-//  UPDATE CART RENDER WITH SPECIALS
-// ============================================================
-
-// Replace your existing renderCartItems function
-function renderCartItems() {
-  const c = document.getElementById('cart-items');
-  if (!c) return;
-
-  if (state.cart.length === 0) {
-    c.innerHTML = `<div class="cart-empty"><div style="font-size:48px">🛒</div><p>Your cart is empty.</p></div>`;
-    return;
-  }
-
-  c.innerHTML = state.cart.map(i => {
-    const product = state.products.find(p => (p._id || p.id) === i.id);
-    const special = getProductSpecial(product);
-    const isSpecialActive = special !== null;
-    
-    let displayTotal = i.price * i.qty;
-    let specialLabel = '';
-    if (isSpecialActive && i.qty >= special.quantity) {
-      const sets = Math.floor(i.qty / special.quantity);
-      const remainder = i.qty % special.quantity;
-      displayTotal = (sets * special.price) + (remainder * i.price);
-      specialLabel = `🔥 ${special.label} applied!`;
-    }
-    
-    return `
-      <div class="cart-item">
-        <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
-        <div class="cart-item-info">
-          <div class="cart-item-name">${i.name}</div>
-          <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
-          ${specialLabel ? `<div style="font-size:12px;color:#E67E22;font-weight:700;">${specialLabel}</div>` : ''}
-          <div class="cart-item-controls">
-            <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
-            <span class="qty-num">${i.qty}</span>
-            <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
-            <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Calculate totals with specials
-  let subtotal = 0;
-  state.cart.forEach(i => {
-    const product = state.products.find(p => (p._id || p.id) === i.id);
-    const special = getProductSpecial(product);
-    
-    if (special && i.qty >= special.quantity) {
-      const sets = Math.floor(i.qty / special.quantity);
-      const remainder = i.qty % special.quantity;
-      subtotal += (sets * special.price) + (remainder * i.price);
-    } else {
-      subtotal += i.price * i.qty;
-    }
-  });
-  
-  const total = subtotal;
-  document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
-  document.getElementById('cart-delivery').textContent = 'Free';
-  document.getElementById('cart-total').textContent = `R${total.toFixed(2)}`;
-}
