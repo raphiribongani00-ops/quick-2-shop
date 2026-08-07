@@ -2029,28 +2029,147 @@ function redeemAllPoints() {
 }
 
 // ============================================================
-//  LOCATION
+//  LOCATION (UPDATED FOR HIGH ACCURACY WITH USER GUIDANCE)
 // ============================================================
 
 async function shareLocation() {
-  if (!navigator.geolocation) { toast('⚠️ Not supported'); return; }
+  if (!navigator.geolocation) {
+    toast('⚠️ Location sharing is not supported by your browser.');
+    return;
+  }
+
   const b = document.getElementById('location-btn');
-  b.disabled = true;
-  b.textContent = 'Getting…';
-  navigator.geolocation.getCurrentPosition(async (p) => {
-    const c = `${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}`;
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}`);
-      const d = await r.json();
-      document.getElementById('co-address').value = d.display_name || `📍 ${c}`;
-      document.getElementById('co-coordinates').value = c;
-    } catch {
-      document.getElementById('co-address').value = `📍 ${c}`;
-      document.getElementById('co-coordinates').value = c;
-    }
-    b.disabled = false;
-    b.textContent = '📍 Share My Location';
-  }, () => { b.disabled = false; b.textContent = '📍 Share My Location'; toast('⚠️ Failed') });
+  const addressElement = document.getElementById('co-address');
+  
+  if (b) {
+    b.disabled = true;
+    b.textContent = '📍 Getting precise location…';
+  }
+
+  // Options for a more accurate location
+  const options = {
+    enableHighAccuracy: true, // Request the best possible result, often using GPS
+    timeout: 15000,           // Wait up to 15 seconds for a GPS lock
+    maximumAge: 0             // Always get a fresh location, don't use a cached one
+  };
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      // `position.coords.accuracy` is the margin of error in meters
+      const accuracy = position.coords.accuracy;
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const coordsString = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+      // Determine accuracy level for user feedback
+      let accuracyLabel = '';
+      let accuracyEmoji = '';
+      if (accuracy < 20) {
+        accuracyLabel = 'Excellent (GPS)';
+        accuracyEmoji = '📡';
+      } else if (accuracy < 50) {
+        accuracyLabel = 'Very Good';
+        accuracyEmoji = '✅';
+      } else if (accuracy < 100) {
+        accuracyLabel = 'Good';
+        accuracyEmoji = '👍';
+      } else if (accuracy < 500) {
+        accuracyLabel = 'Fair (Wi-Fi/Cell)';
+        accuracyEmoji = '📶';
+      } else {
+        accuracyLabel = 'Low Accuracy';
+        accuracyEmoji = '⚠️';
+      }
+
+      // Show accuracy feedback to the user
+      toast(`${accuracyEmoji} Location found: ±${Math.round(accuracy)}m (${accuracyLabel})`);
+
+      // Reverse geocoding to get a readable address
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await response.json();
+        
+        if (addressElement) {
+          addressElement.value = data.display_name || `📍 ${coordsString}`;
+          // Highlight the address field to encourage editing
+          addressElement.style.borderColor = '#E67E22';
+          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
+          setTimeout(() => {
+            addressElement.style.borderColor = '';
+            addressElement.style.boxShadow = '';
+          }, 3000);
+        }
+        
+        const coordsElement = document.getElementById('co-coordinates');
+        if (coordsElement) {
+          coordsElement.value = coordsString;
+        }
+
+        // Show a helpful message encouraging address verification
+        toast('✏️ Please review and edit the address if needed');
+        
+        // Focus the address field so user can easily edit
+        if (addressElement) {
+          setTimeout(() => {
+            addressElement.focus();
+            addressElement.select();
+          }, 500);
+        }
+
+      } catch (error) {
+        // Fallback if reverse geocoding fails
+        if (addressElement) {
+          addressElement.value = `📍 ${coordsString}`;
+          addressElement.style.borderColor = '#E67E22';
+          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
+          setTimeout(() => {
+            addressElement.style.borderColor = '';
+            addressElement.style.boxShadow = '';
+          }, 3000);
+        }
+        const coordsElement = document.getElementById('co-coordinates');
+        if (coordsElement) {
+          coordsElement.value = coordsString;
+        }
+        toast('✏️ Please review and edit the address if needed');
+        if (addressElement) {
+          setTimeout(() => {
+            addressElement.focus();
+            addressElement.select();
+          }, 500);
+        }
+      }
+
+      if (b) {
+        b.disabled = false;
+        b.textContent = '📍 Share My Location';
+      }
+    },
+    (error) => {
+      // Handle errors (e.g., user denied, timeout)
+      console.error("Geolocation error:", error);
+      let errorMessage = '⚠️ Could not get your location. ';
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += 'Permission was denied. Please enable location access.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += 'Location information is unavailable.';
+          break;
+        case error.TIMEOUT:
+          errorMessage += 'The request to get your location timed out.';
+          break;
+        default:
+          errorMessage += 'An unknown error occurred.';
+      }
+      toast(errorMessage);
+      if (b) {
+        b.disabled = false;
+        b.textContent = '📍 Share My Location';
+      }
+    },
+    options
+  );
 }
 
 // ============================================================
