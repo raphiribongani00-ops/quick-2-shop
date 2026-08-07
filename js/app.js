@@ -66,43 +66,79 @@ function isSpecialActive(product) {
 }
 
 // ============================================================
-//  CART FUNCTIONS
+//  CART FUNCTIONS (FIXED)
 // ============================================================
 
 const Cart = {
-  save() { localStorage.setItem('habibi_cart', JSON.stringify(state.cart)); },
+  save() { 
+    localStorage.setItem('habibi_cart', JSON.stringify(state.cart)); 
+  },
+  
   add(p) {
-    const e = state.cart.find(i => i.id === p.id);
+    // Use consistent ID - store both id and _id
+    const productId = p._id || p.id;
+    const e = state.cart.find(i => (i._id === productId || i.id === productId));
+    
     if (e) {
-      e.qty = Math.min(e.qty + 1, p.stock);
+      e.qty = Math.min(e.qty + 1, p.stock || 99);
     } else {
-      state.cart.push({ ...p, qty: 1 });
+      // Store the product with both ID formats for compatibility
+      state.cart.push({ 
+        ...p, 
+        qty: 1,
+        id: productId,
+        _id: productId
+      });
     }
     this.save();
     updateCartUI();
     updateCartRewardProgress();
     toast(`✅ ${p.name} added`);
   },
+  
   remove(id) {
-    state.cart = state.cart.filter(i => i.id !== id);
+    // Find by either id or _id
+    state.cart = state.cart.filter(i => {
+      const itemId = i._id || i.id;
+      return String(itemId) !== String(id);
+    });
     this.save();
     updateCartUI();
     renderCartItems();
     updateCartRewardProgress();
   },
+  
   updateQty(id, d) {
-    const i = state.cart.find(x => x.id === id);
+    // Find by either id or _id
+    const i = state.cart.find(x => {
+      const itemId = x._id || x.id;
+      return String(itemId) === String(id);
+    });
+    
     if (!i) return;
-    i.qty = Math.max(1, Math.min(i.qty + d, i.stock));
+    
+    const newQty = i.qty + d;
+    if (newQty < 1) {
+      // Remove if quantity goes below 1
+      this.remove(id);
+      return;
+    }
+    
+    i.qty = Math.min(newQty, i.stock || 99);
     this.save();
     updateCartUI();
     renderCartItems();
     updateCartRewardProgress();
   },
+  
   total() { 
     let subtotal = 0;
     state.cart.forEach(item => {
-      const product = state.products.find(p => (p._id || p.id) === item.id);
+      const product = state.products.find(p => {
+        const pId = p._id || p.id;
+        const itemId = item._id || item.id;
+        return String(pId) === String(itemId);
+      });
       const special = getProductSpecial(product);
       if (special && item.qty >= special.quantity) {
         const sets = Math.floor(item.qty / special.quantity);
@@ -114,7 +150,11 @@ const Cart = {
     });
     return subtotal;
   },
-  count() { return state.cart.reduce((s, i) => s + i.qty, 0); },
+  
+  count() { 
+    return state.cart.reduce((s, i) => s + i.qty, 0); 
+  },
+  
   clear() {
     state.cart = [];
     this.save();
@@ -122,6 +162,7 @@ const Cart = {
     renderCartItems();
     updateCartRewardProgress();
   },
+  
   deliveryFee() {
     const subtotal = this.total();
     if (FREE_DELIVERY_THRESHOLD > 0 && subtotal >= FREE_DELIVERY_THRESHOLD) {
@@ -129,6 +170,7 @@ const Cart = {
     }
     return DELIVERY_FEE;
   },
+  
   totalWithDelivery() {
     return this.total() + this.deliveryFee();
   }
@@ -738,11 +780,11 @@ function filterCategory(cat, el) {
 
 function addToCartById(id) {
   console.log('🛒 Adding to cart by ID:', id);
+  
+  // Find product by id or _id
   const p = state.products.find(p => {
-    return p._id === id || 
-           p.id === id || 
-           String(p._id) === String(id) ||
-           String(p.id) === String(id);
+    const pId = p._id || p.id;
+    return String(pId) === String(id);
   });
   
   if (p) {
@@ -750,7 +792,14 @@ function addToCartById(id) {
     Cart.add(p);
   } else {
     console.warn('⚠️ Product not found with ID:', id);
-    toast('⚠️ Product not found');
+    // Try to find by _id if id didn't work
+    const p2 = state.products.find(p => String(p._id) === String(id));
+    if (p2) {
+      console.log('🛒 Found product by _id:', p2.name);
+      Cart.add(p2);
+    } else {
+      toast('⚠️ Product not found');
+    }
   }
 }
 
@@ -1014,6 +1063,10 @@ function updateCartRewardProgress() {
   `;
 }
 
+// ============================================================
+//  RENDER CART ITEMS (FIXED)
+// ============================================================
+
 function renderCartItems() {
   const c = document.getElementById('cart-items');
   if (!c) return;
@@ -1023,44 +1076,83 @@ function renderCartItems() {
       <div class="cart-empty">
         <div style="font-size:48px">🛒</div>
         <p>Your cart is empty.</p>
+        <button class="btn btn-primary" onclick="closeCart()" style="margin-top:12px;">Start Shopping</button>
       </div>
     `;
+    // Update totals to zero
+    document.getElementById('cart-subtotal').textContent = 'R0.00';
+    document.getElementById('cart-delivery').textContent = 'R0.00';
+    document.getElementById('cart-total').textContent = 'R0.00';
     return;
   }
 
-  c.innerHTML = state.cart.map(i => {
-    const product = state.products.find(p => (p._id || p.id) === i.id);
+  // Build cart items HTML with proper IDs
+  c.innerHTML = state.cart.map(item => {
+    // Get the item ID (could be id or _id)
+    const itemId = item._id || item.id;
+    
+    // Find the full product for special pricing
+    const product = state.products.find(p => {
+      const pId = p._id || p.id;
+      return String(pId) === String(itemId);
+    });
+    
     const special = getProductSpecial(product);
     const isSpecialActive = special !== null;
     
-    let displayTotal = i.price * i.qty;
+    let displayTotal = item.price * item.qty;
     let specialLabel = '';
-    if (isSpecialActive && i.qty >= special.quantity) {
-      const sets = Math.floor(i.qty / special.quantity);
-      const remainder = i.qty % special.quantity;
-      displayTotal = (sets * special.price) + (remainder * i.price);
+    if (isSpecialActive && item.qty >= special.quantity) {
+      const sets = Math.floor(item.qty / special.quantity);
+      const remainder = item.qty % special.quantity;
+      displayTotal = (sets * special.price) + (remainder * item.price);
       specialLabel = `🔥 ${special.label} applied!`;
     }
     
+    // Use the item's image or fallback
+    const imageUrl = item.image || 'https://via.placeholder.com/70x70?text=📦';
+    
     return `
-      <div class="cart-item">
-        <img class="cart-item-img" src="${i.image}" onerror="this.src='https://via.placeholder.com/70x70'">
+      <div class="cart-item" data-id="${itemId}">
+        <img class="cart-item-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/70x70?text=📦'">
         <div class="cart-item-info">
-          <div class="cart-item-name">${i.name}</div>
-          <div class="cart-item-price">R${i.price.toFixed(2)} each</div>
+          <div class="cart-item-name">${item.name || 'Product'}</div>
+          <div class="cart-item-price">R${(item.price || 0).toFixed(2)} each</div>
           ${specialLabel ? `<div class="cart-item-special">${specialLabel}</div>` : ''}
           <div class="cart-item-controls">
-            <button class="qty-btn" onclick="Cart.updateQty(${i.id},-1)">−</button>
-            <span class="qty-num">${i.qty}</span>
-            <button class="qty-btn" onclick="Cart.updateQty(${i.id},1)">+</button>
-            <button class="remove-item" onclick="Cart.remove(${i.id})">🗑</button>
+            <button class="qty-btn" data-id="${itemId}" data-change="-1" aria-label="Decrease quantity">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-btn" data-id="${itemId}" data-change="1" aria-label="Increase quantity">+</button>
+            <button class="remove-item" data-id="${itemId}" aria-label="Remove item">🗑</button>
           </div>
         </div>
       </div>
     `;
   }).join('');
 
-  // Calculate totals with specials
+  // Use event delegation for cart buttons
+  c.querySelectorAll('.qty-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.dataset.id;
+      const change = parseInt(this.dataset.change);
+      if (id && change) {
+        Cart.updateQty(id, change);
+      }
+    });
+  });
+
+  c.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.dataset.id;
+      if (id) {
+        Cart.remove(id);
+      }
+    });
+  });
+
+  // Calculate and update totals
   const subtotal = Cart.total();
   const deliveryFee = Cart.deliveryFee();
   const total = subtotal + deliveryFee;
@@ -1079,6 +1171,9 @@ function renderCartItems() {
     deliveryNote.textContent = freeDeliveryNote;
     deliveryNote.style.display = freeDeliveryNote ? 'block' : 'none';
   }
+  
+  // Update cart count badge
+  updateCartUI();
 }
 
 function openCart() {
