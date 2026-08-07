@@ -886,4 +886,1303 @@ function filterCategory(cat, el) {
   
   const shopSection = document.getElementById('shop-section');
   if (shopSection) {
-    setTimeout(()
+    setTimeout(() => {
+      shopSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
+}
+
+function addToCartById(id) {
+  console.log('🛒 Adding to cart by ID:', id);
+  
+  // Find product by id or _id
+  const p = state.products.find(p => {
+    const pId = p._id || p.id;
+    return String(pId) === String(id);
+  });
+  
+  if (p) {
+    console.log('🛒 Found product:', p.name);
+    Cart.add(p);
+  } else {
+    console.warn('⚠️ Product not found with ID:', id);
+    // Try to find by _id if id didn't work
+    const p2 = state.products.find(p => String(p._id) === String(id));
+    if (p2) {
+      console.log('🛒 Found product by _id:', p2.name);
+      Cart.add(p2);
+    } else {
+      toast('⚠️ Product not found');
+    }
+  }
+}
+
+// ============================================================
+//  PRODUCT MODAL
+// ============================================================
+
+function openProductModal(id) {
+  console.log('🔍 Opening product modal for ID:', id);
+  
+  const p = state.products.find(x => {
+    return x._id === id || 
+           x.id === id || 
+           String(x._id) === String(id) ||
+           String(x.id) === String(id);
+  });
+  
+  if (!p) {
+    console.warn('⚠️ Product not found for modal:', id);
+    toast('⚠️ Product not found');
+    return;
+  }
+
+  console.log('🔍 Product found:', p.name);
+
+  const imageUrl = p.image || 'https://via.placeholder.com/560x560?text=No+Image';
+  const price = p.price || 0;
+  const rating = p.rating || 0;
+  const reviews = p.reviews || 0;
+  const stock = p.stock || 0;
+  const productId = p._id || p.id;
+  
+  // Check special
+  const special = getProductSpecial(p);
+  const isSpecialActive = special !== null;
+  const specialDisplay = isSpecialActive ? 
+    `<div class="modal-special-banner">
+      🔥 ${special.label} — SAVE R${((price * special.quantity) - special.price).toFixed(2)}
+      ${special.expiresAt ? `<div class="expiry">Expires: ${new Date(special.expiresAt).toLocaleDateString()}</div>` : ''}
+    </div>` : '';
+
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <span class="badge badge-brand">${p.category || 'Other'}</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <img class="modal-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/560x560?text=📦'">
+        <div class="modal-product-name">${p.name || 'Unnamed Product'}</div>
+        <div class="product-rating">
+          <span class="stars">${starsHTML(rating)}</span>
+          <span>${Number(rating).toFixed(1)} (${reviews || 0})</span>
+        </div>
+        ${specialDisplay}
+        <div class="modal-product-desc">${p.description || ''}</div>
+        <div class="modal-product-price">
+          ${isSpecialActive ? 
+            `<span class="original">R${Number(price).toFixed(2)}</span>
+             <span class="special">R${Number(special.price).toFixed(2)}</span>
+             <div style="font-size:14px;color:var(--muted);">${special.label}</div>` :
+            `R${Number(price).toFixed(2)}`
+          }
+        </div>
+        ${stock === 0 ? '<div style="color:red;font-weight:600;margin-bottom:16px;">Out of Stock</div>' : ''}
+        <div class="modal-actions">
+          <button class="btn btn-primary" style="flex:1" onclick="addToCartAndClose('${productId}')" ${stock === 0 ? 'disabled' : ''}>
+            🛒 Add to Cart
+          </button>
+          <button class="btn btn-outline" onclick="toggleWishlistModal('${productId}',this)">
+            ${Wishlist.has(productId) ? '❤️' : '🤍'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function addToCartAndClose(id) {
+  const p = state.products.find(x => {
+    return x._id === id || 
+           x.id === id || 
+           String(x._id) === String(id) ||
+           String(x.id) === String(id);
+  });
+  if (p) {
+    Cart.add(p);
+    closeModal();
+  } else {
+    toast('⚠️ Product not found');
+  }
+}
+
+function toggleWishlistModal(id, b) {
+  Wishlist.toggle(id);
+  b.textContent = Wishlist.has(id) ? '❤️' : '🤍';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ============================================================
+//  SLIDESHOW
+// ============================================================
+
+let slideInterval = null;
+
+async function loadHeroSlideshow() {
+  const w = document.getElementById('slideshow-wrapper');
+  const d = document.getElementById('slideshow-dots');
+
+  if (!w || !d) {
+    console.warn('⚠️ Slideshow elements not found');
+    return;
+  }
+
+  w.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray-500);">Loading slides...</div>';
+  d.innerHTML = '';
+
+  try {
+    console.log('🖼️ Fetching slides...');
+    const response = await fetch(`${API}/slides`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const slides = await response.json();
+    console.log('🖼️ Slides loaded:', slides.length);
+
+    if (!slides || slides.length === 0) {
+      w.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:18px;">
+          📸 No slides available
+        </div>
+      `;
+      return;
+    }
+
+    w.innerHTML = slides.map((slide, index) => {
+      const isActive = index === 0 ? 'active' : '';
+      const imageUrl = slide.image || 'https://via.placeholder.com/1920x300?text=Slide';
+      return `
+        <img class="slideshow-slide ${isActive}"
+             src="${imageUrl}"
+             alt="${slide.caption || 'Slide'}"
+             ${slide.link ? `onclick="window.open('${slide.link}','_blank')" style="cursor:pointer;"` : ''}>
+        ${slide.caption ? `<div class="slideshow-caption ${isActive}">${slide.caption}</div>` : ''}
+      `;
+    }).join('');
+
+    d.innerHTML = slides.map((_, index) => {
+      const isActive = index === 0 ? 'active' : '';
+      return `<div class="slideshow-dot ${isActive}" onclick="goToSlide(${index})"></div>`;
+    }).join('');
+
+    if (slideInterval) clearInterval(slideInterval);
+    let currentSlide = 0;
+
+    slideInterval = setInterval(() => {
+      const totalSlides = slides.length;
+      if (totalSlides === 0) return;
+      currentSlide = (currentSlide + 1) % totalSlides;
+      goToSlide(currentSlide);
+    }, 5000);
+
+  } catch (err) {
+    console.error('❌ Failed to load slides:', err);
+    w.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f5f5;color:#999;font-size:18px;">
+        📸 Could not load slides
+      </div>
+    `;
+  }
+}
+
+function goToSlide(index) {
+  const slides = document.querySelectorAll('.slideshow-slide');
+  const captions = document.querySelectorAll('.slideshow-caption');
+  const dots = document.querySelectorAll('.slideshow-dot');
+
+  slides.forEach((s, i) => s.classList.toggle('active', i === index));
+  captions.forEach((c, i) => c.classList.toggle('active', i === index));
+  dots.forEach((d, i) => d.classList.toggle('active', i === index));
+}
+
+// ============================================================
+//  CART UI
+// ============================================================
+
+function updateCartUI() {
+  const c = Cart.count();
+  document.querySelectorAll('.cart-count').forEach(el => {
+    el.textContent = c;
+    el.style.display = c > 0 ? 'flex' : 'none';
+  });
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer && drawer.classList.contains('open')) {
+    updateCartRewardProgress();
+  }
+}
+
+function updateCartRewardProgress() {
+  const progressContainer = document.getElementById('reward-progress-container');
+  if (!progressContainer) return;
+
+  const eligibleItems = state.cart.filter(item => item.price >= 10);
+  const eligibleCount = eligibleItems.length;
+  const sets = Math.floor(eligibleCount / 10);
+  const remaining = eligibleCount % 10;
+  const progress = Math.round((remaining / 10) * 100);
+
+  let streakBonus = 0;
+  if (state.streak && state.streak.count >= 3) {
+    streakBonus = state.streak.bonusAmount || 5;
+  }
+
+  progressContainer.innerHTML = `
+    <div class="reward-progress-card">
+      <div class="reward-progress-header">
+        <div class="reward-progress-title">
+          <span>🎁 Rewards</span>
+          <span class="reward-balance">R${state.rewardBalance.toFixed(2)}</span>
+        </div>
+        <div class="reward-tier-badge" id="tier-badge">
+          ${getTierIcon(state.tier)}
+        </div>
+      </div>
+
+      ${state.cart.length > 0 ? `
+        <div class="reward-progress-body">
+          <div class="reward-progress-info">
+            <span>${eligibleCount}/10 items for R2</span>
+            <span>${sets} rewards earned</span>
+          </div>
+          <div class="reward-progress-track">
+            <div class="reward-progress-fill" style="width: ${progress}%"></div>
+          </div>
+          <div class="reward-progress-helper">
+            ${remaining === 0 ? '✅ Ready for reward!' : `Add ${10 - remaining} more items for R2`}
+          </div>
+          ${streakBonus > 0 ? `<div class="reward-streak-bonus">🔥 ${state.streak.count} week streak! +R${streakBonus.toFixed(2)} bonus</div>` : ''}
+          ${state.subscription?.active ? `<div class="reward-subscription-badge">⭐ ${state.subscription.tier} subscriber</div>` : ''}
+        </div>
+      ` : `
+        <div class="reward-progress-empty">
+          Add items to your cart to earn rewards!
+        </div>
+      `}
+
+      ${state.rewardBalance >= 2 ? `
+        <button class="btn btn-sm btn-orange" onclick="redeemRewards()" style="margin-top:8px;width:100%;">
+          Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+// ============================================================
+//  RENDER CART ITEMS
+// ============================================================
+
+function renderCartItems() {
+  const c = document.getElementById('cart-items');
+  if (!c) return;
+
+  if (state.cart.length === 0) {
+    c.innerHTML = `
+      <div class="cart-empty">
+        <div style="font-size:48px">🛒</div>
+        <p>Your cart is empty.</p>
+        <button class="btn btn-primary" onclick="closeCart()" style="margin-top:12px;">Start Shopping</button>
+      </div>
+    `;
+    // Update totals to zero
+    document.getElementById('cart-subtotal').textContent = 'R0.00';
+    document.getElementById('cart-delivery').textContent = 'R5.00';
+    document.getElementById('cart-total').textContent = 'R0.00';
+    return;
+  }
+
+  // Build cart items HTML with proper IDs
+  c.innerHTML = state.cart.map(item => {
+    // Get the item ID (could be id or _id)
+    const itemId = item._id || item.id;
+    
+    // Find the full product for special pricing
+    const product = state.products.find(p => {
+      const pId = p._id || p.id;
+      return String(pId) === String(itemId);
+    });
+    
+    const special = getProductSpecial(product);
+    const isSpecialActive = special !== null;
+    
+    let displayTotal = item.price * item.qty;
+    let specialLabel = '';
+    if (isSpecialActive && item.qty >= special.quantity) {
+      const sets = Math.floor(item.qty / special.quantity);
+      const remainder = item.qty % special.quantity;
+      displayTotal = (sets * special.price) + (remainder * item.price);
+      specialLabel = `🔥 ${special.label} applied!`;
+    }
+    
+    // Use the item's image or fallback
+    const imageUrl = item.image || 'https://via.placeholder.com/70x70?text=📦';
+    
+    return `
+      <div class="cart-item" data-id="${itemId}">
+        <img class="cart-item-img" src="${imageUrl}" onerror="this.src='https://via.placeholder.com/70x70?text=📦'">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name || 'Product'}</div>
+          <div class="cart-item-price">R${(item.price || 0).toFixed(2)} each</div>
+          ${specialLabel ? `<div class="cart-item-special">${specialLabel}</div>` : ''}
+          <div class="cart-item-controls">
+            <button class="qty-btn" data-id="${itemId}" data-change="-1" aria-label="Decrease quantity">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-btn" data-id="${itemId}" data-change="1" aria-label="Increase quantity">+</button>
+            <button class="remove-item" data-id="${itemId}" aria-label="Remove item">🗑</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Use event delegation for cart buttons
+  c.querySelectorAll('.qty-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.dataset.id;
+      const change = parseInt(this.dataset.change);
+      if (id && change) {
+        Cart.updateQty(id, change);
+      }
+    });
+  });
+
+  c.querySelectorAll('.remove-item').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.dataset.id;
+      if (id) {
+        Cart.remove(id);
+      }
+    });
+  });
+
+  // Calculate and update totals
+  const subtotal = Cart.total();
+  const deliveryFee = Cart.deliveryFee();
+  const total = subtotal + deliveryFee;
+  
+  const deliveryDisplay = `R${deliveryFee.toFixed(2)}`;
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+  
+  document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
+  document.getElementById('cart-delivery').textContent = deliveryDisplay;
+  document.getElementById('cart-total').textContent = `R${total.toFixed(2)}`;
+  
+  const deliveryNoteEl = document.getElementById('cart-delivery-note');
+  if (deliveryNoteEl) {
+    deliveryNoteEl.textContent = deliveryNote;
+    deliveryNoteEl.style.display = 'block';
+  }
+  
+  // Update cart count badge
+  updateCartUI();
+}
+
+function openCart() {
+  renderCartItems();
+  document.getElementById('cart-overlay').classList.add('open');
+  document.getElementById('cart-drawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  if (state.user) {
+    loadRewardProgress();
+  }
+
+  const footer = document.querySelector('.cart-footer');
+  if (footer && !document.getElementById('reward-progress-container')) {
+    const container = document.createElement('div');
+    container.id = 'reward-progress-container';
+    container.style.marginBottom = '12px';
+    footer.parentNode.insertBefore(container, footer);
+    updateCartRewardProgress();
+  }
+}
+
+function closeCart() {
+  document.getElementById('cart-overlay').classList.remove('open');
+  document.getElementById('cart-drawer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ============================================================
+//  FILE TO BASE64 HELPER
+// ============================================================
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================
+//  PAYMENT METHODS & CHECKOUT
+// ============================================================
+
+function renderCheckout() {
+  const s = document.getElementById('checkout-section');
+  if (!s) return;
+
+  if (!paymentReference) {
+    paymentReference = generatePaymentReference();
+  }
+
+  const subtotal = Cart.total();
+  const deliveryFee = Cart.deliveryFee();
+  const discount = state.discountAmount || 0;
+  const rewardDiscount = Math.min(state.rewardBalance, subtotal);
+  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
+
+  const cashAllowed = subtotal <= 80;
+  
+  let subscriptionDiscount = 0;
+  let subscriptionPercent = 0;
+  if (state.subscription?.active && state.subscription.config?.discountPercent) {
+    subscriptionPercent = state.subscription.config.discountPercent;
+    subscriptionDiscount = (subtotal * subscriptionPercent) / 100;
+  }
+  
+  const deliveryDisplay = `R${deliveryFee.toFixed(2)}`;
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+  
+  // Get saved addresses
+  const savedAddresses = getUserAddresses();
+  const defaultAddress = getDefaultAddress();
+  
+  // Build address selector HTML
+  let addressSelectorHTML = '';
+  if (savedAddresses.length > 0) {
+    addressSelectorHTML = `
+      <div class="form-group">
+        <label>Saved Addresses</label>
+        <select class="form-input" id="saved-address-select" onchange="loadSelectedAddress(this.value)">
+          <option value="">-- Select a saved address --</option>
+          ${savedAddresses.map(addr => `
+            <option value="${addr.id}" ${addr.isDefault ? 'selected' : ''}>
+              ${addr.address} ${addr.isDefault ? '⭐' : ''}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+    `;
+  }
+
+  s.innerHTML = `
+    <div class="container">
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">Checkout</h1>
+      ${state.cart.length === 0 ? '<div style="text-align:center;padding:80px;"><h3>Cart empty</h3></div>' : `
+        <div class="checkout-grid">
+          <div>
+            <div class="checkout-card">
+              <h3>📱 Delivery Details</h3>
+              <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:16px;border-left:4px solid var(--orange);">
+                <p style="font-size:13px;color:var(--orange-dark);font-weight:600;">${deliveryNote}</p>
+              </div>
+              ${addressSelectorHTML}
+              <div class="form-group"><label>WhatsApp *</label><input class="form-input" id="co-phone" type="tel" value="${state.user?.phone||''}"></div>
+              <div class="form-group"><label>Address *</label><textarea class="form-input" id="co-address">${defaultAddress?.address || state.user?.address || ''}</textarea>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  <button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
+                  ${state.user ? `<button class="btn btn-outline btn-sm" onclick="saveCurrentAddress()">💾 Save Address</button>` : ''}
+                </div>
+              </div>
+              <input type="hidden" id="co-coordinates">
+              <div class="form-group"><label>Notes</label><textarea class="form-input" id="co-notes"></textarea></div>
+            </div>
+
+            <div class="checkout-card">
+              <h3>💳 Payment Method</h3>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${cashAllowed ? 'var(--gray-200)' : '#ffcccc'};border-radius:8px;${cashAllowed ? 'cursor:pointer;' : 'opacity:0.5;'}">
+                  <input type="radio" id="payment-cash" name="payment-method" value="cash" ${cashAllowed ? 'checked' : 'disabled'} onchange="togglePaymentMethod('cash')">
+                  <label for="payment-cash" style="cursor:${cashAllowed ? 'pointer' : 'not-allowed'};flex:1;">
+                    <div style="font-weight:600;">💵 Cash on Delivery</div>
+                    <div style="font-size:13px;color:var(--muted);">Pay when your order arrives</div>
+                    ${!cashAllowed ? `<div style="color:#DC2626;font-size:12px;font-weight:600;margin-top:4px;">⚠️ Cash only available for orders under R80. Current cart: R${subtotal.toFixed(2)}</div>` : ''}
+                  </label>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--gray-200);border-radius:8px;cursor:pointer;">
+                  <input type="radio" id="payment-payshap" name="payment-method" value="payshap" onchange="togglePaymentMethod('payshap')">
+                  <label for="payment-payshap" style="cursor:pointer;flex:1;">
+                    <div style="font-weight:600;">💳 Payshap / Instant EFT</div>
+                    <div style="font-size:13px;color:var(--muted);">Pay instantly via Standard Bank Instant EFT</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="payshap-details" style="display:none;">
+              <div class="checkout-card" style="border:2px solid #ff4444;">
+                <h3 style="color:#DC2626;">⚠️ Important: Instant EFT Payment</h3>
+                <div style="background:#fff5f5;padding:16px;border-radius:8px;margin-bottom:16px;">
+                  <p style="font-weight:600;color:#DC2626;">Please make your payment immediately and upload proof of payment below.</p>
+                  <p style="font-size:13px;color:var(--muted);">
+                    Use this <strong>Payment Reference</strong> when making your payment.
+                  </p>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div><strong>Bank:</strong> Standard Bank</div>
+                  <div><strong>Account Number:</strong> 10217451673</div>
+                  <div><strong>Account Type:</strong> Current Account</div>
+                  <div><strong>Reference:</strong> <span style="background:var(--gray-100);padding:4px 12px;border-radius:4px;font-weight:700;font-family:monospace;font-size:16px;color:#DC2626;">${paymentReference}</span></div>
+                </div>
+                <div class="form-group" style="margin-top:16px;">
+                  <label>Upload Proof of Payment (POP) *</label>
+                  <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;">
+                  <small style="color:var(--muted);">Upload a screenshot or photo of your payment confirmation.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="checkout-card">
+              <h3>🎁 Rewards & Savings</h3>
+              ${state.user ? `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                  <span>Reward Balance</span>
+                  <span><strong style="color:var(--orange);">R${state.rewardBalance.toFixed(2)}</strong></span>
+                </div>
+                ${state.rewardBalance >= 2 ? `
+                  <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button class="btn btn-orange btn-sm" onclick="redeemRewards()" style="flex:1;">
+                      Apply R${Math.min(state.rewardBalance, subtotal).toFixed(2)} off
+                    </button>
+                  </div>
+                ` : '<p style="font-size:12px;color:var(--muted);">Earn R2 for every 10 items</p>'}
+              ` : '<p style="font-size:12px;color:var(--muted);">Sign in to use rewards</p>'}
+            </div>
+          </div>
+
+          <div class="order-summary-card">
+            <h3>Order Summary</h3>
+            ${state.cart.map(i => `<div class="order-line"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}
+            ${subscriptionDiscount > 0 ? `<div class="order-line" style="color:green;"><span>${state.subscription.tier} Discount (${subscriptionPercent}%)</span><span>-R${subscriptionDiscount.toFixed(2)}</span></div>` : ''}
+            ${discount > 0 ? `<div class="order-line" style="color:green;"><span>Points Discount</span><span>-R${discount.toFixed(2)}</span></div>` : ''}
+            ${rewardDiscount > 0 ? `<div class="order-line" style="color:green;"><span>🎁 Reward Discount</span><span>-R${rewardDiscount.toFixed(2)}</span></div>` : ''}
+            <div class="order-line" style="font-weight:600;border-top:2px solid var(--gray-300);padding-top:12px;margin-top:12px;">
+              <span>Subtotal (Items Only)</span>
+              <span>R${subtotal.toFixed(2)}</span>
+            </div>
+            <div class="order-line" style="color:var(--orange);font-weight:600;">
+              <span>🚚 Delivery Fee</span>
+              <span>${deliveryDisplay}</span>
+            </div>
+            <div style="font-size:12px;color:var(--orange);text-align:center;margin:4px 0;">${deliveryNote}</div>
+            <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
+            
+            <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
+              💳 Payment: <span id="selected-payment-label">Cash on Delivery</span>
+            </div>
+            
+            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">Place Order — R${total.toFixed(2)}</button>
+            <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">You'll see your order summary after placing.</p>
+          </div>
+        </div>
+      `}
+    </div>`;
+
+  if (cashAllowed) {
+    document.getElementById('payment-cash').checked = true;
+    document.getElementById('selected-payment-label').textContent = 'Cash on Delivery';
+  } else {
+    document.getElementById('payment-payshap').checked = true;
+    document.getElementById('selected-payment-label').textContent = 'Payshap / Instant EFT';
+    togglePaymentMethod('payshap');
+  }
+}
+
+function loadSelectedAddress(addressId) {
+  const addresses = getUserAddresses();
+  const addr = addresses.find(a => a.id === addressId);
+  if (addr) {
+    document.getElementById('co-address').value = addr.address;
+    document.getElementById('co-phone').value = addr.phone || document.getElementById('co-phone').value;
+    toast('📂 Address loaded');
+  }
+}
+
+function togglePaymentMethod(method) {
+  const payshapDetails = document.getElementById('payshap-details');
+  const label = document.getElementById('selected-payment-label');
+  
+  if (method === 'payshap') {
+    payshapDetails.style.display = 'block';
+    label.textContent = 'Payshap / Instant EFT';
+  } else {
+    payshapDetails.style.display = 'none';
+    label.textContent = 'Cash on Delivery';
+  }
+}
+
+// ============================================================
+//  SUBMIT ORDER
+// ============================================================
+
+async function submitOrder() {
+  const p = document.getElementById('co-phone')?.value.trim();
+  const a = document.getElementById('co-address')?.value.trim();
+  const c = document.getElementById('co-coordinates')?.value.trim();
+  const n = document.getElementById('co-notes')?.value.trim();
+  const btn = document.getElementById('place-order-btn');
+
+  const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'cash';
+  
+  let popBase64 = null;
+  if (paymentMethod === 'payshap') {
+    const popInput = document.getElementById('co-pop');
+    if (popInput && popInput.files && popInput.files.length > 0) {
+      popBase64 = await fileToBase64(popInput.files[0]);
+    } else {
+      toast('⚠️ Please upload proof of payment for Payshap orders');
+      return;
+    }
+  }
+
+  if (!p || !a) { toast('⚠️ Fill required fields'); return; }
+
+  const subtotal = Cart.total();
+  if (paymentMethod === 'cash' && subtotal > 80) {
+    toast('⚠️ Cash orders cannot exceed R80. Please use Payshap or remove items.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  btn.textContent = 'Placing Order…';
+
+  const discount = state.discountAmount || 0;
+  const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
+  const deliveryFee = Cart.deliveryFee();
+  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
+
+  try {
+    const orderData = {
+      customer: { 
+        name: state.user?.name || 'Guest', 
+        email: state.user?.email || '', 
+        phone: p, 
+        address: a, 
+        coordinates: c, 
+        notes: n 
+      },
+      items: state.cart,
+      total: total,
+      subtotal: subtotal,
+      deliveryFee: deliveryFee,
+      discount: discount,
+      rewardDiscount: rewardDiscount,
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === 'cash' ? 'pending' : 'pending_payment',
+      userId: state.user?._id || null
+    };
+
+    if (paymentMethod === 'payshap') {
+      if (!paymentReference) {
+        paymentReference = generatePaymentReference();
+      }
+      orderData.paymentReference = paymentReference;
+      orderData.proofOfPayment = popBase64;
+    }
+
+    const o = await placeOrder(orderData);
+    
+    paymentReference = '';
+    
+    Cart.clear();
+    state.discountAmount = 0;
+    state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
+    
+    showOrderSuccessSummary(o, total, paymentMethod, deliveryFee);
+    fetchUserPoints(state.user?.email);
+    updateRewardUI();
+    
+  } catch (err) {
+    toast('❌ Failed to place order: ' + err.message);
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = 'Place Order';
+  }
+}
+
+// ============================================================
+//  ORDER SUCCESS SUMMARY
+// ============================================================
+
+function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
+  const s = document.getElementById('checkout-section');
+  
+  const paymentMessage = paymentMethod === 'cash' 
+    ? 'Pay on delivery. Our driver will contact you.'
+    : 'We will verify your payment and start preparing your order.';
+  
+  const paymentStatus = paymentMethod === 'cash' 
+    ? '<span class="badge badge-warn">Pending (Cash)</span>'
+    : '<span class="badge badge-warn">Awaiting Payment Verification</span>';
+
+  const deliveryDisplay = `R${(deliveryFee || 5).toFixed(2)}`;
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+
+  s.innerHTML = `
+    <div class="container">
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:56px;margin-bottom:16px;">✅</div>
+        <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
+        <p style="color:var(--muted);margin-bottom:32px;">${paymentMessage}</p>
+        <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
+          <div class="card-body">
+            <h3 style="margin-bottom:16px;">📋 Order Summary</h3>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Order ID</span>
+              <span style="font-family:monospace;font-weight:700;">${o.id}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Status</span>
+              ${paymentStatus}
+            </div>
+            ${paymentMethod === 'payshap' ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Method</span>
+              <span>💳 Payshap / Instant EFT</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Reference</span>
+              <span style="font-family:monospace;font-weight:700;background:#fff5f5;padding:2px 8px;border-radius:4px;border:1px solid #ffcccc;">${o.paymentReference || 'N/A'}</span>
+            </div>
+            <div style="background:#fff5f5;padding:12px;border-radius:8px;margin:8px 0;border:1px solid #ffcccc;">
+              <p style="font-size:13px;color:#DC2626;font-weight:600;">📌 Use this reference for your payment:</p>
+              <p style="font-size:20px;font-weight:800;text-align:center;font-family:monospace;color:#DC2626;">${o.paymentReference || 'N/A'}</p>
+              <p style="font-size:12px;color:var(--muted);text-align:center;">Standard Bank: 10217451673</p>
+            </div>
+            ` : `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Payment Method</span>
+              <span>💵 Cash on Delivery</span>
+            </div>
+            `}
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">WhatsApp</span>
+              <span>${o.customer?.phone}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Address</span>
+              <span>${o.customer?.address}</span>
+            </div>
+            <div style="margin-top:16px;">
+              <h4 style="margin-bottom:8px;">🛒 Items</h4>
+              ${(o.items||[]).map(i => `
+                <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;">
+                  <span>${i.name} × ${i.qty}</span>
+                  <span>R${(i.price*i.qty).toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+              <span style="font-weight:600;">Subtotal</span>
+              <span>R${(o.subtotal || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);color:var(--orange);font-weight:600;">
+              <span>🚚 Delivery Fee</span>
+              <span>${deliveryDisplay}</span>
+            </div>
+            <div style="font-size:11px;color:var(--orange);text-align:center;margin:4px 0;">${deliveryNote}</div>
+            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--orange);margin-top:12px;font-weight:800;font-size:18px;">
+              <span>Total</span>
+              <span style="color:var(--orange);">R${total.toFixed(2)}</span>
+            </div>
+            ${paymentMethod === 'payshap' ? `
+              <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
+                ⚠️ Your order will be processed once payment is verified.
+              </p>
+              <p style="font-size:12px;color:var(--muted);text-align:center;">
+                Use <strong>${o.paymentReference || 'N/A'}</strong> as your payment reference.
+              </p>
+            ` : `
+              <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
+            `}
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-orange" onclick="navigateTo('home')">🏠 Continue Shopping</button>
+          <button class="btn btn-outline" onclick="navigateTo('orders')">📋 My Orders</button>
+        </div>
+      </div>
+    </div>`;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+//  ORDERS
+// ============================================================
+
+async function renderOrdersPage() {
+  const s = document.getElementById('orders-section');
+  if (!s) return;
+  if (!state.user) { s.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>'; return; }
+  s.innerHTML = '<div class="container"><div style="text-align:center;padding:60px;">Loading…</div></div>';
+  try {
+    const orders = await fetchOrders();
+    const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
+    s.innerHTML = `
+      <div class="container">
+        <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">My Orders</h1>
+        ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
+          <div style="overflow-x:auto;">
+            <table class="orders-table">
+              <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${myOrders.reverse().map(o => {
+                  const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
+                  const showInvoice = o.status === 'paid' || o.status === 'completed';
+                  const paymentLabel = o.paymentMethod === 'cash' ? '💵 Cash' : '💳 Payshap';
+                  return `<tr>
+                    <td style="font-weight:700;font-size:12px;">${o.id}</td>
+                    <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>${o.items?.length||0}</td>
+                    <td><strong>R${o.total?.toFixed(2)}</strong></td>
+                    <td><span class="badge ${o.paymentMethod === 'cash' ? 'badge-success' : 'badge-info'}">${paymentLabel}</span></td>
+                    <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
+                    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
+                      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
+                    </div></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`}
+      </div>`;
+  } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
+}
+
+async function cancelOrder(orderId) {
+  if (!confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${API}/orders/${orderId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); toast('❌ ' + err.error); return; }
+    toast('🗑 Order cancelled');
+    renderOrdersPage();
+  } catch { toast('❌ Failed to cancel order'); }
+}
+
+function viewInvoice(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header"><h3>📄 Invoice</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <img src="habibiLogo.png" style="width:50px;"><div style="font-weight:700;">Quick 2 Shop</div>
+        <table>${i}</table>
+        <p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p>
+        <p>${order.customer?.name||'Customer'}</p>
+        <p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p>
+        <p>${order.id}</p>
+        <button class="btn btn-primary btn-sm" onclick="downloadPDF(${JSON.stringify(order).replace(/"/g,'&quot;')})">📥 Download PDF</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+async function downloadPDF(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Inter}.invoice{max-width:380px;margin:0 auto;padding:24px}.logo img{width:60px}.store-name{font-size:18px;font-weight:700}table{width:100%}</style></head><body><div class="invoice"><div class="logo"><img src="habibiLogo.png"><div class="store-name">Quick 2 Shop</div></div><table>${i}</table><p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p><p>${order.customer?.name||'Customer'}</p><p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p><p>${order.id}</p></div></body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(h);
+  w.document.close();
+  setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
+}
+
+// ============================================================
+//  AUTH FUNCTIONS
+// ============================================================
+
+function openAuthModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Welcome 🛒</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchAuthTab('login',this)">Sign In</button>
+          <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
+        </div>
+        <div id="auth-form-wrap">${loginForm()}</div>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function loginForm() {
+  return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
+}
+
+function registerForm() {
+  return `<form onsubmit="event.preventDefault();submitRegister();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="auth-name" required></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" id="auth-password-confirm" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button></form>`;
+}
+
+function switchAuthTab(t, el) {
+  document.querySelectorAll('.auth-tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('auth-form-wrap').innerHTML = t === 'login' ? loginForm() : registerForm();
+}
+
+function showForgotPasswordForm() {
+  document.getElementById('auth-form-wrap').innerHTML = `
+    <form onsubmit="event.preventDefault();requestOTP();">
+      <div id="auth-error" class="form-error" style="display:none;"></div>
+      <div id="auth-success" class="form-error" style="display:none;color:green;"></div>
+      <p>Enter your email for an OTP.</p>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reset-email" type="email" required></div>
+      <div id="otp-fields" style="display:none;">
+        <div class="form-group"><label class="form-label">OTP</label><input class="form-input" id="reset-otp" maxlength="6"></div>
+        <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="reset-new-password" type="password"></div>
+        <div class="form-group"><label class="form-label">Confirm</label><input class="form-input" id="reset-confirm-password" type="password"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="reset-submit-btn">Send OTP</button>
+    </form>
+    <p style="text-align:center;margin-top:14px;"><a href="#" onclick="switchAuthTab('login',document.querySelector('.auth-tab:first-child'))">← Back</a></p>
+  `;
+}
+
+let resetEmail = '';
+
+async function requestOTP() {
+  const e = document.getElementById('reset-email').value.trim(), err = document.getElementById('auth-error'), ok = document.getElementById('auth-success'), btn = document.getElementById('reset-submit-btn');
+  err.style.display = 'none';
+  ok.style.display = 'none';
+  if (!e) { err.textContent = 'Enter email'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${API}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: e })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    resetEmail = e;
+    document.getElementById('otp-fields').style.display = 'block';
+    btn.textContent = 'Reset Password';
+    btn.setAttribute('onclick', 'event.preventDefault();verifyOTPAndReset()');
+    ok.textContent = 'OTP sent!';
+    ok.style.display = 'block';
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; }
+}
+
+async function verifyOTPAndReset() {
+  const o = document.getElementById('reset-otp').value.trim(),
+    np = document.getElementById('reset-new-password').value,
+    cp = document.getElementById('reset-confirm-password').value,
+    err = document.getElementById('auth-error'),
+    ok = document.getElementById('auth-success'),
+    btn = document.getElementById('reset-submit-btn');
+  if (!o || !np || !cp) { err.textContent = 'All fields required'; err.style.display = 'block'; return; }
+  if (np !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch(`${API}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, otp: o, newPassword: np })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    ok.textContent = 'Password reset!';
+    ok.style.display = 'block';
+    setTimeout(() => switchAuthTab('login', document.querySelector('.auth-tab:first-child')), 2000);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
+}
+
+async function submitLogin() {
+  const e = document.getElementById('auth-email').value.trim(),
+    p = document.getElementById('auth-password').value,
+    err = document.getElementById('auth-error'),
+    btn = document.getElementById('auth-submit-btn');
+  err.style.display = 'none';
+  if (!e || !p) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  try {
+    const u = await loginUser(e, p);
+    state.user = u;
+    localStorage.setItem('habibi_user', JSON.stringify(u));
+    updateAuthUI();
+    closeModal();
+    await loadUserRewards();
+    toast(`👋 Welcome, ${u.name}!`);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+}
+
+async function submitRegister() {
+  const n = document.getElementById('auth-name')?.value?.trim(),
+    e = document.getElementById('auth-email')?.value?.trim(),
+    p = document.getElementById('auth-password')?.value,
+    cp = document.getElementById('auth-password-confirm')?.value,
+    err = document.getElementById('auth-error'),
+    btn = document.getElementById('auth-submit-btn');
+  err.style.display = 'none';
+  if (!n || !e || !p || !cp) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
+  if (p !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  try {
+    const u = await registerUser(n, e, p);
+    state.user = u;
+    localStorage.setItem('habibi_user', JSON.stringify(u));
+    updateAuthUI();
+    closeModal();
+    await loadUserRewards();
+    toast(`🎉 Welcome, ${u.name}!`);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+}
+
+function logout() {
+  state.user = null;
+  state.points = 0;
+  state.rewardBalance = 0;
+  localStorage.removeItem('habibi_user');
+  updateAuthUI();
+  toast('👋 Signed out');
+  navigateTo('home');
+}
+
+function updatePointsDisplay() {
+  const btn = document.getElementById('points-btn');
+  if (btn && state.user) {
+    btn.style.display = 'inline-flex';
+    btn.innerHTML = `🎁 ${state.points} Pts`;
+  }
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('auth-btn'), userDisplay = document.getElementById('user-display');
+  if (state.user) {
+    if (btn) btn.style.display = 'none';
+    if (userDisplay) {
+      userDisplay.style.display = 'flex';
+      userDisplay.innerHTML = `
+        <div class="user-info">
+          <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
+            🎁 R${state.rewardBalance.toFixed(2)}
+          </button>
+          <div class="user-avatar">${state.user.name[0].toUpperCase()}</div>
+          <span>${state.user.name.split(' ')[0]}</span>
+          <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
+        </div>
+      `;
+    }
+  } else {
+    if (btn) btn.style.display = 'flex';
+    if (userDisplay) userDisplay.style.display = 'none';
+  }
+}
+
+// ============================================================
+//  POINTS
+// ============================================================
+
+function showPointsModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body" style="text-align:center;padding:24px;">
+        <div style="font-size:48px;">🎁</div>
+        <div style="font-size:32px;font-weight:800;color:var(--orange);">${state.points||0} Points</div>
+        <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
+        <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
+        <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
+        ${(state.points||0)>=10?`<button class="btn btn-orange btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function usePointsNow() { closeModal(); navigateTo('checkout'); setTimeout(() => { if (state.points >= 10) redeemAllPoints(); }, 500); }
+
+function redeemAllPoints() {
+  if (state.points < 10) { toast('Need at least 10 points'); return; }
+  fetch(`${API}/user/redeem-points`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: state.user.email, points: state.points })
+  }).then(r => r.json()).then(d => {
+    if (d.success) { state.discountAmount = state.points; state.points = 0; updatePointsDisplay(); renderCheckout(); toast(`✅ R${d.redeemed.toFixed(2)} off!`); }
+    else { toast('❌ ' + d.error); }
+  });
+}
+
+// ============================================================
+//  LOCATION
+// ============================================================
+
+async function shareLocation() {
+  if (!navigator.geolocation) { toast('⚠️ Not supported'); return; }
+  const b = document.getElementById('location-btn');
+  b.disabled = true;
+  b.textContent = 'Getting…';
+  navigator.geolocation.getCurrentPosition(async (p) => {
+    const c = `${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}`;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}`);
+      const d = await r.json();
+      document.getElementById('co-address').value = d.display_name || `📍 ${c}`;
+      document.getElementById('co-coordinates').value = c;
+    } catch {
+      document.getElementById('co-address').value = `📍 ${c}`;
+      document.getElementById('co-coordinates').value = c;
+    }
+    b.disabled = false;
+    b.textContent = '📍 Share My Location';
+  }, () => { b.disabled = false; b.textContent = '📍 Share My Location'; toast('⚠️ Failed') });
+}
+
+// ============================================================
+//  ABOUT & TERMS
+// ============================================================
+
+function showAboutUs() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>About Quick 2 Shop</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <p><strong>Quick 2 Shop</strong> is your community store — fresh food, clothing, electronics & more delivered to your door.</p>
+        <p>📞 WhatsApp: <strong>072 405 2868</strong></p>
+        <p>📧 habibishoppingsa@gmail.com</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function showTerms() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Terms & Conditions</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <h4>1. Orders</h4><p>Subject to availability.</p>
+        <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
+        <h4>3. Payment</h4><p>Cash on delivery or Instant EFT.</p>
+        <h4>4. Delivery</h4><p>Free in our area.</p>
+        <h4>5. Returns</h4><p>Within 24 hours.</p>
+        <h4>6. Privacy</h4><p>Never shared.</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// ============================================================
+//  ROUTING
+// ============================================================
+
+function navigateTo(p) {
+  state.currentPage = p;
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  const t = document.getElementById(`page-${p}`);
+  if (t) t.classList.add('active');
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.dataset.page === p));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  closeCart();
+  if (p === 'home') { loadProducts(); loadHeroSlideshow(); }
+  if (p === 'checkout') renderCheckout();
+  if (p === 'orders') renderOrdersPage();
+}
+
+// ============================================================
+//  MOBILE MENU
+// ============================================================
+
+function toggleMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.toggle('mobile-open');
+  hamburger.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.remove('mobile-open');
+  hamburger.classList.remove('active');
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+
+async function init() {
+  updateCartUI();
+  updateAuthUI();
+
+  const u = localStorage.getItem('habibi_user');
+  if (u) {
+    try {
+      state.user = JSON.parse(u);
+      await loadUserRewards();
+    } catch {
+      localStorage.removeItem('habibi_user');
+    }
+  }
+
+  await renderCategories();
+  await loadProducts();
+  await loadHeroSlideshow();
+
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  const si = document.getElementById('search-input');
+  if (si) {
+    let d;
+    si.addEventListener('input', e => {
+      clearTimeout(d);
+      state.searchQuery = e.target.value;
+      d = setTimeout(() => loadProducts(), 350);
+    });
+  }
+
+  const ss = document.getElementById('sort-select');
+  if (ss) {
+    ss.addEventListener('change', e => {
+      state.sortBy = e.target.value;
+      renderProducts(state.products);
+    });
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+  document.getElementById('cart-overlay').addEventListener('click', closeCart);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeCart(); closeMobileMenu(); }
+  });
+  
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileMenu);
+  }
+  
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', closeMobileMenu);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
