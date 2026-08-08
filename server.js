@@ -20,6 +20,7 @@ let emailConfigured = false;
 // ============================================================
 //  REWARDS CONFIGURATION
 // ============================================================
+
 const REWARD_CONFIG = {
   itemsPerReward: 10,
   rewardAmount: 2,
@@ -255,6 +256,8 @@ async function connectDB() {
     await db.collection('products').createIndex({ category: 1 });
     await db.collection('orders').createIndex({ id: 1 });
     await db.collection('orders').createIndex({ userId: 1, createdAt: -1 });
+    await db.collection('analytics_events').createIndex({ sessionId: 1 });
+    await db.collection('analytics_events').createIndex({ createdAt: -1 });
     await seedDefaultData();
     await setupEmail();
   } catch (err) {
@@ -435,7 +438,6 @@ async function sendDeliveryNotification(order) {
     `<h2>Your order is on the way!</h2>`
   );
 }
-
 // ============================================================
 //  PRODUCTS API
 // ============================================================
@@ -1059,7 +1061,6 @@ app.post('/api/reset-password', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // ============================================================
 //  CATEGORIES API
 // ============================================================
@@ -1186,6 +1187,225 @@ app.delete('/api/slides/:id', async (req, res) => {
 });
 
 // ============================================================
+//  ANALYTICS API
+// ============================================================
+
+// Track event
+app.post('/api/analytics/track', async (req, res) => {
+  try {
+    const event = {
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+    
+    // Remove sensitive data
+    delete event.userAgent;
+    
+    await db.collection('analytics_events').insertOne(event);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Analytics tracking error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get analytics data (for admin)
+app.get('/api/analytics/stats', async (req, res) => {
+  try {
+    const { period = '7d' } = req.query;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(period.replace('d', '')));
+    
+    const pipeline = [
+      {
+        $match: {
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: '$eventType',
+          count: { $sum: 1 },
+          data: { $push: '$data' }
+        }
+      }
+    ];
+    
+    const events = await db.collection('analytics_events').aggregate(pipeline).toArray();
+    
+    // Get unique sessions
+    const sessions = await db.collection('analytics_events').distinct('sessionId', {
+      createdAt: { $gte: cutoffDate.toISOString() }
+    });
+    
+    // Get page views
+    const pageViews = await db.collection('analytics_events').aggregate([
+      {
+        $match: {
+          eventType: 'page_view',
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: '$data.page',
+          count: { $sum: 1 },
+          avgTime: { $avg: '$data.timeOnPage' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]).toArray();
+    
+    // Get products viewed
+    const productViews = await db.collection('analytics_events').aggregate([
+      {
+        $match: {
+          eventType: 'product_view',
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: '$data.productId',
+          productName: { $first: '$data.productName' },
+          views: { $sum: 1 }
+        }
+      },
+      { $sort: { views: -1 } },
+      { $limit: 10 }
+    ]).toArray();
+    
+    // Get cart events
+    const cartEvents = await db.collection('analytics_events').aggregate([
+      {
+        $match: {
+          eventType: { $in: ['add_to_cart', 'checkout_start', 'purchase'] },
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: '$eventType',
+          count: { $sum: 1 }
+        }
+      }
+    ]).toArray();
+    
+    // Get drop-off points (users who viewed products but didn't purchase)
+    const viewedProducts = await db.collection('analytics_events').distinct('sessionId', {
+      eventType: 'product_view',
+      createdAt: { $gte: cutoffDate.toISOString() }
+    });
+    
+    const purchasedSessions = await db.collection('analytics_events').distinct('sessionId', {
+      eventType: 'purchase',
+      createdAt: { $gte: cutoffDate.toISOString() }
+    });
+    
+    const droppedOffSessions = viewedProducts.filter(s => !purchasedSessions.includes(s));
+    
+    // Get average session duration
+    const sessionDurations = await db.collection('analytics_events').aggregate([
+      {
+        $match: {
+          eventType: 'session_end',
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: '$data.sessionDuration' }
+        }
+      }
+    ]).toArray();
+    
+    const avgDuration = sessionDurations.length > 0 ? sessionDurations[0].avgDuration : 0;
+    
+    // Format response
+    const eventsMap = {};
+    events.forEach(e => {
+      eventsMap[e._id] = e.count;
+    });
+    
+    const cartMap = {};
+    cartEvents.forEach(e => {
+      cartMap[e._id] = e.count;
+    });
+    
+    res.json({
+      summary: {
+        totalSessions: sessions.length,
+        totalEvents: events.reduce((sum, e) => sum + e.count, 0),
+        uniqueVisitors: sessions.length,
+        averageSessionDuration: avgDuration,
+        dropOffRate: viewedProducts.length > 0 ? 
+          ((droppedOffSessions.length / viewedProducts.length) * 100).toFixed(1) + '%' : 
+          '0%'
+      },
+      events: eventsMap,
+      pageViews: pageViews,
+      topProducts: productViews,
+      cartFunnel: {
+        viewed: viewedProducts.length,
+        addedToCart: cartMap['add_to_cart'] || 0,
+        checkoutStarted: cartMap['checkout_start'] || 0,
+        purchased: cartMap['purchase'] || 0
+      },
+      dropOffSessions: droppedOffSessions.length
+    });
+  } catch (err) {
+    console.error('Analytics stats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get detailed analytics for a specific session
+app.get('/api/analytics/session/:sessionId', async (req, res) => {
+  try {
+    const events = await db.collection('analytics_events')
+      .find({ sessionId: req.params.sessionId })
+      .sort({ createdAt: 1 })
+      .toArray();
+    
+    res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get analytics for a specific period
+app.get('/api/analytics/timeline', async (req, res) => {
+  try {
+    const { days = 7 } = req.query;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+    
+    const timeline = await db.collection('analytics_events').aggregate([
+      {
+        $match: {
+          createdAt: { $gte: cutoffDate.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: { $dateFromString: { dateString: '$createdAt' } } }
+          },
+          views: { $sum: { $cond: [{ $eq: ['$eventType', 'page_view'] }, 1, 0] } },
+          visits: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]).toArray();
+    
+    res.json({ timeline });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 //  STATIC FILES & FALLBACK
 // ============================================================
 
@@ -1216,4 +1436,5 @@ app.listen(PORT, () => {
   console.log(`  • ${REWARD_CONFIG.streak.enabled ? '✅' : '❌'} Streak rewards enabled`);
   console.log(`  • ${REWARD_CONFIG.subscription.enabled ? '✅' : '❌'} Subscriptions enabled`);
   console.log(`  • Tiers: Bronze → Silver (50) → Gold (150) → Platinum (300)`);
+  console.log(`\n📊 Analytics tracking enabled`);
 });
