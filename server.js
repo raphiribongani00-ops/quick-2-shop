@@ -25,49 +25,24 @@ const REWARD_CONFIG = {
   itemsPerReward: 10,
   rewardAmount: 2,
   minItemPrice: 10,
-
   streak: {
     enabled: true,
     minOrders: 3,
     weeklyBonus: 5,
-    streakBonus: {
-      4: 10,
-      8: 25,
-      12: 50,
-    }
+    streakBonus: { 4: 10, 8: 25, 12: 50 }
   },
-
   subscription: {
     enabled: true,
-    basic: {
-      price: 50,
-      bonusReward: 2,
-      freeDelivery: true,
-      discountPercent: 5,
-    },
-    premium: {
-      price: 100,
-      bonusReward: 5,
-      freeDelivery: true,
-      discountPercent: 10,
-      freeItemMonthly: true,
-      freeItemValue: 30,
-    }
+    basic: { price: 50, bonusReward: 2, freeDelivery: true, discountPercent: 5 },
+    premium: { price: 100, bonusReward: 5, freeDelivery: true, discountPercent: 10, freeItemMonthly: true, freeItemValue: 30 }
   },
-
   tiers: {
     bronze: { label: '🥉 Bronze', minItems: 0, bonusPercent: 0 },
     silver: { label: '🥈 Silver', minItems: 50, bonusPercent: 10 },
     gold: { label: '🥇 Gold', minItems: 150, bonusPercent: 20 },
-    platinum: { label: '💎 Platinum', minItems: 300, bonusPercent: 30 },
+    platinum: { label: '💎 Platinum', minItems: 300, bonusPercent: 30 }
   },
-
-  milestones: {
-    10: 5,
-    25: 15,
-    50: 35,
-    100: 80,
-  }
+  milestones: { 10: 5, 25: 15, 50: 35, 100: 80 }
 };
 
 // ============================================================
@@ -76,16 +51,7 @@ const REWARD_CONFIG = {
 
 function calculateItemReward(items) {
   if (!items || !items.length) {
-    return {
-      rewardAmount: 0,
-      rewardSets: 0,
-      eligibleItems: 0,
-      ineligibleItems: 0,
-      progressToNext: 0,
-      itemsNeededForNext: REWARD_CONFIG.itemsPerReward,
-      progressPercent: 0,
-      details: { totalItems: 0, eligibleCount: 0, ineligibleCount: 0, rewardSets: 0 }
-    };
+    return { rewardAmount: 0, rewardSets: 0, eligibleItems: 0, ineligibleItems: 0, progressToNext: 0, itemsNeededForNext: REWARD_CONFIG.itemsPerReward, progressPercent: 0, details: { totalItems: 0, eligibleCount: 0, ineligibleCount: 0, rewardSets: 0 } };
   }
 
   const eligibleItems = items.filter(item => (item.price || 0) >= REWARD_CONFIG.minItemPrice);
@@ -104,13 +70,7 @@ function calculateItemReward(items) {
     progressToNext: remainingToNext,
     itemsNeededForNext: itemsNeededForNext,
     progressPercent: Math.round((remainingToNext / REWARD_CONFIG.itemsPerReward) * 100),
-    details: {
-      totalItems: items.length,
-      eligibleCount: eligibleCount,
-      ineligibleCount: ineligibleCount,
-      rewardSets: rewardSets,
-      rewardPerSet: REWARD_CONFIG.rewardAmount,
-    }
+    details: { totalItems: items.length, eligibleCount: eligibleCount, ineligibleCount: ineligibleCount, rewardSets: rewardSets, rewardPerSet: REWARD_CONFIG.rewardAmount }
   };
 }
 
@@ -141,11 +101,7 @@ function calculateStreak(orders) {
     bonusAmount += REWARD_CONFIG.streak.weeklyBonus;
   }
 
-  return {
-    streakCount: streak,
-    bonusAmount: bonusAmount,
-    nextBonusAt: streak >= 12 ? null : Math.ceil((streak + 1) / 4) * 4,
-  };
+  return { streakCount: streak, bonusAmount: bonusAmount, nextBonusAt: streak >= 12 ? null : Math.ceil((streak + 1) / 4) * 4 };
 }
 
 function getUserTier(totalRewardsEarned) {
@@ -199,7 +155,7 @@ function calculateTotalRewardValue(user, orders) {
     totalRewardsEarned: totalRewardsEarned,
     tier: tier,
     streakCount: streak.streakCount,
-    progress: baseResult,
+    progress: baseResult
   };
 }
 
@@ -256,8 +212,6 @@ async function connectDB() {
     await db.collection('products').createIndex({ category: 1 });
     await db.collection('orders').createIndex({ id: 1 });
     await db.collection('orders').createIndex({ userId: 1, createdAt: -1 });
-    await db.collection('analytics_events').createIndex({ sessionId: 1 });
-    await db.collection('analytics_events').createIndex({ createdAt: -1 });
     await seedDefaultData();
     await setupEmail();
   } catch (err) {
@@ -285,51 +239,13 @@ async function seedDefaultData() {
   const prodCount = await db.collection('products').countDocuments();
   if (prodCount === 0) {
     await db.collection('products').insertMany([
-      { 
-        name: "Clover Butro Spread 500g", 
-        price: 102, 
-        stock: 100, 
-        category: "food", 
-        rating: 5, 
-        image: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=320&q=80", 
-        description: "Full cream butter spread",
-        featured: false,
-        special: null,
-        reviews: 0,
-        createdAt: new Date().toISOString() 
-      },
-      { 
-        name: "Coca-Cola Original Taste 2L", 
-        price: 31, 
-        stock: 100, 
-        category: "drinks", 
-        rating: 5, 
-        image: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=320&q=80", 
-        description: "Classic Coke 2L bottle",
-        featured: false,
-        special: {
-          type: 'bulk',
-          quantity: 2,
-          price: 55,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          label: 'Buy 2 for R55'
-        },
-        reviews: 0,
-        createdAt: new Date().toISOString() 
-      },
-      { 
-        name: "Nike Air Max", 
-        price: 850, 
-        stock: 8, 
-        category: "shoes", 
-        rating: 4.8, 
-        image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=320&q=80", 
-        description: "Classic sneakers",
-        featured: true,
-        special: null,
-        reviews: 0,
-        createdAt: new Date().toISOString() 
-      }
+      { name: "Fresh Apple 🍎", price: 5, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=320&q=80", description: "Fresh red apples, perfect for snacking", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Banana 🍌", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=320&q=80", description: "Fresh yellow bananas", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Orange 🍊", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1547514701-42782101795e?w=320&q=80", description: "Fresh juicy oranges", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Avocado 🥑", price: 8, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=320&q=80", description: "Fresh avocados, ready to eat", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Carrot 🥕", price: 2, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=320&q=80", description: "Fresh organic carrots", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Tomato 🍅", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=320&q=80", description: "Fresh ripe tomatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+      { name: "Potato 🥔", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=320&q=80", description: "Fresh potatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() }
     ]);
     console.log('✅ Default products seeded');
   }
@@ -337,20 +253,8 @@ async function seedDefaultData() {
   const slideCount = await db.collection('slides').countDocuments();
   if (slideCount === 0) {
     await db.collection('slides').insertMany([
-      {
-        image: "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=1920&q=80",
-        caption: "Welcome to Quick 2 Shop!",
-        active: true,
-        order: 1,
-        createdAt: new Date().toISOString()
-      },
-      {
-        image: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1920&q=80",
-        caption: "Fresh groceries delivered to your door",
-        active: true,
-        order: 2,
-        createdAt: new Date().toISOString()
-      }
+      { image: "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=1920&q=80", caption: "Welcome to Quick 2 Shop!", active: true, order: 1, createdAt: new Date().toISOString() },
+      { image: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1920&q=80", caption: "Fresh groceries delivered to your door", active: true, order: 2, createdAt: new Date().toISOString() }
     ]);
     console.log('✅ Default slides seeded');
   }
@@ -414,9 +318,7 @@ async function sendPasswordResetOTP(email, otp) {
 
 async function sendRewardNotification(email, amount, reason) {
   return sendEmail(email, '🎁 Quick 2 Shop - Rewards Update',
-    `<h2>You've earned R${amount.toFixed(2)} in rewards!</h2>
-     <p>${reason}</p>
-     <p>Keep shopping to earn more rewards!</p>`
+    `<h2>You've earned R${amount.toFixed(2)} in rewards!</h2><p>${reason}</p><p>Keep shopping to earn more rewards!</p>`
   );
 }
 
@@ -425,11 +327,7 @@ async function sendOrderInvoice(order) {
     `<tr><td>${i.name}</td><td>${i.qty}</td><td>R${(i.price * i.qty).toFixed(2)}</td></tr>`
   ).join('');
   return sendEmail(order.customer?.email, `Quick 2 Shop - Order #${order.id}`,
-    `<h2>Thank you!</h2>
-     <p>Order: ${order.id}</p>
-     <p>Total: R${order.total.toFixed(2)}</p>
-     ${order.rewardEarned ? `<p>🎁 Reward earned: R${order.rewardEarned.toFixed(2)}</p>` : ''}
-     <table>${items}</table>`
+    `<h2>Thank you!</h2><p>Order: ${order.id}</p><p>Total: R${order.total.toFixed(2)}</p>${order.rewardEarned ? `<p>🎁 Reward earned: R${order.rewardEarned.toFixed(2)}</p>` : ''}<table>${items}</table>`
   );
 }
 
@@ -438,6 +336,7 @@ async function sendDeliveryNotification(order) {
     `<h2>Your order is on the way!</h2>`
   );
 }
+
 // ============================================================
 //  PRODUCTS API
 // ============================================================
@@ -445,28 +344,17 @@ async function sendDeliveryNotification(order) {
 app.get('/api/products', async (req, res) => {
   try {
     const query = {};
-    
     if (req.query.category && req.query.category !== 'all') {
-      const category = decodeURIComponent(req.query.category);
-      query.category = category;
+      query.category = decodeURIComponent(req.query.category);
     }
-    
     if (req.query.featured === 'true') {
       query.featured = true;
     }
-    
     let products;
     try {
       if (req.query.search && req.query.search.trim()) {
         const regex = new RegExp(req.query.search.trim(), 'i');
-        products = await db.collection('products').find({
-          ...query,
-          $or: [
-            { name: regex },
-            { description: regex },
-            { category: regex }
-          ]
-        }).toArray();
+        products = await db.collection('products').find({ ...query, $or: [{ name: regex }, { description: regex }, { category: regex }] }).toArray();
       } else {
         products = await db.collection('products').find(query).toArray();
       }
@@ -474,16 +362,10 @@ app.get('/api/products', async (req, res) => {
       console.error('❌ Database query error:', dbError);
       products = [];
     }
-    
     if (!products || !Array.isArray(products)) {
       products = [];
     }
-    
-    const formatted = products.map(p => ({
-      ...p,
-      id: p._id ? p._id.toString() : p.id || 'unknown'
-    }));
-    
+    const formatted = products.map(p => ({ ...p, id: p._id ? p._id.toString() : p.id || 'unknown' }));
     res.json(formatted);
   } catch (err) {
     console.error('❌ Products error:', err);
@@ -504,12 +386,7 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const np = {
-      ...req.body,
-      featured: req.body.featured || false,
-      special: req.body.special || null,
-      createdAt: new Date().toISOString()
-    };
+    const np = { ...req.body, featured: req.body.featured || false, special: req.body.special || null, createdAt: new Date().toISOString() };
     const result = await db.collection('products').insertOne(np);
     res.status(201).json({ ...np, _id: result.insertedId });
   } catch (err) {
@@ -582,25 +459,12 @@ app.post('/api/orders', async (req, res) => {
     if (rewardAmount > 0 && order.userId) {
       order.rewardEarned = rewardAmount;
       order.rewardDetails = rewardResult.details;
-
       await db.collection('users').updateOne(
         { _id: new ObjectId(order.userId) },
-        {
-          $inc: {
-            rewardBalance: rewardAmount,
-            totalRewardsEarned: rewardResult.rewardSets,
-            eligibleItemsPurchased: rewardResult.eligibleItems,
-          },
-          $set: { lastOrderDate: new Date().toISOString() }
-        }
+        { $inc: { rewardBalance: rewardAmount, totalRewardsEarned: rewardResult.rewardSets, eligibleItemsPurchased: rewardResult.eligibleItems }, $set: { lastOrderDate: new Date().toISOString() } }
       );
-
       if (order.customer?.email) {
-        await sendRewardNotification(
-          order.customer.email,
-          rewardAmount,
-          `You earned R${rewardAmount.toFixed(2)} from ${rewardResult.rewardSets} sets of 10 items!`
-        );
+        await sendRewardNotification(order.customer.email, rewardAmount, `You earned R${rewardAmount.toFixed(2)} from ${rewardResult.rewardSets} sets of 10 items!`);
       }
     } else if (order.userId) {
       await db.collection('users').updateOne(
@@ -633,25 +497,10 @@ app.put('/api/orders/:id', async (req, res) => {
       { returnDocument: 'after' }
     );
     if (!result.value) return res.status(404).json({ error: 'Not found' });
-
     const order = result.value;
-
-    if (req.body.status === 'paid' && order.status !== 'paid') {
-      if (order.userId) {
-        const user = await db.collection('users').findOne({ _id: new ObjectId(order.userId) });
-        if (user?.subscriptionTier) {
-          const subConfig = REWARD_CONFIG.subscription[user.subscriptionTier];
-          if (subConfig && subConfig.discountPercent) {
-            // Apply discount logic here
-          }
-        }
-      }
-    }
-
     if (req.body.status === 'completed') {
       await sendDeliveryNotification(order);
     }
-
     res.json(order);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -665,14 +514,12 @@ app.delete('/api/orders/:id', async (req, res) => {
     if (order.status === 'completed' || order.status === 'cancelled') {
       return res.status(400).json({ error: 'Cannot delete completed or cancelled orders' });
     }
-
     if (order.rewardEarned > 0 && order.userId) {
       await db.collection('users').updateOne(
         { _id: new ObjectId(order.userId) },
         { $inc: { rewardBalance: -order.rewardEarned } }
       );
     }
-
     await db.collection('orders').deleteOne({ id: req.params.id });
     res.json({ success: true });
   } catch (err) {
@@ -728,9 +575,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/user/rewards/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const user = await db.collection('users').findOne({
-      _id: new ObjectId(userId)
-    });
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const orders = await db.collection('orders')
@@ -742,12 +587,7 @@ app.get('/api/user/rewards/:userId', async (req, res) => {
 
     let subscriptionInfo = null;
     if (user.subscriptionTier) {
-      subscriptionInfo = {
-        tier: user.subscriptionTier,
-        config: REWARD_CONFIG.subscription[user.subscriptionTier],
-        active: true,
-        startedAt: user.subscriptionStartedAt,
-      };
+      subscriptionInfo = { tier: user.subscriptionTier, config: REWARD_CONFIG.subscription[user.subscriptionTier], active: true, startedAt: user.subscriptionStartedAt };
     }
 
     res.json({
@@ -757,35 +597,12 @@ app.get('/api/user/rewards/:userId', async (req, res) => {
       rewardBalance: rewardData.totalRewardBalance,
       totalRewardsEarned: rewardData.totalRewardsEarned,
       tier: rewardData.tier,
-      breakdown: {
-        baseRewards: rewardData.baseRewards,
-        streakBonus: rewardData.streakBonus,
-        subscriptionBonus: rewardData.subscriptionBonus,
-        milestoneBonus: rewardData.milestoneBonus,
-        tierBonus: rewardData.tierBonus,
-      },
-      progress: {
-        eligibleItems: rewardData.progress.eligibleItems,
-        progressToNext: rewardData.progress.progressToNext,
-        itemsNeededForNext: rewardData.progress.itemsNeededForNext,
-        progressPercent: rewardData.progress.progressPercent,
-      },
-      streak: {
-        count: rewardData.streakCount,
-        nextBonusAt: rewardData.streakCount >= 12 ? null : Math.ceil((rewardData.streakCount + 1) / 4) * 4,
-      },
+      breakdown: { baseRewards: rewardData.baseRewards, streakBonus: rewardData.streakBonus, subscriptionBonus: rewardData.subscriptionBonus, milestoneBonus: rewardData.milestoneBonus, tierBonus: rewardData.tierBonus },
+      progress: { eligibleItems: rewardData.progress.eligibleItems, progressToNext: rewardData.progress.progressToNext, itemsNeededForNext: rewardData.progress.itemsNeededForNext, progressPercent: rewardData.progress.progressPercent },
+      streak: { count: rewardData.streakCount, nextBonusAt: rewardData.streakCount >= 12 ? null : Math.ceil((rewardData.streakCount + 1) / 4) * 4 },
       subscription: subscriptionInfo,
-      recentOrders: orders.slice(0, 5).map(o => ({
-        id: o.id,
-        total: o.total,
-        rewardEarned: o.rewardEarned || 0,
-        status: o.status,
-        createdAt: o.createdAt,
-      })),
-      tierProgress: {
-        current: rewardData.tier,
-        next: getNextTier(rewardData.totalRewardsEarned),
-      }
+      recentOrders: orders.slice(0, 5).map(o => ({ id: o.id, total: o.total, rewardEarned: o.rewardEarned || 0, status: o.status, createdAt: o.createdAt })),
+      tierProgress: { current: rewardData.tier, next: getNextTier(rewardData.totalRewardsEarned) }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -805,34 +622,16 @@ app.post('/api/user/redeem-rewards', async (req, res) => {
     if (!email || !amount || amount <= 0) {
       return res.status(400).json({ error: 'Email and valid amount required' });
     }
-
     const user = await db.collection('users').findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     if ((user.rewardBalance || 0) < amount) {
       return res.status(400).json({ error: 'Insufficient reward balance' });
     }
-
     await db.collection('users').updateOne(
       { email },
-      {
-        $inc: { rewardBalance: -amount },
-        $push: {
-          rewardHistory: {
-            type: 'redemption',
-            amount: amount,
-            date: new Date().toISOString(),
-          }
-        }
-      }
+      { $inc: { rewardBalance: -amount }, $push: { rewardHistory: { type: 'redemption', amount: amount, date: new Date().toISOString() } } }
     );
-
-    res.json({
-      success: true,
-      redeemed: amount,
-      remaining: (user.rewardBalance || 0) - amount,
-      message: `Successfully redeemed R${amount.toFixed(2)}!`
-    });
+    res.json({ success: true, redeemed: amount, remaining: (user.rewardBalance || 0) - amount, message: `Successfully redeemed R${amount.toFixed(2)}!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -842,10 +641,7 @@ app.get('/api/user/reward-progress', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'User ID required' });
-
-    const user = await db.collection('users').findOne({
-      _id: new ObjectId(userId)
-    });
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const orders = await db.collection('orders')
@@ -861,22 +657,10 @@ app.get('/api/user/reward-progress', async (req, res) => {
     res.json({
       rewardBalance: user.rewardBalance || 0,
       totalRewardsEarned: user.totalRewardsEarned || 0,
-      progress: {
-        eligibleItems: progress.eligibleItems,
-        itemsNeededForNext: progress.itemsNeededForNext,
-        progressToNext: progress.progressToNext,
-        progressPercent: progress.progressPercent,
-        rewardSetsEarned: progress.rewardSets,
-      },
-      streak: {
-        count: streak.streakCount,
-        bonusAmount: streak.bonusAmount,
-      },
-      subscription: {
-        active: !!user.subscriptionTier,
-        tier: user.subscriptionTier || null,
-      },
-      nextRewardAt: progress.itemsNeededForNext === 0 ? 'Ready!' : `${progress.itemsNeededForNext} more items`,
+      progress: { eligibleItems: progress.eligibleItems, itemsNeededForNext: progress.itemsNeededForNext, progressToNext: progress.progressToNext, progressPercent: progress.progressPercent, rewardSetsEarned: progress.rewardSets },
+      streak: { count: streak.streakCount, bonusAmount: streak.bonusAmount },
+      subscription: { active: !!user.subscriptionTier, tier: user.subscriptionTier || null },
+      nextRewardAt: progress.itemsNeededForNext === 0 ? 'Ready!' : `${progress.itemsNeededForNext} more items`
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -916,10 +700,7 @@ app.post('/api/user/subscribe', async (req, res) => {
     if (!['basic', 'premium'].includes(tier)) {
       return res.status(400).json({ error: 'Invalid subscription tier' });
     }
-
-    const user = await db.collection('users').findOne({
-      _id: new ObjectId(userId)
-    });
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const config = REWARD_CONFIG.subscription[tier];
@@ -931,14 +712,7 @@ app.post('/api/user/subscribe', async (req, res) => {
     if (user.subscriptionTier === 'basic' && tier === 'premium') {
       await db.collection('users').updateOne(
         { _id: new ObjectId(userId) },
-        {
-          $set: {
-            subscriptionTier: tier,
-            subscriptionStartedAt: new Date().toISOString(),
-            subscriptionUpdatedAt: new Date().toISOString(),
-          },
-          $inc: { rewardBalance: config.bonusReward }
-        }
+        { $set: { subscriptionTier: tier, subscriptionStartedAt: new Date().toISOString(), subscriptionUpdatedAt: new Date().toISOString() }, $inc: { rewardBalance: config.bonusReward } }
       );
       res.json({ success: true, message: `Upgraded to ${tier} tier!` });
       return;
@@ -946,40 +720,16 @@ app.post('/api/user/subscribe', async (req, res) => {
 
     await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
-      {
-        $set: {
-          subscriptionTier: tier,
-          subscriptionStartedAt: new Date().toISOString(),
-          subscriptionUpdatedAt: new Date().toISOString(),
-        },
-        $inc: { rewardBalance: config.bonusReward }
-      }
+      { $set: { subscriptionTier: tier, subscriptionStartedAt: new Date().toISOString(), subscriptionUpdatedAt: new Date().toISOString() }, $inc: { rewardBalance: config.bonusReward } }
     );
 
     if (user.email) {
-      await sendEmail(
-        user.email,
-        `🎉 Welcome to Quick 2 Shop ${tier} tier!`,
-        `<h2>Welcome to ${tier} tier!</h2>
-         <p>You've received R${config.bonusReward.toFixed(2)} in rewards!</p>
-         <ul>
-           ${config.freeDelivery ? '<li>✅ Free delivery on all orders</li>' : ''}
-           ${config.discountPercent ? `<li>✅ ${config.discountPercent}% off every order</li>` : ''}
-           ${config.freeItemMonthly ? '<li>✅ Free item every month</li>' : ''}
-         </ul>`
+      await sendEmail(user.email, `🎉 Welcome to Quick 2 Shop ${tier} tier!`,
+        `<h2>Welcome to ${tier} tier!</h2><p>You've received R${config.bonusReward.toFixed(2)} in rewards!</p><ul>${config.freeDelivery ? '<li>✅ Free delivery on all orders</li>' : ''}${config.discountPercent ? `<li>✅ ${config.discountPercent}% off every order</li>` : ''}${config.freeItemMonthly ? '<li>✅ Free item every month</li>' : ''}</ul>`
       );
     }
 
-    res.json({
-      success: true,
-      message: `Subscribed to ${tier} tier!`,
-      bonusReward: config.bonusReward,
-      benefits: {
-        freeDelivery: config.freeDelivery,
-        discountPercent: config.discountPercent,
-        freeItemMonthly: config.freeItemMonthly || false,
-      }
-    });
+    res.json({ success: true, message: `Subscribed to ${tier} tier!`, bonusReward: config.bonusReward, benefits: { freeDelivery: config.freeDelivery, discountPercent: config.discountPercent, freeItemMonthly: config.freeItemMonthly || false } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -988,25 +738,15 @@ app.post('/api/user/subscribe', async (req, res) => {
 app.post('/api/user/unsubscribe', async (req, res) => {
   try {
     const { userId } = req.body;
-    const user = await db.collection('users').findOne({
-      _id: new ObjectId(userId)
-    });
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     if (!user.subscriptionTier) {
       return res.status(400).json({ error: 'Not subscribed' });
     }
-
     await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
-      {
-        $set: {
-          subscriptionTier: null,
-          subscriptionEndedAt: new Date().toISOString(),
-        }
-      }
+      { $set: { subscriptionTier: null, subscriptionEndedAt: new Date().toISOString() } }
     );
-
     res.json({ success: true, message: 'Subscription cancelled' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1021,16 +761,10 @@ app.post('/api/forgot-password', async (req, res) => {
   try {
     const user = await db.collection('users').findOne({ email: req.body.email });
     if (!user) return res.status(404).json({ error: 'No account found' });
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[req.body.email] = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-
     const sent = await sendPasswordResetOTP(req.body.email, otp);
-    res.json({
-      message: sent ? 'OTP sent' : 'OTP saved',
-      devMode: !sent,
-      otp: !sent ? otp : undefined
-    });
+    res.json({ message: sent ? 'OTP sent' : 'OTP saved', devMode: !sent, otp: !sent ? otp : undefined });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1041,7 +775,6 @@ app.post('/api/reset-password', async (req, res) => {
   if (!email || !otp || !newPassword) {
     return res.status(400).json({ error: 'All fields required' });
   }
-
   const stored = otpStore[email];
   if (!stored || Date.now() > stored.expiresAt) {
     return res.status(400).json({ error: 'OTP expired' });
@@ -1049,18 +782,15 @@ app.post('/api/reset-password', async (req, res) => {
   if (stored.otp !== otp) {
     return res.status(400).json({ error: 'Invalid OTP' });
   }
-
   try {
-    await db.collection('users').updateOne(
-      { email },
-      { $set: { password: newPassword } }
-    );
+    await db.collection('users').updateOne({ email }, { $set: { password: newPassword } });
     delete otpStore[email];
     res.json({ message: 'Password reset successful' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 // ============================================================
 //  CATEGORIES API
 // ============================================================
@@ -1078,10 +808,8 @@ app.post('/api/categories', async (req, res) => {
   try {
     const { id, label } = req.body;
     if (!id || !label) return res.status(400).json({ error: 'ID and label required' });
-
     const exists = await db.collection('categories').findOne({ id });
     if (exists) return res.status(400).json({ error: 'Category ID already exists' });
-
     const nc = { id, label, icon: req.body.icon || '🏷️' };
     await db.collection('categories').insertOne(nc);
     res.status(201).json(nc);
@@ -1123,10 +851,7 @@ app.delete('/api/categories/:id', async (req, res) => {
 
 app.get('/api/slides', async (req, res) => {
   try {
-    const slides = await db.collection('slides')
-      .find({ active: true })
-      .sort({ order: 1 })
-      .toArray();
+    const slides = await db.collection('slides').find({ active: true }).sort({ order: 1 }).toArray();
     const formatted = slides.map(s => ({ ...s, id: s._id.toString() }));
     res.json(formatted);
   } catch (err) {
@@ -1147,12 +872,7 @@ app.get('/api/slides/admin', async (req, res) => {
 app.post('/api/slides', async (req, res) => {
   try {
     const max = await db.collection('slides').find().sort({ order: -1 }).limit(1).toArray();
-    const ns = {
-      ...req.body,
-      active: true,
-      order: (max[0]?.order || 0) + 1,
-      createdAt: new Date().toISOString()
-    };
+    const ns = { ...req.body, active: true, order: (max[0]?.order || 0) + 1, createdAt: new Date().toISOString() };
     const r = await db.collection('slides').insertOne(ns);
     res.status(201).json({ ...ns, _id: r.insertedId });
   } catch (err) {
@@ -1181,225 +901,6 @@ app.delete('/api/slides/:id', async (req, res) => {
     const r = await db.collection('slides').deleteOne({ _id: new ObjectId(req.params.id) });
     if (r.deletedCount === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================
-//  ANALYTICS API
-// ============================================================
-
-// Track event
-app.post('/api/analytics/track', async (req, res) => {
-  try {
-    const event = {
-      ...req.body,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Remove sensitive data
-    delete event.userAgent;
-    
-    await db.collection('analytics_events').insertOne(event);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Analytics tracking error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get analytics data (for admin)
-app.get('/api/analytics/stats', async (req, res) => {
-  try {
-    const { period = '7d' } = req.query;
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - parseInt(period.replace('d', '')));
-    
-    const pipeline = [
-      {
-        $match: {
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: '$eventType',
-          count: { $sum: 1 },
-          data: { $push: '$data' }
-        }
-      }
-    ];
-    
-    const events = await db.collection('analytics_events').aggregate(pipeline).toArray();
-    
-    // Get unique sessions
-    const sessions = await db.collection('analytics_events').distinct('sessionId', {
-      createdAt: { $gte: cutoffDate.toISOString() }
-    });
-    
-    // Get page views
-    const pageViews = await db.collection('analytics_events').aggregate([
-      {
-        $match: {
-          eventType: 'page_view',
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: '$data.page',
-          count: { $sum: 1 },
-          avgTime: { $avg: '$data.timeOnPage' }
-        }
-      },
-      { $sort: { count: -1 } }
-    ]).toArray();
-    
-    // Get products viewed
-    const productViews = await db.collection('analytics_events').aggregate([
-      {
-        $match: {
-          eventType: 'product_view',
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: '$data.productId',
-          productName: { $first: '$data.productName' },
-          views: { $sum: 1 }
-        }
-      },
-      { $sort: { views: -1 } },
-      { $limit: 10 }
-    ]).toArray();
-    
-    // Get cart events
-    const cartEvents = await db.collection('analytics_events').aggregate([
-      {
-        $match: {
-          eventType: { $in: ['add_to_cart', 'checkout_start', 'purchase'] },
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: '$eventType',
-          count: { $sum: 1 }
-        }
-      }
-    ]).toArray();
-    
-    // Get drop-off points (users who viewed products but didn't purchase)
-    const viewedProducts = await db.collection('analytics_events').distinct('sessionId', {
-      eventType: 'product_view',
-      createdAt: { $gte: cutoffDate.toISOString() }
-    });
-    
-    const purchasedSessions = await db.collection('analytics_events').distinct('sessionId', {
-      eventType: 'purchase',
-      createdAt: { $gte: cutoffDate.toISOString() }
-    });
-    
-    const droppedOffSessions = viewedProducts.filter(s => !purchasedSessions.includes(s));
-    
-    // Get average session duration
-    const sessionDurations = await db.collection('analytics_events').aggregate([
-      {
-        $match: {
-          eventType: 'session_end',
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgDuration: { $avg: '$data.sessionDuration' }
-        }
-      }
-    ]).toArray();
-    
-    const avgDuration = sessionDurations.length > 0 ? sessionDurations[0].avgDuration : 0;
-    
-    // Format response
-    const eventsMap = {};
-    events.forEach(e => {
-      eventsMap[e._id] = e.count;
-    });
-    
-    const cartMap = {};
-    cartEvents.forEach(e => {
-      cartMap[e._id] = e.count;
-    });
-    
-    res.json({
-      summary: {
-        totalSessions: sessions.length,
-        totalEvents: events.reduce((sum, e) => sum + e.count, 0),
-        uniqueVisitors: sessions.length,
-        averageSessionDuration: avgDuration,
-        dropOffRate: viewedProducts.length > 0 ? 
-          ((droppedOffSessions.length / viewedProducts.length) * 100).toFixed(1) + '%' : 
-          '0%'
-      },
-      events: eventsMap,
-      pageViews: pageViews,
-      topProducts: productViews,
-      cartFunnel: {
-        viewed: viewedProducts.length,
-        addedToCart: cartMap['add_to_cart'] || 0,
-        checkoutStarted: cartMap['checkout_start'] || 0,
-        purchased: cartMap['purchase'] || 0
-      },
-      dropOffSessions: droppedOffSessions.length
-    });
-  } catch (err) {
-    console.error('Analytics stats error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get detailed analytics for a specific session
-app.get('/api/analytics/session/:sessionId', async (req, res) => {
-  try {
-    const events = await db.collection('analytics_events')
-      .find({ sessionId: req.params.sessionId })
-      .sort({ createdAt: 1 })
-      .toArray();
-    
-    res.json({ events });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get analytics for a specific period
-app.get('/api/analytics/timeline', async (req, res) => {
-  try {
-    const { days = 7 } = req.query;
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
-    
-    const timeline = await db.collection('analytics_events').aggregate([
-      {
-        $match: {
-          createdAt: { $gte: cutoffDate.toISOString() }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: { $dateFromString: { dateString: '$createdAt' } } }
-          },
-          views: { $sum: { $cond: [{ $eq: ['$eventType', 'page_view'] }, 1, 0] } },
-          visits: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]).toArray();
-    
-    res.json({ timeline });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1436,5 +937,4 @@ app.listen(PORT, () => {
   console.log(`  • ${REWARD_CONFIG.streak.enabled ? '✅' : '❌'} Streak rewards enabled`);
   console.log(`  • ${REWARD_CONFIG.subscription.enabled ? '✅' : '❌'} Subscriptions enabled`);
   console.log(`  • Tiers: Bronze → Silver (50) → Gold (150) → Platinum (300)`);
-  console.log(`\n📊 Analytics tracking enabled`);
 });
