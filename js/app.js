@@ -4,9 +4,45 @@ const API = '/api';
 //  DELIVERY CONFIGURATION
 // ============================================================
 
-const DELIVERY_FEE = 5;
+const DELIVERY_FEE = 10;
 const DELIVERY_AREA = 'Braamfontein';
 const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein only.';
+
+// ============================================================
+//  BRAAMFONTEIN BUILDINGS DATABASE
+// ============================================================
+
+const BRAAMFONTEIN_BUILDINGS = [
+  // Student Residences
+  { name: "UJ Kingsway Campus Residences", address: "Kingsway Avenue, Braamfontein" },
+  { name: "UJ APK Residences", address: "University of Johannesburg, Braamfontein" },
+  { name: "Wits Junction", address: "Jorissen Street, Braamfontein" },
+  { name: "Wits East Campus Residences", address: "Braamfontein" },
+  { name: "Wits West Campus Residences", address: "Braamfontein" },
+  { name: "Wits Parktown Residences", address: "Parktown, Braamfontein" },
+  { name: "Braamfontein Student Village", address: "Jorissen Street, Braamfontein" },
+  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein" },
+  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein" },
+  
+  // Apartments & Buildings
+  { name: "Auckland House", address: "Kingsway Avenue, Braamfontein" },
+  { name: "Braamfontein Towers", address: "Biccard Street, Braamfontein" },
+  { name: "Houghton Heights", address: "Houghton, Braamfontein" },
+  { name: "The Edge", address: "D streets, Braamfontein" },
+  { name: "The Lofts", address: "Biccard Street, Braamfontein" },
+  { name: "Campus Village", address: "Jorissen Street, Braamfontein" },
+  { name: "City Lights", address: "Empire Road, Braamfontein" },
+  { name: "Metropolitan Tower", address: "Kingsway Avenue, Braamfontein" },
+  { name: "Braamfontein Centre", address: "Melle Street, Braamfontein" },
+  { name: "The Annex", address: "Ennis Road, Braamfontein" },
+  { name: "Wits 1952", address: "Braamfontein" },
+  { name: "The Square", address: "Braamfontein" },
+  { name: "Park Central", address: "Parktown, Braamfontein" },
+  { name: "Braamfontein Gateway", address: "Braamfontein" },
+  
+  // Additional Streets
+  { name: "Other (Manual Entry)", address: "" }
+];
 
 const state = {
   cart: JSON.parse(localStorage.getItem('habibi_cart') || '[]'),
@@ -99,28 +135,6 @@ function setDefaultAddress(addressId) {
   toast('⭐ Default address updated');
 }
 
-function loadSavedAddress(address) {
-  document.getElementById('co-address').value = address;
-  toast('📂 Address loaded');
-}
-
-function saveCurrentAddress() {
-  const address = document.getElementById('co-address')?.value.trim();
-  const phone = document.getElementById('co-phone')?.value.trim();
-  
-  if (!address) {
-    toast('⚠️ Please enter an address first');
-    return;
-  }
-  
-  if (!state.user) {
-    toast('⚠️ Please sign in to save addresses');
-    return;
-  }
-  
-  saveUserAddress({ address, phone });
-}
-
 // ============================================================
 //  GENERATE PAYMENT REFERENCE
 // ============================================================
@@ -164,6 +178,7 @@ function getSpecialLabel(product) {
 function isSpecialActive(product) {
   return getProductSpecial(product) !== null;
 }
+
 // ============================================================
 //  CART FUNCTIONS
 // ============================================================
@@ -509,6 +524,7 @@ function showRewardsModal() {
   `;
   document.getElementById('modal-overlay').classList.add('open');
 }
+
 function showSubscribeModal() {
   document.getElementById('modal-overlay').innerHTML = `
     <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
@@ -1171,7 +1187,7 @@ function renderCartItems() {
       </div>
     `;
     document.getElementById('cart-subtotal').textContent = 'R0.00';
-    document.getElementById('cart-delivery').textContent = 'R5.00';
+    document.getElementById('cart-delivery').textContent = 'R10.00';
     document.getElementById('cart-total').textContent = 'R0.00';
     return;
   }
@@ -1256,6 +1272,7 @@ function renderCartItems() {
   
   updateCartUI();
 }
+
 function openCart() {
   renderCartItems();
   document.getElementById('cart-overlay').classList.add('open');
@@ -1294,10 +1311,18 @@ function fileToBase64(file) {
     reader.readAsDataURL(file);
   });
 }
-
 // ============================================================
 //  PAYMENT METHODS & CHECKOUT
 // ============================================================
+
+function getBuildingOptions() {
+  let options = '';
+  BRAAMFONTEIN_BUILDINGS.forEach(building => {
+    const selected = building.name === 'Other (Manual Entry)' ? '' : '';
+    options += `<option value="${building.name}|${building.address}" ${selected}>${building.name}</option>`;
+  });
+  return options;
+}
 
 function renderCheckout() {
   const s = document.getElementById('checkout-section');
@@ -1312,8 +1337,6 @@ function renderCheckout() {
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
   const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
-
-  const cashAllowed = subtotal <= 80;
   
   let subscriptionDiscount = 0;
   let subscriptionPercent = 0;
@@ -1328,6 +1351,7 @@ function renderCheckout() {
   const savedAddresses = getUserAddresses();
   const defaultAddress = getDefaultAddress();
   
+  // Build address selector HTML
   let addressSelectorHTML = '';
   if (savedAddresses.length > 0) {
     addressSelectorHTML = `
@@ -1357,59 +1381,82 @@ function renderCheckout() {
                 <p style="font-size:13px;color:var(--orange-dark);font-weight:600;">${deliveryNote}</p>
               </div>
               ${addressSelectorHTML}
-              <div class="form-group"><label>WhatsApp *</label><input class="form-input" id="co-phone" type="tel" value="${state.user?.phone||''}"></div>
-              <div class="form-group"><label>Address *</label><textarea class="form-input" id="co-address">${defaultAddress?.address || state.user?.address || ''}</textarea>
+              
+              <div class="form-group">
+                <label>Select Your Building/Residence</label>
+                <select class="form-input" id="building-select" onchange="fillAddressFromBuilding()">
+                  <option value="">-- Select a building --</option>
+                  ${getBuildingOptions()}
+                </select>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                <div class="form-group">
+                  <label>House/Building Number & Street Name *</label>
+                  <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}">
+                </div>
+                <div class="form-group">
+                  <label>Apartment/Unit No.</label>
+                  <input class="form-input" id="co-unit" placeholder="e.g. Apt 4, Room 12" value="${defaultAddress?.unit || ''}">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label>Full Address</label>
+                <textarea class="form-input" id="co-address" rows="3" placeholder="Full address will appear here">${defaultAddress?.address || ''}</textarea>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  <button class="btn btn-outline btn-sm" onclick="updateFullAddress()">📝 Update Full Address</button>
                   <button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
                   ${state.user ? `<button class="btn btn-outline btn-sm" onclick="saveCurrentAddress()">💾 Save Address</button>` : ''}
                 </div>
               </div>
               <input type="hidden" id="co-coordinates">
-              <div class="form-group"><label>Notes</label><textarea class="form-input" id="co-notes"></textarea></div>
-            </div>
-
-            <div class="checkout-card">
-              <h3>💳 Payment Method</h3>
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${cashAllowed ? 'var(--gray-200)' : '#ffcccc'};border-radius:8px;${cashAllowed ? 'cursor:pointer;' : 'opacity:0.5;'}">
-                  <input type="radio" id="payment-cash" name="payment-method" value="cash" ${cashAllowed ? 'checked' : 'disabled'} onchange="togglePaymentMethod('cash')">
-                  <label for="payment-cash" style="cursor:${cashAllowed ? 'pointer' : 'not-allowed'};flex:1;">
-                    <div style="font-weight:600;">💵 Cash on Delivery</div>
-                    <div style="font-size:13px;color:var(--muted);">Pay when your order arrives</div>
-                    ${!cashAllowed ? `<div style="color:#DC2626;font-size:12px;font-weight:600;margin-top:4px;">⚠️ Cash only available for orders under R80. Current cart: R${subtotal.toFixed(2)}</div>` : ''}
-                  </label>
-                </div>
-
-                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--gray-200);border-radius:8px;cursor:pointer;">
-                  <input type="radio" id="payment-payshap" name="payment-method" value="payshap" onchange="togglePaymentMethod('payshap')">
-                  <label for="payment-payshap" style="cursor:pointer;flex:1;">
-                    <div style="font-weight:600;">💳 Payshap / Instant EFT</div>
-                    <div style="font-size:13px;color:var(--muted);">Pay instantly via Standard Bank Instant EFT</div>
-                  </label>
-                </div>
+              
+              <div class="form-group">
+                <label>WhatsApp Number *</label>
+                <input class="form-input" id="co-phone" type="tel" placeholder="072 405 2868" value="${state.user?.phone || ''}">
+              </div>
+              
+              <div class="form-group">
+                <label>Delivery Notes (Optional)</label>
+                <textarea class="form-input" id="co-notes" placeholder="Gate code, landmark, special instructions..."></textarea>
               </div>
             </div>
 
-            <div id="payshap-details" style="display:none;">
-              <div class="checkout-card" style="border:2px solid #ff4444;">
-                <h3 style="color:#DC2626;">⚠️ Important: Instant EFT Payment</h3>
-                <div style="background:#fff5f5;padding:16px;border-radius:8px;margin-bottom:16px;">
-                  <p style="font-weight:600;color:#DC2626;">Please make your payment immediately and upload proof of payment below.</p>
-                  <p style="font-size:13px;color:var(--muted);">
-                    Use this <strong>Payment Reference</strong> when making your payment.
-                  </p>
+            <!-- PAYMENT SECTION - Payshap Only -->
+            <div class="checkout-card" style="border:2px solid var(--orange);">
+              <h3 style="color:var(--orange-dark);">💳 Payment via Payshap / Instant EFT</h3>
+              
+              <div style="background:#FFF8E1;padding:16px;border-radius:8px;margin-bottom:16px;border-left:4px solid #DC2626;">
+                <p style="font-weight:600;color:#DC2626;">⚠️ Important: Immediate Payment Required</p>
+                <p style="font-size:13px;color:var(--muted);">
+                  Please make your payment <strong>immediately</strong> after placing your order.
+                  Use the reference below as your <strong>Beneficiary Reference</strong>.
+                </p>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface);padding:16px;border-radius:8px;margin-bottom:16px;">
+                <div><strong>Beneficiary Name:</strong> <span style="font-weight:700;">Quick 2 Shop</span></div>
+                <div><strong>Bank:</strong> Standard Bank</div>
+                <div><strong>Account Number:</strong> 10217451673</div>
+                <div><strong>Account Type:</strong> Current Account</div>
+                <div style="grid-column:1/-1;">
+                  <strong>Beneficiary Reference:</strong> 
+                  <span style="background:var(--gray-100);padding:8px 16px;border-radius:4px;font-weight:700;font-family:monospace;font-size:20px;color:#DC2626;display:inline-block;border:2px solid #DC2626;">
+                    ${paymentReference}
+                  </span>
+                  <button class="btn btn-sm btn-outline" onclick="copyReference()" style="margin-left:8px;">📋 Copy</button>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                  <div><strong>Bank:</strong> Standard Bank</div>
-                  <div><strong>Account Number:</strong> 10217451673</div>
-                  <div><strong>Account Type:</strong> Current Account</div>
-                  <div><strong>Reference:</strong> <span style="background:var(--gray-100);padding:4px 12px;border-radius:4px;font-weight:700;font-family:monospace;font-size:16px;color:#DC2626;">${paymentReference}</span></div>
-                </div>
-                <div class="form-group" style="margin-top:16px;">
-                  <label>Upload Proof of Payment (POP) *</label>
-                  <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;">
-                  <small style="color:var(--muted);">Upload a screenshot or photo of your payment confirmation.</small>
-                </div>
+              </div>
+              
+              <div class="form-group">
+                <label>Upload Proof of Payment (POP) *</label>
+                <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);">
+                <small style="color:var(--muted);">Upload a screenshot or photo of your payment confirmation.</small>
+              </div>
+              
+              <div style="background:#E8F5E9;padding:12px;border-radius:8px;font-size:13px;color:#2E7D32;margin-top:8px;">
+                ✅ Your order will be processed once payment is verified.
               </div>
             </div>
 
@@ -1449,24 +1496,54 @@ function renderCheckout() {
             <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
             
             <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
-              💳 Payment: <span id="selected-payment-label">Cash on Delivery</span>
+              💳 Payment: <strong>Payshap / Instant EFT</strong>
             </div>
             
-            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">Place Order — R${total.toFixed(2)}</button>
-            <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">You'll see your order summary after placing.</p>
+            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">
+              Pay & Place Order — R${total.toFixed(2)}
+            </button>
+            <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">
+              You'll be prompted to upload proof of payment.
+            </p>
           </div>
         </div>
       `}
     </div>`;
 
-  if (cashAllowed) {
-    document.getElementById('payment-cash').checked = true;
-    document.getElementById('selected-payment-label').textContent = 'Cash on Delivery';
-  } else {
-    document.getElementById('payment-payshap').checked = true;
-    document.getElementById('selected-payment-label').textContent = 'Payshap / Instant EFT';
-    togglePaymentMethod('payshap');
+  // Set default payment method
+  document.getElementById('payment-payshap').checked = true;
+}
+
+function fillAddressFromBuilding() {
+  const select = document.getElementById('building-select');
+  const value = select.value;
+  if (!value) return;
+  
+  const [buildingName, buildingAddress] = value.split('|');
+  
+  if (buildingName === 'Other (Manual Entry)') {
+    document.getElementById('co-street').value = '';
+    document.getElementById('co-address').value = '';
+    document.getElementById('co-street').focus();
+    return;
   }
+  
+  document.getElementById('co-street').value = buildingAddress;
+  document.getElementById('co-address').value = buildingAddress;
+  toast(`✅ ${buildingName} selected`);
+  updateFullAddress();
+}
+
+function updateFullAddress() {
+  const street = document.getElementById('co-street').value.trim();
+  const unit = document.getElementById('co-unit').value.trim();
+  const address = document.getElementById('co-address');
+  
+  let fullAddress = street;
+  if (unit) {
+    fullAddress = `${unit}, ${street}`;
+  }
+  address.value = fullAddress;
 }
 
 function loadSelectedAddress(addressId) {
@@ -1475,20 +1552,62 @@ function loadSelectedAddress(addressId) {
   if (addr) {
     document.getElementById('co-address').value = addr.address;
     document.getElementById('co-phone').value = addr.phone || document.getElementById('co-phone').value;
+    // Try to extract street and unit
+    if (addr.address) {
+      const parts = addr.address.split(', ');
+      if (parts.length >= 2) {
+        document.getElementById('co-street').value = parts.slice(1).join(', ');
+        document.getElementById('co-unit').value = parts[0];
+      } else {
+        document.getElementById('co-street').value = addr.address;
+      }
+    }
     toast('📂 Address loaded');
   }
 }
 
-function togglePaymentMethod(method) {
-  const payshapDetails = document.getElementById('payshap-details');
-  const label = document.getElementById('selected-payment-label');
+function saveCurrentAddress() {
+  const address = document.getElementById('co-address')?.value.trim();
+  const phone = document.getElementById('co-phone')?.value.trim();
+  const street = document.getElementById('co-street')?.value.trim();
+  const unit = document.getElementById('co-unit')?.value.trim();
   
-  if (method === 'payshap') {
-    payshapDetails.style.display = 'block';
-    label.textContent = 'Payshap / Instant EFT';
+  if (!address) {
+    toast('⚠️ Please enter an address first');
+    return;
+  }
+  
+  if (!state.user) {
+    toast('⚠️ Please sign in to save addresses');
+    return;
+  }
+  
+  saveUserAddress({ address, phone, street, unit });
+}
+
+function copyReference() {
+  const ref = paymentReference;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ref).then(() => {
+      toast('📋 Reference copied!');
+    }).catch(() => {
+      // Fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = ref;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      toast('📋 Reference copied!');
+    });
   } else {
-    payshapDetails.style.display = 'none';
-    label.textContent = 'Cash on Delivery';
+    const textarea = document.createElement('textarea');
+    textarea.value = ref;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    toast('📋 Reference copied!');
   }
 }
 // ============================================================
@@ -1498,35 +1617,31 @@ function togglePaymentMethod(method) {
 async function submitOrder() {
   const p = document.getElementById('co-phone')?.value.trim();
   const a = document.getElementById('co-address')?.value.trim();
+  const s = document.getElementById('co-street')?.value.trim();
+  const u = document.getElementById('co-unit')?.value.trim();
   const c = document.getElementById('co-coordinates')?.value.trim();
   const n = document.getElementById('co-notes')?.value.trim();
   const btn = document.getElementById('place-order-btn');
 
-  const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'cash';
+  // Get payment method (always payshap now)
+  const paymentMethod = 'payshap';
   
+  const popInput = document.getElementById('co-pop');
   let popBase64 = null;
-  if (paymentMethod === 'payshap') {
-    const popInput = document.getElementById('co-pop');
-    if (popInput && popInput.files && popInput.files.length > 0) {
-      popBase64 = await fileToBase64(popInput.files[0]);
-    } else {
-      toast('⚠️ Please upload proof of payment for Payshap orders');
-      return;
-    }
-  }
-
-  if (!p || !a) { toast('⚠️ Fill required fields'); return; }
-
-  const subtotal = Cart.total();
-  if (paymentMethod === 'cash' && subtotal > 80) {
-    toast('⚠️ Cash orders cannot exceed R80. Please use Payshap or remove items.');
+  if (popInput && popInput.files && popInput.files.length > 0) {
+    popBase64 = await fileToBase64(popInput.files[0]);
+  } else {
+    toast('⚠️ Please upload proof of payment');
     return;
   }
+
+  if (!p || !a) { toast('⚠️ Fill required fields (WhatsApp and Address)'); return; }
 
   btn.disabled = true;
   btn.style.opacity = '0.5';
   btn.textContent = 'Placing Order…';
 
+  const subtotal = Cart.total();
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
   const deliveryFee = Cart.deliveryFee();
@@ -1538,7 +1653,9 @@ async function submitOrder() {
         name: state.user?.name || 'Guest', 
         email: state.user?.email || '', 
         phone: p, 
-        address: a, 
+        address: a,
+        street: s,
+        unit: u,
         coordinates: c, 
         notes: n 
       },
@@ -1549,27 +1666,22 @@ async function submitOrder() {
       discount: discount,
       rewardDiscount: rewardDiscount,
       paymentMethod: paymentMethod,
-      paymentStatus: paymentMethod === 'cash' ? 'pending' : 'pending_payment',
-      userId: state.user?._id || null
+      paymentStatus: 'pending_payment',
+      userId: state.user?._id || null,
+      paymentReference: paymentReference,
+      proofOfPayment: popBase64
     };
-
-    if (paymentMethod === 'payshap') {
-      if (!paymentReference) {
-        paymentReference = generatePaymentReference();
-      }
-      orderData.paymentReference = paymentReference;
-      orderData.proofOfPayment = popBase64;
-    }
 
     const o = await placeOrder(orderData);
     
+    const ref = paymentReference;
     paymentReference = '';
     
     Cart.clear();
     state.discountAmount = 0;
     state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
     
-    showOrderSuccessSummary(o, total, paymentMethod, deliveryFee);
+    showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, ref);
     fetchUserPoints(state.user?.email);
     updateRewardUI();
     
@@ -1577,7 +1689,7 @@ async function submitOrder() {
     toast('❌ Failed to place order: ' + err.message);
     btn.disabled = false;
     btn.style.opacity = '1';
-    btn.textContent = 'Place Order';
+    btn.textContent = 'Pay & Place Order';
   }
 }
 
@@ -1585,18 +1697,13 @@ async function submitOrder() {
 //  ORDER SUCCESS SUMMARY
 // ============================================================
 
-function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
+function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference) {
   const s = document.getElementById('checkout-section');
   
-  const paymentMessage = paymentMethod === 'cash' 
-    ? 'Pay on delivery. Our driver will contact you.'
-    : 'We will verify your payment and start preparing your order.';
-  
-  const paymentStatus = paymentMethod === 'cash' 
-    ? '<span class="badge badge-warn">Pending (Cash)</span>'
-    : '<span class="badge badge-warn">Awaiting Payment Verification</span>';
+  const paymentMessage = 'We will verify your payment and start preparing your order.';
+  const paymentStatus = '<span class="badge badge-warn">Awaiting Payment Verification</span>';
 
-  const deliveryDisplay = `R${(deliveryFee || 5).toFixed(2)}`;
+  const deliveryDisplay = `R${(deliveryFee || 10).toFixed(2)}`;
   const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
 
   s.innerHTML = `
@@ -1604,7 +1711,11 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
       <div style="text-align:center;padding:40px 20px;">
         <div style="font-size:56px;margin-bottom:16px;">✅</div>
         <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
-        <p style="color:var(--muted);margin-bottom:32px;">${paymentMessage}</p>
+        <p style="color:var(--muted);margin-bottom:8px;">${paymentMessage}</p>
+        <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:32px;border-left:4px solid #DC2626;display:inline-block;">
+          <p style="font-size:14px;font-weight:600;color:#DC2626;">📌 Use this reference for your payment:</p>
+          <p style="font-size:24px;font-weight:800;font-family:monospace;color:#DC2626;">${reference || o.paymentReference || 'N/A'}</p>
+        </div>
         <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
           <div class="card-body">
             <h3 style="margin-bottom:16px;">📋 Order Summary</h3>
@@ -1616,26 +1727,14 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
               <span style="font-weight:600;">Status</span>
               ${paymentStatus}
             </div>
-            ${paymentMethod === 'payshap' ? `
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
               <span style="font-weight:600;">Payment Method</span>
               <span>💳 Payshap / Instant EFT</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
               <span style="font-weight:600;">Payment Reference</span>
-              <span style="font-family:monospace;font-weight:700;background:#fff5f5;padding:2px 8px;border-radius:4px;border:1px solid #ffcccc;">${o.paymentReference || 'N/A'}</span>
+              <span style="font-family:monospace;font-weight:700;background:#fff5f5;padding:2px 8px;border-radius:4px;border:1px solid #ffcccc;">${reference || o.paymentReference || 'N/A'}</span>
             </div>
-            <div style="background:#fff5f5;padding:12px;border-radius:8px;margin:8px 0;border:1px solid #ffcccc;">
-              <p style="font-size:13px;color:#DC2626;font-weight:600;">📌 Use this reference for your payment:</p>
-              <p style="font-size:20px;font-weight:800;text-align:center;font-family:monospace;color:#DC2626;">${o.paymentReference || 'N/A'}</p>
-              <p style="font-size:12px;color:var(--muted);text-align:center;">Standard Bank: 10217451673</p>
-            </div>
-            ` : `
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Payment Method</span>
-              <span>💵 Cash on Delivery</span>
-            </div>
-            `}
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
               <span style="font-weight:600;">WhatsApp</span>
               <span>${o.customer?.phone}</span>
@@ -1666,16 +1765,12 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee) {
               <span>Total</span>
               <span style="color:var(--orange);">R${total.toFixed(2)}</span>
             </div>
-            ${paymentMethod === 'payshap' ? `
-              <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
-                ⚠️ Your order will be processed once payment is verified.
-              </p>
-              <p style="font-size:12px;color:var(--muted);text-align:center;">
-                Use <strong>${o.paymentReference || 'N/A'}</strong> as your payment reference.
-              </p>
-            ` : `
-              <p style="font-size:12px;color:var(--muted);margin-top:8px;">🎁 Points will be awarded when your order is marked as paid.</p>
-            `}
+            <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
+              ⚠️ Your order will be processed once payment is verified.
+            </p>
+            <p style="font-size:12px;color:var(--muted);text-align:center;">
+              Use <strong>${reference || o.paymentReference || 'N/A'}</strong> as your payment reference.
+            </p>
           </div>
         </div>
         <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
@@ -1710,13 +1805,13 @@ async function renderOrdersPage() {
                 ${myOrders.reverse().map(o => {
                   const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
                   const showInvoice = o.status === 'paid' || o.status === 'completed';
-                  const paymentLabel = o.paymentMethod === 'cash' ? '💵 Cash' : '💳 Payshap';
+                  const paymentLabel = '💳 Payshap';
                   return `<tr>
                     <td style="font-weight:700;font-size:12px;">${o.id}</td>
                     <td>${new Date(o.createdAt).toLocaleDateString()}</td>
                     <td>${o.items?.length||0}</td>
                     <td><strong>R${o.total?.toFixed(2)}</strong></td>
-                    <td><span class="badge ${o.paymentMethod === 'cash' ? 'badge-success' : 'badge-info'}">${paymentLabel}</span></td>
+                    <td><span class="badge badge-info">${paymentLabel}</span></td>
                     <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
                     <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
                       ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
@@ -1740,6 +1835,7 @@ async function cancelOrder(orderId) {
     renderOrdersPage();
   } catch { toast('❌ Failed to cancel order'); }
 }
+
 function viewInvoice(order) {
   const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
   const d = new Date(order.createdAt);
@@ -1769,7 +1865,6 @@ async function downloadPDF(order) {
   w.document.close();
   setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
 }
-
 // ============================================================
 //  AUTH FUNCTIONS
 // ============================================================
@@ -1991,8 +2086,9 @@ function redeemAllPoints() {
     else { toast('❌ ' + d.error); }
   });
 }
+
 // ============================================================
-//  LOCATION (UPDATED FOR HIGH ACCURACY)
+//  LOCATION
 // ============================================================
 
 async function shareLocation() {
@@ -2003,6 +2099,7 @@ async function shareLocation() {
 
   const b = document.getElementById('location-btn');
   const addressElement = document.getElementById('co-address');
+  const streetElement = document.getElementById('co-street');
   
   if (b) {
     b.disabled = true;
@@ -2047,14 +2144,18 @@ async function shareLocation() {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await response.json();
         
+        const fullAddress = data.display_name || `📍 ${coordsString}`;
         if (addressElement) {
-          addressElement.value = data.display_name || `📍 ${coordsString}`;
+          addressElement.value = fullAddress;
           addressElement.style.borderColor = '#E67E22';
           addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
           setTimeout(() => {
             addressElement.style.borderColor = '';
             addressElement.style.boxShadow = '';
           }, 3000);
+        }
+        if (streetElement) {
+          streetElement.value = fullAddress;
         }
         
         const coordsElement = document.getElementById('co-coordinates');
@@ -2072,14 +2173,18 @@ async function shareLocation() {
         }
 
       } catch (error) {
+        const fallback = `📍 ${coordsString}`;
         if (addressElement) {
-          addressElement.value = `📍 ${coordsString}`;
+          addressElement.value = fallback;
           addressElement.style.borderColor = '#E67E22';
           addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
           setTimeout(() => {
             addressElement.style.borderColor = '';
             addressElement.style.boxShadow = '';
           }, 3000);
+        }
+        if (streetElement) {
+          streetElement.value = fallback;
         }
         const coordsElement = document.getElementById('co-coordinates');
         if (coordsElement) {
