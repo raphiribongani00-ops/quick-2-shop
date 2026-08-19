@@ -9,57 +9,38 @@ const DELIVERY_AREA = 'Braamfontein';
 const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein only.';
 
 // ============================================================
-//  BRAAMFONTEIN BUILDINGS DATABASE - COMPLETE LIST
+//  BRAAMFONTEIN BUILDINGS DATABASE
 // ============================================================
 
 const BRAAMFONTEIN_BUILDINGS = [
-  // ===== UNIVERSITY RESIDENCES =====
-  // UJ Residences
+  // Student Residences
   { name: "UJ Kingsway Campus Residences", address: "Kingsway Avenue, Braamfontein" },
   { name: "UJ APK Residences", address: "University of Johannesburg, Braamfontein" },
-  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein" },
-  { name: "UJ Doornfontein Campus Residences", address: "Doornfontein, Braamfontein" },
-  
-  // Wits Residences
   { name: "Wits Junction", address: "Jorissen Street, Braamfontein" },
-  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein" },
   { name: "Wits East Campus Residences", address: "Braamfontein" },
   { name: "Wits West Campus Residences", address: "Braamfontein" },
-  { name: "Wits Braamfontein Campus", address: "Braamfontein" },
-  
-  // ===== SOUTH POINT RESIDENCES =====
-  { name: "South Point - 56 Jorissen", address: "56 Jorissen Street, Braamfontein" },
-  { name: "South Point - 2 De Korte", address: "2 De Korte Street, Braamfontein" },
-  { name: "South Point - 8 De Korte", address: "8 De Korte Street, Braamfontein" },
-  { name: "South Point - 22 De Korte", address: "22 De Korte Street, Braamfontein" },
-  { name: "South Point - 31 Jorissen", address: "31 Jorissen Street, Braamfontein" },
-  { name: "South Point - 36 Jorissen", address: "36 Jorissen Street, Braamfontein" },
-  { name: "South Point - 69 Jorissen", address: "69 Jorissen Street, Braamfontein" },
-  { name: "South Point - 105 Jorissen", address: "105 Jorissen Street, Braamfontein" },
-  { name: "South Point - 114 Jorissen", address: "114 Jorissen Street, Braamfontein" },
-  { name: "South Point - 120 Jorissen", address: "120 Jorissen Street, Braamfontein" },
-  { name: "South Point - 128 Jorissen", address: "128 Jorissen Street, Braamfontein" },
-  { name: "South Point - 134 Jorissen", address: "134 Jorissen Street, Braamfontein" },
-  
-  // ===== OTHER STUDENT ACCOMMODATION =====
-  { name: "The Lab Res", address: "Braamfontein" },
-  { name: "The Lofts", address: "Biccard Street, Braamfontein" },
-  { name: "Campus Village", address: "Jorissen Street, Braamfontein" },
+  { name: "Wits Parktown Residences", address: "Parktown, Braamfontein" },
   { name: "Braamfontein Student Village", address: "Jorissen Street, Braamfontein" },
-  { name: "Wits 1952", address: "Braamfontein" },
-  { name: "The Edge", address: "D streets, Braamfontein" },
-  { name: "The Square", address: "Braamfontein" },
+  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein" },
+  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein" },
   
-  // ===== APARTMENTS & BUILDINGS =====
+  // Apartments & Buildings
   { name: "Auckland House", address: "Kingsway Avenue, Braamfontein" },
   { name: "Braamfontein Towers", address: "Biccard Street, Braamfontein" },
+  { name: "Houghton Heights", address: "Houghton, Braamfontein" },
+  { name: "The Edge", address: "D streets, Braamfontein" },
+  { name: "The Lofts", address: "Biccard Street, Braamfontein" },
+  { name: "Campus Village", address: "Jorissen Street, Braamfontein" },
+  { name: "City Lights", address: "Empire Road, Braamfontein" },
   { name: "Metropolitan Tower", address: "Kingsway Avenue, Braamfontein" },
   { name: "Braamfontein Centre", address: "Melle Street, Braamfontein" },
   { name: "The Annex", address: "Ennis Road, Braamfontein" },
-  { name: "City Lights", address: "Empire Road, Braamfontein" },
+  { name: "Wits 1952", address: "Braamfontein" },
+  { name: "The Square", address: "Braamfontein" },
+  { name: "Park Central", address: "Parktown, Braamfontein" },
   { name: "Braamfontein Gateway", address: "Braamfontein" },
   
-  // ===== MANUAL ENTRY =====
+  // Additional Streets
   { name: "Other (Manual Entry)", address: "" }
 ];
 
@@ -197,6 +178,7 @@ function getSpecialLabel(product) {
 function isSpecialActive(product) {
   return getProductSpecial(product) !== null;
 }
+
 // ============================================================
 //  CART FUNCTIONS
 // ============================================================
@@ -648,6 +630,7 @@ function starsHTML(rating) {
   const empty = Math.max(0, 5 - full);
   return '★'.repeat(full) + '☆'.repeat(empty);
 }
+
 // ============================================================
 //  PRODUCTS & CATEGORIES
 // ============================================================
@@ -928,7 +911,6 @@ function addToCartById(id) {
     }
   }
 }
-
 // ============================================================
 //  PRODUCT MODAL
 // ============================================================
@@ -1187,6 +1169,7 @@ function updateCartRewardProgress() {
     </div>
   `;
 }
+
 // ============================================================
 //  RENDER CART ITEMS
 // ============================================================
@@ -1328,7 +1311,6 @@ function fileToBase64(file) {
     reader.readAsDataURL(file);
   });
 }
-
 // ============================================================
 //  PAYMENT METHODS & CHECKOUT
 // ============================================================
@@ -1336,7 +1318,8 @@ function fileToBase64(file) {
 function getBuildingOptions() {
   let options = '';
   BRAAMFONTEIN_BUILDINGS.forEach(building => {
-    options += `<option value="${building.name}|${building.address}">${building.name}</option>`;
+    const selected = building.name === 'Other (Manual Entry)' ? '' : '';
+    options += `<option value="${building.name}|${building.address}" ${selected}>${building.name}</option>`;
   });
   return options;
 }
@@ -1407,9 +1390,15 @@ function renderCheckout() {
                 </select>
               </div>
               
-              <div class="form-group">
-                <label>House/Building Number & Street Name *</label>
-                <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}">
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                <div class="form-group">
+                  <label>House/Building Number & Street Name *</label>
+                  <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}">
+                </div>
+                <div class="form-group">
+                  <label>Apartment/Unit No.</label>
+                  <input class="form-input" id="co-unit" placeholder="e.g. Apt 4, Room 12" value="${defaultAddress?.unit || ''}">
+                </div>
               </div>
               
               <div class="form-group">
@@ -1436,13 +1425,13 @@ function renderCheckout() {
 
             <!-- PAYMENT SECTION - Payshap Only -->
             <div class="checkout-card" style="border:2px solid var(--orange);">
-              <h3 style="color:var(--orange-dark);">💳 Payment via Instant EFT (Payshap)</h3>
+              <h3 style="color:var(--orange-dark);">💳 Payment via Payshap / Instant EFT</h3>
               
               <div style="background:#FFF8E1;padding:16px;border-radius:8px;margin-bottom:16px;border-left:4px solid #DC2626;">
                 <p style="font-weight:600;color:#DC2626;">⚠️ Important: Immediate Payment Required</p>
                 <p style="font-size:13px;color:var(--muted);">
-                  Please make your <strong>Instant EFT</strong> payment <strong>immediately</strong> after placing your order.
-                  The funds will clear in our account instantly. Use the reference below as your <strong>Beneficiary Reference</strong>.
+                  Please make your payment <strong>immediately</strong> after placing your order.
+                  Use the reference below as your <strong>Beneficiary Reference</strong>.
                 </p>
               </div>
               
@@ -1463,11 +1452,11 @@ function renderCheckout() {
               <div class="form-group">
                 <label>Upload Proof of Payment (POP) *</label>
                 <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);">
-                <small style="color:var(--muted);">Upload a screenshot or photo of your Instant EFT confirmation.</small>
+                <small style="color:var(--muted);">Upload a screenshot or photo of your payment confirmation.</small>
               </div>
               
               <div style="background:#E8F5E9;padding:12px;border-radius:8px;font-size:13px;color:#2E7D32;margin-top:8px;">
-                ✅ Your order will be processed immediately once payment is confirmed.
+                ✅ Your order will be processed once payment is verified.
               </div>
             </div>
 
@@ -1507,7 +1496,7 @@ function renderCheckout() {
             <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
             
             <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
-              💳 Payment: <strong>Instant EFT (Payshap)</strong>
+              💳 Payment: <strong>Payshap / Instant EFT</strong>
             </div>
             
             <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">
@@ -1520,6 +1509,9 @@ function renderCheckout() {
         </div>
       `}
     </div>`;
+
+  // Set default payment method
+  document.getElementById('payment-payshap').checked = true;
 }
 
 function fillAddressFromBuilding() {
@@ -1544,8 +1536,14 @@ function fillAddressFromBuilding() {
 
 function updateFullAddress() {
   const street = document.getElementById('co-street').value.trim();
+  const unit = document.getElementById('co-unit').value.trim();
   const address = document.getElementById('co-address');
-  address.value = street;
+  
+  let fullAddress = street;
+  if (unit) {
+    fullAddress = `${unit}, ${street}`;
+  }
+  address.value = fullAddress;
 }
 
 function loadSelectedAddress(addressId) {
@@ -1554,7 +1552,16 @@ function loadSelectedAddress(addressId) {
   if (addr) {
     document.getElementById('co-address').value = addr.address;
     document.getElementById('co-phone').value = addr.phone || document.getElementById('co-phone').value;
-    document.getElementById('co-street').value = addr.address;
+    // Try to extract street and unit
+    if (addr.address) {
+      const parts = addr.address.split(', ');
+      if (parts.length >= 2) {
+        document.getElementById('co-street').value = parts.slice(1).join(', ');
+        document.getElementById('co-unit').value = parts[0];
+      } else {
+        document.getElementById('co-street').value = addr.address;
+      }
+    }
     toast('📂 Address loaded');
   }
 }
@@ -1563,6 +1570,7 @@ function saveCurrentAddress() {
   const address = document.getElementById('co-address')?.value.trim();
   const phone = document.getElementById('co-phone')?.value.trim();
   const street = document.getElementById('co-street')?.value.trim();
+  const unit = document.getElementById('co-unit')?.value.trim();
   
   if (!address) {
     toast('⚠️ Please enter an address first');
@@ -1574,7 +1582,7 @@ function saveCurrentAddress() {
     return;
   }
   
-  saveUserAddress({ address, phone, street });
+  saveUserAddress({ address, phone, street, unit });
 }
 
 function copyReference() {
@@ -1583,6 +1591,7 @@ function copyReference() {
     navigator.clipboard.writeText(ref).then(() => {
       toast('📋 Reference copied!');
     }).catch(() => {
+      // Fallback
       const textarea = document.createElement('textarea');
       textarea.value = ref;
       document.body.appendChild(textarea);
@@ -1609,10 +1618,12 @@ async function submitOrder() {
   const p = document.getElementById('co-phone')?.value.trim();
   const a = document.getElementById('co-address')?.value.trim();
   const s = document.getElementById('co-street')?.value.trim();
+  const u = document.getElementById('co-unit')?.value.trim();
   const c = document.getElementById('co-coordinates')?.value.trim();
   const n = document.getElementById('co-notes')?.value.trim();
   const btn = document.getElementById('place-order-btn');
 
+  // Get payment method (always payshap now)
   const paymentMethod = 'payshap';
   
   const popInput = document.getElementById('co-pop');
@@ -1644,6 +1655,7 @@ async function submitOrder() {
         phone: p, 
         address: a,
         street: s,
+        unit: u,
         coordinates: c, 
         notes: n 
       },
@@ -1701,7 +1713,7 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference
         <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
         <p style="color:var(--muted);margin-bottom:8px;">${paymentMessage}</p>
         <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:32px;border-left:4px solid #DC2626;display:inline-block;">
-          <p style="font-size:14px;font-weight:600;color:#DC2626;">📌 Use this reference for your Instant EFT payment:</p>
+          <p style="font-size:14px;font-weight:600;color:#DC2626;">📌 Use this reference for your payment:</p>
           <p style="font-size:24px;font-weight:800;font-family:monospace;color:#DC2626;">${reference || o.paymentReference || 'N/A'}</p>
         </div>
         <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
@@ -1717,7 +1729,7 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference
             </div>
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
               <span style="font-weight:600;">Payment Method</span>
-              <span>💳 Instant EFT (Payshap)</span>
+              <span>💳 Payshap / Instant EFT</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
               <span style="font-weight:600;">Payment Reference</span>
@@ -1793,7 +1805,7 @@ async function renderOrdersPage() {
                 ${myOrders.reverse().map(o => {
                   const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
                   const showInvoice = o.status === 'paid' || o.status === 'completed';
-                  const paymentLabel = '💳 Instant EFT';
+                  const paymentLabel = '💳 Payshap';
                   return `<tr>
                     <td style="font-weight:700;font-size:12px;">${o.id}</td>
                     <td>${new Date(o.createdAt).toLocaleDateString()}</td>
@@ -2243,8 +2255,8 @@ function showTerms() {
       <div class="modal-body">
         <h4>1. Orders</h4><p>Subject to availability.</p>
         <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
-        <h4>3. Payment</h4><p>Instant EFT only.</p>
-        <h4>4. Delivery</h4><p>R10 flat fee in Braamfontein.</p>
+        <h4>3. Payment</h4><p>Cash on delivery or Instant EFT.</p>
+        <h4>4. Delivery</h4><p>Free in our area.</p>
         <h4>5. Returns</h4><p>Within 24 hours.</p>
         <h4>6. Privacy</h4><p>Never shared.</p>
       </div>
