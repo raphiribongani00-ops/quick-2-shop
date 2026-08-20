@@ -6,7 +6,7 @@ const API = '/api';
 
 const DELIVERY_FEE = 10;
 const DELIVERY_AREA = 'Braamfontein';
-const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein only.';
+const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
 
 // ============================================================
 //  BRAAMFONTEIN BUILDINGS DATABASE - COMPLETE LIST
@@ -14,53 +14,76 @@ const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein o
 
 const BRAAMFONTEIN_BUILDINGS = [
   // ===== UNIVERSITY RESIDENCES =====
-  // UJ Residences
-  { name: "UJ Kingsway Campus Residences", address: "Kingsway Avenue, Braamfontein" },
-  { name: "UJ APK Residences", address: "University of Johannesburg, Braamfontein" },
-  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein" },
-  { name: "UJ Doornfontein Campus Residences", address: "Doornfontein, Braamfontein" },
-  
-  // Wits Residences
-  { name: "Wits Junction", address: "Jorissen Street, Braamfontein" },
-  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein" },
-  { name: "Wits East Campus Residences", address: "Braamfontein" },
-  { name: "Wits West Campus Residences", address: "Braamfontein" },
-  { name: "Wits Braamfontein Campus", address: "Braamfontein" },
+  { name: "UJ Kingsway Campus Residences", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
+  { name: "UJ APK Residences", address: "University of Johannesburg, Braamfontein", area: "braamfontein" },
+  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein", area: "braamfontein" },
+  { name: "UJ Doornfontein Campus Residences", address: "Doornfontein, Braamfontein", area: "doornfontein" },
+  { name: "UJ Auckland Park Residences", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
+  { name: "Wits Junction", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein", area: "braamfontein" },
+  { name: "Wits East Campus Residences", address: "Braamfontein", area: "braamfontein" },
+  { name: "Wits West Campus Residences", address: "Braamfontein", area: "braamfontein" },
+  { name: "Wits Braamfontein Campus", address: "Braamfontein", area: "braamfontein" },
+  { name: "Wits Parktown Residences", address: "Parktown, Johannesburg", area: "parktown" },
   
   // ===== SOUTH POINT RESIDENCES =====
-  { name: "South Point - 56 Jorissen", address: "56 Jorissen Street, Braamfontein" },
-  { name: "South Point - 2 De Korte", address: "2 De Korte Street, Braamfontein" },
-  { name: "South Point - 8 De Korte", address: "8 De Korte Street, Braamfontein" },
-  { name: "South Point - 22 De Korte", address: "22 De Korte Street, Braamfontein" },
-  { name: "South Point - 31 Jorissen", address: "31 Jorissen Street, Braamfontein" },
-  { name: "South Point - 36 Jorissen", address: "36 Jorissen Street, Braamfontein" },
-  { name: "South Point - 69 Jorissen", address: "69 Jorissen Street, Braamfontein" },
-  { name: "South Point - 105 Jorissen", address: "105 Jorissen Street, Braamfontein" },
-  { name: "South Point - 114 Jorissen", address: "114 Jorissen Street, Braamfontein" },
-  { name: "South Point - 120 Jorissen", address: "120 Jorissen Street, Braamfontein" },
-  { name: "South Point - 128 Jorissen", address: "128 Jorissen Street, Braamfontein" },
-  { name: "South Point - 134 Jorissen", address: "134 Jorissen Street, Braamfontein" },
+  { name: "South Point - 56 Jorissen", address: "56 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 2 De Korte", address: "2 De Korte Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 8 De Korte", address: "8 De Korte Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 22 De Korte", address: "22 De Korte Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 31 Jorissen", address: "31 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 36 Jorissen", address: "36 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 69 Jorissen", address: "69 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 105 Jorissen", address: "105 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 114 Jorissen", address: "114 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 120 Jorissen", address: "120 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 128 Jorissen", address: "128 Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "South Point - 134 Jorissen", address: "134 Jorissen Street, Braamfontein", area: "braamfontein" },
   
   // ===== OTHER STUDENT ACCOMMODATION =====
-  { name: "The Lab Res", address: "Braamfontein" },
-  { name: "The Lofts", address: "Biccard Street, Braamfontein" },
-  { name: "Campus Village", address: "Jorissen Street, Braamfontein" },
-  { name: "Braamfontein Student Village", address: "Jorissen Street, Braamfontein" },
-  { name: "Wits 1952", address: "Braamfontein" },
-  { name: "The Edge", address: "D streets, Braamfontein" },
-  { name: "The Square", address: "Braamfontein" },
+  { name: "The Lab Res", address: "Braamfontein", area: "braamfontein" },
+  { name: "The Lofts", address: "Biccard Street, Braamfontein", area: "braamfontein" },
+  { name: "Campus Village", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "Braamfontein Student Village", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
+  { name: "Wits 1952", address: "Braamfontein", area: "braamfontein" },
+  { name: "The Edge", address: "D streets, Braamfontein", area: "braamfontein" },
+  { name: "The Square", address: "Braamfontein", area: "braamfontein" },
+  
+  // ===== DOORNFONTEIN =====
+  { name: "Doornfontein Towers", address: "Doornfontein, Johannesburg", area: "doornfontein" },
+  { name: "Bezuidenhout Street Apartments", address: "Bezuidenhout Street, Doornfontein", area: "doornfontein" },
+  { name: "Twist Street Residences", address: "Twist Street, Doornfontein", area: "doornfontein" },
+  { name: "De Villiers Court", address: "De Villiers Street, Doornfontein", area: "doornfontein" },
+  { name: "Goud Street Student Accommodation", address: "Goud Street, Doornfontein", area: "doornfontein" },
+  { name: "Doornfontein Student Village", address: "Doornfontein, Johannesburg", area: "doornfontein" },
+  
+  // ===== PARKTOWN =====
+  { name: "Parktown Heights", address: "Parktown, Johannesburg", area: "parktown" },
+  { name: "York Road Apartments", address: "York Road, Parktown", area: "parktown" },
+  { name: "Jan Smuts Avenue Residences", address: "Jan Smuts Avenue, Parktown", area: "parktown" },
+  { name: "Riviera Court", address: "Riviera, Parktown", area: "parktown" },
+  { name: "Oxford Street Apartments", address: "Oxford Street, Parktown", area: "parktown" },
+  { name: "Parktown Student Village", address: "Parktown, Johannesburg", area: "parktown" },
+  
+  // ===== AUCKLAND PARK =====
+  { name: "Auckland Park Heights", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
+  { name: "Greenhill Apartments", address: "Greenhill, Auckland Park", area: "aucklandpark" },
+  { name: "Greenwood Court", address: "Greenwood, Auckland Park", area: "aucklandpark" },
+  { name: "Marthin Street Residences", address: "Marthin Street, Auckland Park", area: "aucklandpark" },
+  { name: "University View Apartments", address: "University View, Auckland Park", area: "aucklandpark" },
+  { name: "Auckland Park Student Village", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
   
   // ===== APARTMENTS & BUILDINGS =====
-  { name: "Auckland House", address: "Kingsway Avenue, Braamfontein" },
-  { name: "Braamfontein Towers", address: "Biccard Street, Braamfontein" },
-  { name: "Metropolitan Tower", address: "Kingsway Avenue, Braamfontein" },
-  { name: "Braamfontein Centre", address: "Melle Street, Braamfontein" },
-  { name: "The Annex", address: "Ennis Road, Braamfontein" },
-  { name: "City Lights", address: "Empire Road, Braamfontein" },
-  { name: "Braamfontein Gateway", address: "Braamfontein" },
+  { name: "Auckland House", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
+  { name: "Braamfontein Towers", address: "Biccard Street, Braamfontein", area: "braamfontein" },
+  { name: "Metropolitan Tower", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
+  { name: "Braamfontein Centre", address: "Melle Street, Braamfontein", area: "braamfontein" },
+  { name: "The Annex", address: "Ennis Road, Braamfontein", area: "braamfontein" },
+  { name: "City Lights", address: "Empire Road, Braamfontein", area: "braamfontein" },
+  { name: "Braamfontein Gateway", address: "Braamfontein", area: "braamfontein" },
   
   // ===== MANUAL ENTRY =====
-  { name: "Other (Manual Entry)", address: "" }
+  { name: "Other (Manual Entry)", address: "", area: "braamfontein" }
 ];
 
 const state = {
@@ -197,6 +220,7 @@ function getSpecialLabel(product) {
 function isSpecialActive(product) {
   return getProductSpecial(product) !== null;
 }
+
 // ============================================================
 //  CART FUNCTIONS
 // ============================================================
@@ -401,6 +425,8 @@ async function loadUserRewards() {
       state.streak = data.streak || { count: 0, bonusAmount: 0 };
       state.subscription = data.subscription || null;
       state.rewardProgress = data.progress || null;
+      state.user.isStudent = data.isStudent || false;
+      state.user.studentVerified = data.studentVerified || false;
       updateRewardUI();
     }
   } catch (e) { /* silent fail */ }
@@ -648,6 +674,7 @@ function starsHTML(rating) {
   const empty = Math.max(0, 5 - full);
   return '★'.repeat(full) + '☆'.repeat(empty);
 }
+
 // ============================================================
 //  PRODUCTS & CATEGORIES
 // ============================================================
@@ -1187,6 +1214,7 @@ function updateCartRewardProgress() {
     </div>
   `;
 }
+
 // ============================================================
 //  RENDER CART ITEMS
 // ============================================================
@@ -1275,7 +1303,7 @@ function renderCartItems() {
   const total = subtotal + deliveryFee;
   
   const deliveryDisplay = `R${deliveryFee.toFixed(2)}`;
-  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
   
   document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
   document.getElementById('cart-delivery').textContent = deliveryDisplay;
@@ -1330,13 +1358,339 @@ function fileToBase64(file) {
 }
 
 // ============================================================
+//  BUILDING SEARCH
+// ============================================================
+
+let allBuildings = [];
+
+async function loadBuildings() {
+  try {
+    const response = await fetch('/api/buildings');
+    if (response.ok) {
+      allBuildings = await response.json();
+    }
+  } catch (err) {
+    console.error('Failed to load buildings:', err);
+  }
+}
+
+function searchBuildings(query) {
+  const resultsContainer = document.getElementById('building-results');
+  if (!resultsContainer) return;
+
+  if (!query || query.length < 2) {
+    resultsContainer.style.display = 'none';
+    return;
+  }
+
+  const filtered = allBuildings.filter(b => 
+    b.name.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 10);
+
+  if (filtered.length === 0) {
+    resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Please enter address manually.</div>';
+    resultsContainer.style.display = 'block';
+    return;
+  }
+
+  resultsContainer.innerHTML = filtered.map(b => `
+    <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
+         onclick="selectBuilding('${b.name}', '${b.area || 'braamfontein'}')">
+      <strong>${b.name}</strong>
+      <span style="font-size:11px;color:var(--muted);">${b.area || ''}</span>
+    </div>
+  `).join('');
+  resultsContainer.style.display = 'block';
+}
+
+function selectBuilding(name, area) {
+  const addressInput = document.getElementById('co-address');
+  const streetInput = document.getElementById('co-street');
+  
+  const building = allBuildings.find(b => b.name === name);
+  if (building) {
+    streetInput.value = building.address || name;
+    addressInput.value = building.address || name;
+  } else {
+    streetInput.value = name;
+    addressInput.value = name;
+  }
+  
+  document.getElementById('building-results').style.display = 'none';
+  document.getElementById('building-search').value = name;
+  
+  detectAddressAndFee();
+  toast(`✅ ${name} selected`);
+}
+
+// ============================================================
+//  DELIVERY FEE DETECTION
+// ============================================================
+
+async function detectAddressAndFee() {
+  const address = document.getElementById('co-address')?.value || '';
+  const street = document.getElementById('co-street')?.value || '';
+  const fullAddress = address || street;
+  
+  if (!fullAddress || fullAddress.length < 3) {
+    localStorage.removeItem('delivery_fee');
+    localStorage.removeItem('delivery_area');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/delivery/fee?address=${encodeURIComponent(fullAddress)}`);
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('delivery_fee', data.fee);
+      localStorage.setItem('delivery_area', data.label);
+      
+      // Update the delivery fee display
+      const deliveryDisplay = document.querySelector('.order-line .delivery-fee');
+      if (deliveryDisplay) {
+        deliveryDisplay.textContent = `R${data.fee.toFixed(2)}`;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to detect delivery fee:', err);
+  }
+}
+
+// ============================================================
+//  STUDENT VERIFICATION
+// ============================================================
+
+async function uploadStudentProof() {
+  const fileInput = document.getElementById('student-proof-input');
+  const file = fileInput?.files?.[0];
+  
+  if (!file) {
+    toast('⚠️ Please select a file');
+    return;
+  }
+
+  // Check file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('⚠️ File too large. Maximum 5MB');
+    return;
+  }
+
+  // Check file type
+  const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    toast('⚠️ Please upload PDF, JPG, PNG, or WebP');
+    return;
+  }
+
+  if (!state.user) {
+    toast('⚠️ Please sign in first');
+    return;
+  }
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result;
+      
+      const response = await fetch('/api/user/verify-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: state.user._id,
+          proofBase64: base64
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast('✅ Proof submitted! Pending verification.');
+        setTimeout(() => loadUserData(), 1000);
+      } else {
+        toast('❌ ' + data.error);
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    toast('❌ Upload failed: ' + err.message);
+  }
+}
+
+// ============================================================
+//  PROFILE PICTURE UPLOAD
+// ============================================================
+
+async function uploadProfilePicture() {
+  const fileInput = document.getElementById('profile-pic-input');
+  const file = fileInput?.files?.[0];
+  
+  if (!file) {
+    toast('⚠️ Please select a picture');
+    return;
+  }
+
+  // Check file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('⚠️ File too large. Maximum 5MB');
+    return;
+  }
+
+  // Check file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    toast('⚠️ Please upload JPG, PNG, or WebP');
+    return;
+  }
+
+  if (!state.user) {
+    toast('⚠️ Please sign in first');
+    return;
+  }
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result;
+      
+      const response = await fetch(`/api/user/${state.user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profilePicture: base64
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        state.user = data;
+        localStorage.setItem('habibi_user', JSON.stringify(data));
+        toast('✅ Profile picture updated!');
+        updateAuthUI();
+        renderProfilePage();
+      } else {
+        toast('❌ ' + data.error);
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    toast('❌ Upload failed: ' + err.message);
+  }
+}
+
+// ============================================================
+//  PROFILE PAGE
+// ============================================================
+
+function renderProfilePage() {
+  const s = document.getElementById('profile-section');
+  if (!s) {
+    // Create profile section if it doesn't exist
+    const container = document.createElement('section');
+    container.id = 'profile-section';
+    container.className = 'profile-section';
+    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
+    container.style.minHeight = '100vh';
+    document.body.appendChild(container);
+  }
+  
+  const section = document.getElementById('profile-section');
+  if (!section) return;
+  
+  if (!state.user) {
+    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
+    return;
+  }
+
+  const isStudent = state.user.isStudent || false;
+  const studentVerified = state.user.studentVerified || false;
+  const studentProof = state.user.studentProof || null;
+  const discountActive = isStudent && new Date() < new Date('2026-09-30');
+  const profilePic = state.user.profilePicture || '';
+
+  section.innerHTML = `
+    <div class="container">
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">👤 My Profile</h1>
+      
+      <div class="checkout-card">
+        <h3>Profile Picture</h3>
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+          <div style="width:100px;height:100px;border-radius:50%;background:var(--surface);border:3px solid var(--orange);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            ${profilePic ? 
+              `<img src="${profilePic}" style="width:100%;height:100%;object-fit:cover;">` :
+              `<span style="font-size:40px;font-weight:700;color:var(--gray-500);">${state.user.name[0].toUpperCase()}</span>`
+            }
+          </div>
+          <div>
+            <input type="file" id="profile-pic-input" accept="image/jpeg,image/png,image/webp" style="margin-bottom:8px;">
+            <button class="btn btn-primary btn-sm" onclick="uploadProfilePicture()">📷 Upload Picture</button>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, WebP • Max 5MB</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="checkout-card">
+        <h3>Personal Information</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><strong>Name:</strong> ${state.user.name}</div>
+          <div><strong>Email:</strong> ${state.user.email}</div>
+          <div><strong>Member Since:</strong> ${new Date(state.user.createdAt).toLocaleDateString()}</div>
+          <div><strong>Reward Balance:</strong> <span style="color:var(--orange);font-weight:700;">R${state.rewardBalance.toFixed(2)}</span></div>
+        </div>
+      </div>
+
+      <div class="checkout-card">
+        <h3>🎓 Student Status</h3>
+        ${studentVerified ? `
+          <div style="background:#E8F5E9;padding:16px;border-radius:8px;border-left:4px solid #4CAF50;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:24px;">✅</span>
+              <div>
+                <strong style="color:#2E7D32;">Verified Student</strong>
+                <p style="font-size:13px;color:#2E7D32;margin:0;">
+                  ${discountActive ? 
+                    `🎉 20% off delivery fee • Valid until ${new Date('2026-09-30').toLocaleDateString()}` :
+                    '⚠️ Discount has expired. Please re-verify.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        ` : studentProof ? `
+          <div style="background:#FFF8E1;padding:16px;border-radius:8px;border-left:4px solid #FFA726;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:24px;">⏳</span>
+              <div>
+                <strong style="color:#E65100;">Pending Verification</strong>
+                <p style="font-size:13px;color:#E65100;margin:0;">Your proof is being reviewed. You'll be notified once approved.</p>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div style="background:#FFF3E0;padding:16px;border-radius:8px;border-left:4px solid #FF9800;margin-bottom:12px;">
+            <p style="margin-bottom:8px;"><strong>Become a verified student and get 20% off delivery fees!</strong></p>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+              Upload your proof of registration (PDF or image) to verify your student status.
+              Discount valid until 30 September 2026.
+            </p>
+            <input type="file" id="student-proof-input" accept="application/pdf,image/jpeg,image/png,image/webp">
+            <button class="btn btn-orange btn-sm" onclick="uploadStudentProof()" style="margin-top:8px;">📤 Upload Proof</button>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, JPG, PNG, WebP • Max 5MB</p>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
 //  PAYMENT METHODS & CHECKOUT
 // ============================================================
 
 function getBuildingOptions() {
   let options = '';
   BRAAMFONTEIN_BUILDINGS.forEach(building => {
-    options += `<option value="${building.name}|${building.address}">${building.name}</option>`;
+    options += `<option value="${building.name}|${building.address}" data-area="${building.area}">${building.name}</option>`;
   });
   return options;
 }
@@ -1350,10 +1704,30 @@ function renderCheckout() {
   }
 
   const subtotal = Cart.total();
-  const deliveryFee = Cart.deliveryFee();
+  
+  // Get delivery address and calculate fee
+  const address = document.getElementById('co-address')?.value || '';
+  let deliveryFee = 15;
+  let deliveryArea = 'Braamfontein';
+  
+  const savedFee = localStorage.getItem('delivery_fee');
+  const savedArea = localStorage.getItem('delivery_area');
+  if (savedFee && savedArea) {
+    deliveryFee = parseInt(savedFee);
+    deliveryArea = savedArea;
+  }
+  
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
-  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
+  
+  // Calculate student discount (20% off delivery fee)
+  const isStudent = state.user?.isStudent || false;
+  const studentVerified = state.user?.studentVerified || false;
+  const studentDiscountActive = isStudent && studentVerified && new Date() < new Date('2026-09-30');
+  const studentDiscount = studentDiscountActive ? deliveryFee * 0.2 : 0;
+  const finalDeliveryFee = deliveryFee - studentDiscount;
+  
+  const total = Math.max(0, subtotal - discount - rewardDiscount + finalDeliveryFee);
   
   let subscriptionDiscount = 0;
   let subscriptionPercent = 0;
@@ -1362,13 +1736,13 @@ function renderCheckout() {
     subscriptionDiscount = (subtotal * subscriptionPercent) / 100;
   }
   
-  const deliveryDisplay = `R${deliveryFee.toFixed(2)}`;
-  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+  const deliveryDisplay = `R${finalDeliveryFee.toFixed(2)}`;
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
+  const deliveryAreaDisplay = `📍 ${deliveryArea}`;
   
   const savedAddresses = getUserAddresses();
   const defaultAddress = getDefaultAddress();
   
-  // Build address selector HTML
   let addressSelectorHTML = '';
   if (savedAddresses.length > 0) {
     addressSelectorHTML = `
@@ -1396,25 +1770,24 @@ function renderCheckout() {
               <h3>📱 Delivery Details</h3>
               <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:16px;border-left:4px solid var(--orange);">
                 <p style="font-size:13px;color:var(--orange-dark);font-weight:600;">${deliveryNote}</p>
+                <p style="font-size:12px;color:var(--muted);">${deliveryAreaDisplay}</p>
               </div>
               ${addressSelectorHTML}
               
-              <div class="form-group">
-                <label>Select Your Building/Residence</label>
-                <select class="form-input" id="building-select" onchange="fillAddressFromBuilding()">
-                  <option value="">-- Select a building --</option>
-                  ${getBuildingOptions()}
-                </select>
+              <div class="form-group" style="position:relative;">
+                <label>Search & Select Your Building/Residence</label>
+                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." oninput="searchBuildings(this.value)">
+                <div id="building-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
               </div>
               
               <div class="form-group">
                 <label>House/Building Number & Street Name *</label>
-                <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}">
+                <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}" oninput="detectAddressAndFee()">
               </div>
               
               <div class="form-group">
                 <label>Full Address</label>
-                <textarea class="form-input" id="co-address" rows="3" placeholder="Full address will appear here">${defaultAddress?.address || ''}</textarea>
+                <textarea class="form-input" id="co-address" rows="3" placeholder="Full address will appear here" oninput="detectAddressAndFee()">${defaultAddress?.address || ''}</textarea>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
                   <button class="btn btn-outline btn-sm" onclick="updateFullAddress()">📝 Update Full Address</button>
                   <button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
@@ -1434,7 +1807,6 @@ function renderCheckout() {
               </div>
             </div>
 
-            <!-- PAYMENT SECTION - Payshap Only -->
             <div class="checkout-card" style="border:2px solid var(--orange);">
               <h3 style="color:var(--orange-dark);">💳 Payment via Instant EFT (Payshap)</h3>
               
@@ -1478,6 +1850,12 @@ function renderCheckout() {
                   <span>Reward Balance</span>
                   <span><strong style="color:var(--orange);">R${state.rewardBalance.toFixed(2)}</strong></span>
                 </div>
+                ${studentDiscountActive ? `
+                  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                    <span>🎓 Student Discount (20% off delivery)</span>
+                    <span style="color:#2E7D32;font-weight:700;">-R${studentDiscount.toFixed(2)}</span>
+                  </div>
+                ` : ''}
                 ${state.rewardBalance >= 2 ? `
                   <div style="display:flex;gap:8px;margin-top:8px;">
                     <button class="btn btn-orange btn-sm" onclick="redeemRewards()" style="flex:1;">
@@ -1501,8 +1879,14 @@ function renderCheckout() {
             </div>
             <div class="order-line" style="color:var(--orange);font-weight:600;">
               <span>🚚 Delivery Fee</span>
-              <span>${deliveryDisplay}</span>
+              <span class="delivery-fee">${deliveryDisplay}</span>
             </div>
+            ${studentDiscountActive ? `
+              <div class="order-line" style="color:#2E7D32;font-weight:600;">
+                <span>🎓 Student Discount (20%)</span>
+                <span>-R${studentDiscount.toFixed(2)}</span>
+              </div>
+            ` : ''}
             <div style="font-size:12px;color:var(--orange);text-align:center;margin:4px 0;">${deliveryNote}</div>
             <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
             
@@ -1520,32 +1904,16 @@ function renderCheckout() {
         </div>
       `}
     </div>`;
-}
 
-function fillAddressFromBuilding() {
-  const select = document.getElementById('building-select');
-  const value = select.value;
-  if (!value) return;
-  
-  const [buildingName, buildingAddress] = value.split('|');
-  
-  if (buildingName === 'Other (Manual Entry)') {
-    document.getElementById('co-street').value = '';
-    document.getElementById('co-address').value = '';
-    document.getElementById('co-street').focus();
-    return;
-  }
-  
-  document.getElementById('co-street').value = buildingAddress;
-  document.getElementById('co-address').value = buildingAddress;
-  toast(`✅ ${buildingName} selected`);
-  updateFullAddress();
+  loadBuildings();
+  detectAddressAndFee();
 }
 
 function updateFullAddress() {
   const street = document.getElementById('co-street').value.trim();
   const address = document.getElementById('co-address');
   address.value = street;
+  detectAddressAndFee();
 }
 
 function loadSelectedAddress(addressId) {
@@ -1556,6 +1924,7 @@ function loadSelectedAddress(addressId) {
     document.getElementById('co-phone').value = addr.phone || document.getElementById('co-phone').value;
     document.getElementById('co-street').value = addr.address;
     toast('📂 Address loaded');
+    detectAddressAndFee();
   }
 }
 
@@ -1601,6 +1970,7 @@ function copyReference() {
     toast('📋 Reference copied!');
   }
 }
+
 // ============================================================
 //  SUBMIT ORDER
 // ============================================================
@@ -1633,8 +2003,19 @@ async function submitOrder() {
   const subtotal = Cart.total();
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
-  const deliveryFee = Cart.deliveryFee();
-  const total = Math.max(0, subtotal - discount - rewardDiscount + deliveryFee);
+  
+  // Get delivery fee
+  const savedFee = localStorage.getItem('delivery_fee');
+  let deliveryFee = savedFee ? parseInt(savedFee) : 15;
+  
+  // Apply student discount
+  const isStudent = state.user?.isStudent || false;
+  const studentVerified = state.user?.studentVerified || false;
+  const studentDiscountActive = isStudent && studentVerified && new Date() < new Date('2026-09-30');
+  const studentDiscount = studentDiscountActive ? deliveryFee * 0.2 : 0;
+  const finalDeliveryFee = deliveryFee - studentDiscount;
+  
+  const total = Math.max(0, subtotal - discount - rewardDiscount + finalDeliveryFee);
 
   try {
     const orderData = {
@@ -1650,14 +2031,17 @@ async function submitOrder() {
       items: state.cart,
       total: total,
       subtotal: subtotal,
-      deliveryFee: deliveryFee,
+      deliveryFee: finalDeliveryFee,
+      originalDeliveryFee: deliveryFee,
+      studentDiscount: studentDiscount,
       discount: discount,
       rewardDiscount: rewardDiscount,
       paymentMethod: paymentMethod,
       paymentStatus: 'pending_payment',
       userId: state.user?._id || null,
       paymentReference: paymentReference,
-      proofOfPayment: popBase64
+      proofOfPayment: popBase64,
+      isStudent: studentDiscountActive
     };
 
     const o = await placeOrder(orderData);
@@ -1669,7 +2053,7 @@ async function submitOrder() {
     state.discountAmount = 0;
     state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
     
-    showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, ref);
+    showOrderSuccessSummary(o, total, paymentMethod, finalDeliveryFee, ref, studentDiscount);
     fetchUserPoints(state.user?.email);
     updateRewardUI();
     
@@ -1685,14 +2069,14 @@ async function submitOrder() {
 //  ORDER SUCCESS SUMMARY
 // ============================================================
 
-function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference) {
+function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference, studentDiscount) {
   const s = document.getElementById('checkout-section');
   
   const paymentMessage = 'We will verify your payment and start preparing your order.';
   const paymentStatus = '<span class="badge badge-warn">Awaiting Payment Verification</span>';
 
-  const deliveryDisplay = `R${(deliveryFee || 10).toFixed(2)}`;
-  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein only.';
+  const deliveryDisplay = `R${(deliveryFee || 15).toFixed(2)}`;
+  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
 
   s.innerHTML = `
     <div class="container">
@@ -1731,6 +2115,12 @@ function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference
               <span style="font-weight:600;">Address</span>
               <span>${o.customer?.address}</span>
             </div>
+            ${studentDiscount > 0 ? `
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
+                <span style="font-weight:600;">🎓 Student Discount Applied</span>
+                <span style="color:#2E7D32;font-weight:700;">-R${studentDiscount.toFixed(2)}</span>
+              </div>
+            ` : ''}
             <div style="margin-top:16px;">
               <h4 style="margin-bottom:8px;">🛒 Items</h4>
               ${(o.items||[]).map(i => `
@@ -1853,6 +2243,7 @@ async function downloadPDF(order) {
   w.document.close();
   setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
 }
+
 // ============================================================
 //  AUTH FUNCTIONS
 // ============================================================
@@ -2022,14 +2413,26 @@ function updateAuthUI() {
   if (state.user) {
     if (btn) btn.style.display = 'none';
     if (userDisplay) {
+      const isStudent = state.user.isStudent || false;
+      const studentVerified = state.user.studentVerified || false;
+      const studentBadge = isStudent && studentVerified ? 
+        '<span class="student-badge verified">🎓 Student</span>' : 
+        (state.user.studentProof ? '<span class="student-badge pending">⏳ Pending</span>' : '');
+      
       userDisplay.style.display = 'flex';
       userDisplay.innerHTML = `
         <div class="user-info">
           <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
             🎁 R${state.rewardBalance.toFixed(2)}
           </button>
-          <div class="user-avatar">${state.user.name[0].toUpperCase()}</div>
-          <span>${state.user.name.split(' ')[0]}</span>
+          ${studentBadge}
+          <div class="user-avatar" onclick="navigateTo('profile')" style="cursor:pointer;">
+            ${state.user.profilePicture ? 
+              `<img src="${state.user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+              state.user.name[0].toUpperCase()
+            }
+          </div>
+          <span onclick="navigateTo('profile')" style="cursor:pointer;">${state.user.name.split(' ')[0]}</span>
           <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
         </div>
       `;
@@ -2244,9 +2647,10 @@ function showTerms() {
         <h4>1. Orders</h4><p>Subject to availability.</p>
         <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
         <h4>3. Payment</h4><p>Instant EFT only.</p>
-        <h4>4. Delivery</h4><p>R10 flat fee in Braamfontein.</p>
-        <h4>5. Returns</h4><p>Within 24 hours.</p>
-        <h4>6. Privacy</h4><p>Never shared.</p>
+        <h4>4. Delivery</h4><p>Area-based fees in Braamfontein.</p>
+        <h4>5. Student Discount</h4><p>20% off delivery fee for verified students.</p>
+        <h4>6. Returns</h4><p>Within 24 hours.</p>
+        <h4>7. Privacy</h4><p>Never shared.</p>
       </div>
     </div>`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -2260,8 +2664,28 @@ function showTerms() {
 function navigateTo(p) {
   state.currentPage = p;
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  
+  // Handle profile page separately
+  if (p === 'profile') {
+    renderProfilePage();
+    // Hide other pages
+    document.querySelectorAll('.page').forEach(x => x.style.display = 'none');
+    const profileSection = document.getElementById('profile-section');
+    if (profileSection) profileSection.style.display = 'block';
+    return;
+  }
+  
+  // Show the target page
   const t = document.getElementById(`page-${p}`);
-  if (t) t.classList.add('active');
+  if (t) {
+    t.classList.add('active');
+    t.style.display = '';
+  }
+  
+  // Hide profile section
+  const profileSection = document.getElementById('profile-section');
+  if (profileSection) profileSection.style.display = 'none';
+  
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.dataset.page === p));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   closeCart();
@@ -2348,6 +2772,20 @@ async function init() {
   document.querySelectorAll('.nav-links a').forEach(link => {
     link.addEventListener('click', closeMobileMenu);
   });
+
+  // Add profile page to nav
+  const navLinks = document.querySelector('.nav-links');
+  if (navLinks && !document.querySelector('.nav-links a[data-page="profile"]')) {
+    const profileLink = document.createElement('a');
+    profileLink.href = '#';
+    profileLink.dataset.page = 'profile';
+    profileLink.textContent = 'Profile';
+    profileLink.onclick = function(e) {
+      e.preventDefault();
+      navigateTo('profile');
+    };
+    navLinks.appendChild(profileLink);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

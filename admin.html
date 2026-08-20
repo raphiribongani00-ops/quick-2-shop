@@ -150,6 +150,7 @@
     <div class="nav-item" data-page="customers" onclick="goTo('customers', this)"><span class="icon">👥</span> Customers</div>
     <div class="nav-item" data-page="categories" onclick="goTo('categories', this)"><span class="icon">🏷</span> Categories <span class="nav-badge" id="category-count">0</span></div>
     <div class="nav-item" data-page="slideshow" onclick="goTo('slideshow', this)"><span class="icon">🖼</span> Slideshow</div>
+    <div class="nav-item" data-page="students" onclick="goTo('students', this)"><span class="icon">🎓</span> Students <span class="nav-badge" id="student-badge">0</span></div>
     <div class="nav-section">Store</div>
     <div class="nav-item" onclick="window.open('index.html','_blank')"><span class="icon">🌐</span> View Store</div>
     <div class="sidebar-footer">
@@ -203,7 +204,7 @@ function showAdminShell(){document.getElementById('login-screen').style.display=
 
 async function loadAllData(){try{const[p,o,c,s]=await Promise.all([fetch(`${API}/products`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/orders`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/categories`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/slides/admin`).then(r=>r.json()).catch(()=>[])]);allProducts=p;allOrders=o;allCategories=c;allSlides=s;}catch{allProducts=[];allOrders=[];allSlides=[];allCategories=[];}const cmap={};allOrders.forEach(o=>{if(o.customer?.email&&!cmap[o.customer.email])cmap[o.customer.email]={...o.customer,orders:0,spent:0};if(o.customer?.email){cmap[o.customer.email].orders++;cmap[o.customer.email].spent+=o.total||0;}});allCustomers=Object.values(cmap);const pbadge=document.getElementById('pending-badge');if(pbadge){const pc=allOrders.filter(o=>o.status==='pending'||o.status==='pending_payment').length;pbadge.textContent=pc;pbadge.style.display=pc>0?'':'none';}const prodBadge=document.getElementById('product-count');if(prodBadge)prodBadge.textContent=allProducts.length;const catBadge=document.getElementById('category-count');if(catBadge)catBadge.textContent=allCategories.length;}
 
-function goTo(page,el){document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));if(el)el.classList.add('active');else document.querySelector(`[data-page="${page}"]`)?.classList.add('active');const t={dashboard:'Dashboard',products:'Products',orders:'Orders',customers:'Customers',categories:'Categories',slideshow:'Slideshow',analytics:'Analytics'};document.getElementById('topbar-title').textContent=t[page]||page;document.getElementById('topbar-sub').textContent=new Date().toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'});selectedProducts.clear();selectedCategories.clear();switch(page){case'dashboard':renderDashboard();break;case'analytics':renderAnalytics();break;case'products':renderProducts();break;case'orders':renderOrders();break;case'customers':renderCustomers();break;case'categories':renderCategories();break;case'slideshow':renderSlideshow();break;}}
+function goTo(page,el){document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));if(el)el.classList.add('active');else document.querySelector(`[data-page="${page}"]`)?.classList.add('active');const t={dashboard:'Dashboard',products:'Products',orders:'Orders',customers:'Customers',categories:'Categories',slideshow:'Slideshow',analytics:'Analytics',students:'Students'};document.getElementById('topbar-title').textContent=t[page]||page;document.getElementById('topbar-sub').textContent=new Date().toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'});selectedProducts.clear();selectedCategories.clear();switch(page){case'dashboard':renderDashboard();break;case'analytics':renderAnalytics();break;case'products':renderProducts();break;case'orders':renderOrders();break;case'customers':renderCustomers();break;case'categories':renderCategories();break;case'slideshow':renderSlideshow();break;case'students':renderStudents();break;}}
 
 function renderDashboard(){document.getElementById('content').innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Total Revenue</div><div class="stat-value">R${allOrders.reduce((s,o)=>s+(o.total||0),0).toFixed(2)}</div></div><div class="stat-card"><div class="stat-icon">🧾</div><div class="stat-label">Total Orders</div><div class="stat-value">${allOrders.length}</div></div><div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Products</div><div class="stat-value">${allProducts.length}</div></div><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Customers</div><div class="stat-value">${allCustomers.length}</div></div></div><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">📋 Recent Orders</span><span>${allOrders.filter(o=>o.status==='pending'||o.status==='pending_payment').length} pending</span></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody>${allOrders.slice(0,5).reverse().map(o=>`<tr><td><strong>${o.id||o._id?.slice(-6)}</strong></td><td>${o.customer?.name||'Guest'}</td><td>R${(o.total||0).toFixed(2)}</td><td><span class="badge ${o.status==='pending'||o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-muted'}">${o.status}</span></td></tr>`).join('')}</tbody></table></div></div></div><div class="card"><div class="card-header"><span class="card-title">🏷 Top Categories</span></div><div class="card-body">${allCategories.map(c=>{const cnt=allProducts.filter(p=>p.category===c.id).length;return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${c.icon} ${c.label}</span><span style="font-weight:600;">${cnt}</span></div>`}).join('')}</div></div></div>`;}
 
@@ -283,7 +284,89 @@ function closeModal(){document.getElementById('modal-overlay').classList.remove(
 
 function toast(m,d=2800){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),d);}
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeConfirm();}});
+// ============================================================
+//  STUDENT VERIFICATION ADMIN
+// ============================================================
+
+function renderStudents() {
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <h2 style="font-family:var(--font-head);font-size:20px;">🎓 Student Verifications</h2>
+      <button class="btn btn-sm btn-outline" onclick="renderStudents()">🔄 Refresh</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Proof</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-table-body">
+            <tr><td colspan="5"><div style="text-align:center;padding:40px;">Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  fetch('/api/admin/student-verifications')
+    .then(r => r.json())
+    .then(users => {
+      const badge = document.getElementById('student-badge');
+      if (badge) badge.textContent = users.length;
+      
+      const tbody = document.getElementById('students-table-body');
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5"><div style="text-align:center;padding:40px;color:var(--muted);">No pending verifications</div></td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><strong>${u.name}</strong></td>
+          <td>${u.email}</td>
+          <td><a href="${u.studentProof}" target="_blank" style="color:var(--orange);">📄 View</a></td>
+          <td><span class="badge badge-warn">Pending</span></td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-success btn-sm" onclick="verifyStudent('${u._id}', true)">✅ Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="verifyStudent('${u._id}', false)">❌ Reject</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    })
+    .catch(() => {
+      document.getElementById('students-table-body').innerHTML = '<tr><td colspan="5"><div style="text-align:center;padding:40px;color:var(--muted);">Could not load verifications</div></td></tr>';
+    });
+}
+
+async function verifyStudent(userId, approved) {
+  try {
+    const response = await fetch(`/api/admin/verify-student/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approved })
+    });
+    
+    if (response.ok) {
+      toast(`✅ Student ${approved ? 'approved' : 'rejected'}`);
+      renderStudents();
+    } else {
+      const data = await response.json();
+      toast('❌ ' + data.error);
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
+
+document.addEventListener('keydown', e=>{if(e.key==='Escape'){closeModal();closeConfirm();}});
 
 if(sessionStorage.getItem('habibi_admin')){try{adminUser=JSON.parse(sessionStorage.getItem('habibi_admin'));showAdminShell();}catch{sessionStorage.removeItem('habibi_admin');}}
 
