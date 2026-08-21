@@ -18,6 +18,52 @@ let transporter = null;
 let emailConfigured = false;
 
 // ============================================================
+//  DELIVERY AREAS & FEES
+// ============================================================
+
+const DELIVERY_AREAS = {
+  braamfontein: { label: 'Braamfontein', fee: 15, keywords: ['braamfontein', 'jorissen', 'kingsway', 'biccard', 'melle', 'ennis', 'empire'] },
+  doornfontein: { label: 'Doornfontein', fee: 20, keywords: ['doornfontein', 'bezuidenhout', 'twist', 'de villiers', 'goud'] },
+  parktown: { label: 'Parktown', fee: 25, keywords: ['parktown', 'york', 'jan smuts', 'riviera', 'oxford'] },
+  aucklandpark: { label: 'Auckland Park', fee: 25, keywords: ['auckland park', 'aucklandpark', 'greenhill', 'greenwood', 'marthin', 'university'] }
+};
+
+// ============================================================
+//  STUDENT DISCOUNT
+// ============================================================
+
+const STUDENT_DISCOUNT = 20; // 20% off delivery fee
+const DISCOUNT_EXPIRY = '2026-09-30';
+
+// ============================================================
+//  BUILDINGS DATABASE
+// ============================================================
+
+const BUILDINGS = {
+  braamfontein: [
+    "Wits Junction", "Wits Junction Park", "Wits East Campus Residences", "Wits West Campus Residences", "Wits Braamfontein Campus",
+    "UJ Kingsway Campus Residences", "UJ APK Residences",
+    "South Point - 56 Jorissen", "South Point - 2 De Korte", "South Point - 8 De Korte", "South Point - 22 De Korte",
+    "South Point - 31 Jorissen", "South Point - 36 Jorissen", "South Point - 69 Jorissen", "South Point - 105 Jorissen",
+    "South Point - 114 Jorissen", "South Point - 120 Jorissen", "South Point - 128 Jorissen", "South Point - 134 Jorissen",
+    "The Lab Res", "The Lofts", "Campus Village", "Braamfontein Student Village", "Wits 1952", "The Edge", "The Square",
+    "Auckland House", "Braamfontein Towers", "Metropolitan Tower", "Braamfontein Centre", "The Annex", "City Lights", "Braamfontein Gateway"
+  ],
+  doornfontein: [
+    "UJ Doornfontein Campus Residences", "Doornfontein Towers", "Bezuidenhout Street Apartments",
+    "Twist Street Residences", "De Villiers Court", "Goud Street Student Accommodation", "Doornfontein Student Village"
+  ],
+  parktown: [
+    "Wits Parktown Residences", "Parktown Heights", "York Road Apartments", "Jan Smuts Avenue Residences",
+    "Riviera Court", "Oxford Street Apartments", "Parktown Student Village"
+  ],
+  aucklandpark: [
+    "UJ Auckland Park Residences", "Auckland Park Heights", "Greenhill Apartments", "Greenwood Court",
+    "Marthin Street Residences", "University View Apartments", "Auckland Park Student Village"
+  ]
+};
+
+// ============================================================
 //  REWARDS CONFIGURATION
 // ============================================================
 
@@ -44,6 +90,214 @@ const REWARD_CONFIG = {
   },
   milestones: { 10: 5, 25: 15, 50: 35, 100: 80 }
 };
+
+const otpStore = {};
+
+app.use(cors());
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
+app.use(express.static(__dirname));
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+
+const emailsDir = path.join(__dirname, 'saved_emails');
+if (!fs.existsSync(emailsDir)) fs.mkdirSync(emailsDir, { recursive: true });
+
+let db;
+const client = new MongoClient(MONGO_URI, {
+  tls: true,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 30000,
+  serverSelectionTimeoutMS: 30000
+});
+
+// ============================================================
+//  DATABASE CONNECTION
+// ============================================================
+
+async function connectDB() {
+  try {
+    await client.connect();
+    db = client.db();
+    console.log('✅ Connected to MongoDB');
+    await db.collection('products').createIndex({ category: 1 });
+    await db.collection('orders').createIndex({ id: 1 });
+    await db.collection('orders').createIndex({ userId: 1, createdAt: -1 });
+    await db.collection('users').createIndex({ email: 1 });
+    await db.collection('buildings').createIndex({ name: 1 });
+    await seedDefaultData();
+    await setupEmail();
+  } catch (err) {
+    console.error('❌ MongoDB failed:', err);
+    process.exit(1);
+  }
+}
+
+// ============================================================
+//  SEED DATA
+// ============================================================
+
+async function seedDefaultData() {
+  console.log('🌱 Seeding default data...');
+  try {
+    // Seed categories
+    const catCount = await db.collection('categories').countDocuments();
+    if (catCount === 0) {
+      await db.collection('categories').insertMany([
+        { id: "food", label: "Food & Snacks", icon: "🍕" },
+        { id: "drinks", label: "Beverages", icon: "🧃" },
+        { id: "shoes", label: "Shoes", icon: "👟" },
+        { id: "clothing", label: "Clothing", icon: "👕" },
+        { id: "stationery", label: "Stationery", icon: "📚" },
+        { id: "electronics", label: "Electronics", icon: "💻" },
+        { id: "beauty", label: "Beauty", icon: "💄" },
+        { id: "other", label: "Other", icon: "📦" }
+      ]);
+      console.log('✅ Categories seeded');
+    }
+
+    // Seed products
+    const prodCount = await db.collection('products').countDocuments();
+    if (prodCount === 0) {
+      await db.collection('products').insertMany([
+        { name: "Fresh Apple 🍎", price: 5, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=320&q=80", description: "Fresh red apples", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Banana 🍌", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=320&q=80", description: "Fresh yellow bananas", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Orange 🍊", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1547514701-42782101795e?w=320&q=80", description: "Fresh juicy oranges", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Avocado 🥑", price: 8, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=320&q=80", description: "Fresh avocados", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Carrot 🥕", price: 2, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=320&q=80", description: "Fresh organic carrots", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Tomato 🍅", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=320&q=80", description: "Fresh ripe tomatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
+        { name: "Potato 🥔", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=320&q=80", description: "Fresh potatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() }
+      ]);
+      console.log('✅ Products seeded');
+    }
+
+    // Seed slides
+    const slideCount = await db.collection('slides').countDocuments();
+    if (slideCount === 0) {
+      await db.collection('slides').insertMany([
+        { image: "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=1920&q=80", caption: "Welcome to Quick 2 Shop!", active: true, order: 1, createdAt: new Date().toISOString() },
+        { image: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1920&q=80", caption: "Fresh groceries delivered to your door", active: true, order: 2, createdAt: new Date().toISOString() }
+      ]);
+      console.log('✅ Slides seeded');
+    }
+
+    // Seed admin user
+    const userCount = await db.collection('users').countDocuments();
+    if (userCount === 0) {
+      await db.collection('users').insertOne({
+        name: "Admin",
+        email: "admin@habibi.co.za",
+        password: "admin123",
+        rewardBalance: 0,
+        totalRewardsEarned: 0,
+        eligibleItemsPurchased: 0,
+        subscriptionTier: null,
+        streakCount: 0,
+        lastOrderDate: null,
+        isStudent: false,
+        studentVerified: false,
+        studentProof: null,
+        studentVerificationDate: null,
+        profilePicture: null,
+        whatsapp: null,
+        address: null,
+        createdAt: new Date().toISOString()
+      });
+      console.log('✅ Admin user seeded');
+    }
+
+    // Seed buildings
+    const buildingCount = await db.collection('buildings').countDocuments();
+    if (buildingCount === 0) {
+      const allBuildings = [];
+      for (const [area, buildings] of Object.entries(BUILDINGS)) {
+        buildings.forEach(name => {
+          allBuildings.push({ name, area, address: name, searchTerms: name.toLowerCase().split(' ') });
+        });
+      }
+      await db.collection('buildings').insertMany(allBuildings);
+      console.log(`✅ ${allBuildings.length} buildings seeded`);
+    }
+
+    console.log('✅ All seed data complete!');
+  } catch (error) {
+    console.error('❌ Seed data error:', error);
+  }
+}
+
+connectDB();
+
+// ============================================================
+//  UTILITY FUNCTIONS
+// ============================================================
+
+function detectDeliveryArea(address) {
+  if (!address) return 'braamfontein';
+  const lower = address.toLowerCase();
+  for (const [area, config] of Object.entries(DELIVERY_AREAS)) {
+    for (const keyword of config.keywords) {
+      if (lower.includes(keyword)) {
+        return area;
+      }
+    }
+  }
+  return 'braamfontein';
+}
+
+function getDeliveryFee(address) {
+  const area = detectDeliveryArea(address);
+  return DELIVERY_AREAS[area]?.fee || 15;
+}
+
+function calculateStudentDiscount(deliveryFee, isStudent) {
+  if (!isStudent) return 0;
+  return deliveryFee * (STUDENT_DISCOUNT / 100);
+}
+
+function saveBase64File(base64Data, orderId, type = 'pop') {
+  if (!base64Data || !base64Data.includes('base64')) return null;
+  const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matches) return null;
+  const buffer = Buffer.from(matches[2], 'base64');
+  let ext = '.bin';
+  const mime = matches[1];
+  if (mime.includes('jpeg') || mime.includes('jpg')) ext = '.jpg';
+  else if (mime.includes('png')) ext = '.png';
+  else if (mime.includes('webp')) ext = '.webp';
+  else if (mime.includes('pdf')) ext = '.pdf';
+  const filename = `${type}_${orderId}_${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+  return `/uploads/${filename}`;
+}
+
+async function sendEmail(to, subject, html) {
+  if (emailConfigured && transporter) {
+    try {
+      await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
+      return true;
+    } catch (e) { console.error('Email error:', e); }
+  }
+  const filename = `${Date.now()}_${subject.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}.html`;
+  fs.writeFileSync(path.join(emailsDir, filename), `<h3>To: ${to}</h3><h4>Subject: ${subject}</h4>${html}`);
+  return false;
+}
+
+async function setupEmail() {
+  try {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    });
+    await transporter.verify();
+    emailConfigured = true;
+    console.log('📧 Gmail ready');
+  } catch (err) {
+    emailConfigured = false;
+    console.warn('⚠️ Gmail failed:', err.message);
+  }
+}
 
 // ============================================================
 //  REWARD CALCULATION ENGINE
@@ -159,183 +413,244 @@ function calculateTotalRewardValue(user, orders) {
   };
 }
 
-// ============================================================
-//  EMAIL SETUP
-// ============================================================
-
-async function setupEmail() {
-  try {
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
-    });
-    await transporter.verify();
-    emailConfigured = true;
-    console.log('📧 Gmail ready');
-  } catch (err) {
-    emailConfigured = false;
-    console.warn('⚠️ Gmail failed:', err.message);
-  }
+function getNextTier(totalRewardsEarned) {
+  if (totalRewardsEarned < 50) return { tier: 'silver', minItems: 50, gap: 50 - totalRewardsEarned };
+  if (totalRewardsEarned < 150) return { tier: 'gold', minItems: 150, gap: 150 - totalRewardsEarned };
+  if (totalRewardsEarned < 300) return { tier: 'platinum', minItems: 300, gap: 300 - totalRewardsEarned };
+  return null;
 }
 
-const otpStore = {};
-
-app.use(cors());
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ limit: '500mb', extended: true }));
-app.use(express.static(__dirname));
-
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-app.use('/uploads', express.static(uploadsDir));
-
-const emailsDir = path.join(__dirname, 'saved_emails');
-if (!fs.existsSync(emailsDir)) fs.mkdirSync(emailsDir, { recursive: true });
-
-let db;
-const client = new MongoClient(MONGO_URI, {
-  tls: true,
-  connectTimeoutMS: 30000,
-  socketTimeoutMS: 30000,
-  serverSelectionTimeoutMS: 30000
-});
-
 // ============================================================
-//  DATABASE CONNECTION
+//  USER API
 // ============================================================
 
-async function connectDB() {
+app.post('/api/register', async (req, res) => {
   try {
-    await client.connect();
-    db = client.db();
-    console.log('✅ Connected to MongoDB');
-    await db.collection('products').createIndex({ category: 1 });
-    await db.collection('orders').createIndex({ id: 1 });
-    await db.collection('orders').createIndex({ userId: 1, createdAt: -1 });
-    await seedDefaultData();
-    await setupEmail();
-  } catch (err) {
-    console.error('❌ MongoDB failed:', err);
-    process.exit(1);
-  }
-}
-
-async function seedDefaultData() {
-  const catCount = await db.collection('categories').countDocuments();
-  if (catCount === 0) {
-    await db.collection('categories').insertMany([
-      { id: "food", label: "Food & Snacks", icon: "🍕" },
-      { id: "drinks", label: "Beverages", icon: "🧃" },
-      { id: "shoes", label: "Shoes", icon: "👟" },
-      { id: "clothing", label: "Clothing", icon: "👕" },
-      { id: "stationery", label: "Stationery", icon: "📚" },
-      { id: "electronics", label: "Electronics", icon: "💻" },
-      { id: "beauty", label: "Beauty", icon: "💄" },
-      { id: "other", label: "Other", icon: "📦" }
-    ]);
-    console.log('✅ Default categories seeded');
-  }
-
-  const prodCount = await db.collection('products').countDocuments();
-  if (prodCount === 0) {
-    await db.collection('products').insertMany([
-      { name: "Fresh Apple 🍎", price: 5, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=320&q=80", description: "Fresh red apples, perfect for snacking", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Banana 🍌", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=320&q=80", description: "Fresh yellow bananas", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Orange 🍊", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1547514701-42782101795e?w=320&q=80", description: "Fresh juicy oranges", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Avocado 🥑", price: 8, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=320&q=80", description: "Fresh avocados, ready to eat", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Carrot 🥕", price: 2, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=320&q=80", description: "Fresh organic carrots", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Tomato 🍅", price: 3, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=320&q=80", description: "Fresh ripe tomatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() },
-      { name: "Potato 🥔", price: 4, stock: 100, category: "food", rating: 4.5, image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=320&q=80", description: "Fresh potatoes", featured: false, special: null, reviews: 0, createdAt: new Date().toISOString() }
-    ]);
-    console.log('✅ Default products seeded');
-  }
-
-  const slideCount = await db.collection('slides').countDocuments();
-  if (slideCount === 0) {
-    await db.collection('slides').insertMany([
-      { image: "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=1920&q=80", caption: "Welcome to Quick 2 Shop!", active: true, order: 1, createdAt: new Date().toISOString() },
-      { image: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1920&q=80", caption: "Fresh groceries delivered to your door", active: true, order: 2, createdAt: new Date().toISOString() }
-    ]);
-    console.log('✅ Default slides seeded');
-  }
-
-  const userCount = await db.collection('users').countDocuments();
-  if (userCount === 0) {
-    await db.collection('users').insertOne({
-      name: "Admin",
-      email: "admin@habibi.co.za",
-      password: "admin123",
+    if (await db.collection('users').findOne({ email: req.body.email })) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+    const nu = {
+      ...req.body,
       rewardBalance: 0,
       totalRewardsEarned: 0,
       eligibleItemsPurchased: 0,
       subscriptionTier: null,
       streakCount: 0,
       lastOrderDate: null,
+      isStudent: false,
+      studentVerified: false,
+      studentProof: null,
+      studentVerificationDate: null,
+      profilePicture: null,
+      whatsapp: req.body.whatsapp || null,
+      address: req.body.address || null,
       createdAt: new Date().toISOString()
+    };
+    await db.collection('users').insertOne(nu);
+    const { password, ...safe } = nu;
+    res.status(201).json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const user = await db.collection('users').findOne({
+      email: req.body.email,
+      password: req.body.password
     });
-    console.log('✅ Default admin user seeded');
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const { password, ...safe } = user;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-}
+});
 
-connectDB();
+app.get('/api/user/:id', async (req, res) => {
+  try {
+    const user = await db.collection('users').findOne({
+      _id: new ObjectId(req.params.id)
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { password, ...safe } = user;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/user/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    delete updates._id;
+    delete updates.password;
+    
+    const result = await db.collection('users').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: updates },
+      { returnDocument: 'after' }
+    );
+    if (!result.value) return res.status(404).json({ error: 'User not found' });
+    const { password, ...safe } = result.value;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ============================================================
-//  UTILITY FUNCTIONS
+//  STUDENT VERIFICATION API
 // ============================================================
 
-function saveBase64File(base64Data, orderId) {
-  if (!base64Data || !base64Data.includes('base64')) return null;
-  const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
-  if (!matches) return null;
-  const buffer = Buffer.from(matches[2], 'base64');
-  let ext = '.bin';
-  const mime = matches[1];
-  if (mime.includes('jpeg') || mime.includes('jpg')) ext = '.jpg';
-  else if (mime.includes('png')) ext = '.png';
-  else if (mime.includes('pdf')) ext = '.pdf';
-  const filename = `pop_${orderId}_${Date.now()}${ext}`;
-  fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-  return `/uploads/${filename}`;
-}
+app.post('/api/user/verify-student', async (req, res) => {
+  try {
+    const { userId, proofBase64 } = req.body;
+    if (!userId || !proofBase64) {
+      return res.status(400).json({ error: 'User ID and proof required' });
+    }
 
-async function sendEmail(to, subject, html) {
-  if (emailConfigured && transporter) {
-    try {
-      await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
-      return true;
-    } catch (e) { }
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const filename = saveBase64File(proofBase64, userId, 'student_proof');
+    if (!filename) {
+      return res.status(400).json({ error: 'Invalid file format' });
+    }
+
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          studentProof: filename,
+          studentVerified: false,
+          studentVerificationDate: null,
+          isStudent: false
+        }
+      }
+    );
+
+    await sendEmail(
+      'habibishoppingsa@gmail.com',
+      `🎓 Student Verification Request - ${user.name}`,
+      `<h2>New Student Verification Request</h2>
+       <p><strong>Name:</strong> ${user.name}</p>
+       <p><strong>Email:</strong> ${user.email}</p>
+       <p><strong>User ID:</strong> ${userId}</p>
+       <p><strong>Proof:</strong> <a href="${filename}">View Document</a></p>
+       <p><a href="https://quick-2-shop.onrender.com/admin.html">Approve in Admin Panel</a></p>`
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Proof submitted for verification. You will be notified once approved.',
+      pending: true
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  const filename = `${Date.now()}_${subject.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}.html`;
-  fs.writeFileSync(path.join(emailsDir, filename), `<h3>To: ${to}</h3><h4>Subject: ${subject}</h4>${html}`);
-  return false;
-}
+});
 
-async function sendPasswordResetOTP(email, otp) {
-  return sendEmail(email, 'Quick 2 Shop - Password Reset OTP',
-    `<h2>Your OTP: ${otp}</h2><p>This OTP expires in 10 minutes.</p>`
-  );
-}
+app.get('/api/admin/student-verifications', async (req, res) => {
+  try {
+    const users = await db.collection('users')
+      .find({ studentProof: { $ne: null }, studentVerified: false })
+      .toArray();
+    const safe = users.map(u => {
+      const { password, ...rest } = u;
+      return rest;
+    });
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-async function sendRewardNotification(email, amount, reason) {
-  return sendEmail(email, '🎁 Quick 2 Shop - Rewards Update',
-    `<h2>You've earned R${amount.toFixed(2)} in rewards!</h2><p>${reason}</p><p>Keep shopping to earn more rewards!</p>`
-  );
-}
+app.put('/api/admin/verify-student/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { approved } = req.body;
 
-async function sendOrderInvoice(order) {
-  const items = (order.items || []).map(i =>
-    `<tr><td>${i.name}</td><td>${i.qty}</td><td>R${(i.price * i.qty).toFixed(2)}</td></tr>`
-  ).join('');
-  return sendEmail(order.customer?.email, `Quick 2 Shop - Order #${order.id}`,
-    `<h2>Thank you!</h2><p>Order: ${order.id}</p><p>Total: R${order.total.toFixed(2)}</p>${order.rewardEarned ? `<p>🎁 Reward earned: R${order.rewardEarned.toFixed(2)}</p>` : ''}<table>${items}</table>`
-  );
-}
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-async function sendDeliveryNotification(order) {
-  return sendEmail(order.customer?.email, `Quick 2 Shop - Order #${order.id} Out for Delivery`,
-    `<h2>Your order is on the way!</h2>`
-  );
-}
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          isStudent: approved,
+          studentVerified: approved,
+          studentVerificationDate: approved ? new Date().toISOString() : null
+        }
+      }
+    );
+
+    if (approved) {
+      await sendEmail(
+        user.email,
+        '🎉 Student Discount Approved!',
+        `<h2>Congratulations ${user.name}!</h2>
+         <p>Your student status has been verified. You now get 20% off delivery fees!</p>
+         <p><strong>Discount valid until:</strong> ${DISCOUNT_EXPIRY}</p>
+         <p>Start shopping at: <a href="https://quick-2-shop.onrender.com">Quick 2 Shop</a></p>`
+      );
+    }
+
+    res.json({ success: true, approved });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  BUILDINGS API
+// ============================================================
+
+app.get('/api/buildings', async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = {};
+    if (search && search.trim()) {
+      const terms = search.trim().toLowerCase().split(' ').filter(t => t.length > 0);
+      query = { searchTerms: { $all: terms } };
+    }
+    const buildings = await db.collection('buildings').find(query).limit(20).toArray();
+    res.json(buildings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/buildings/area/:area', async (req, res) => {
+  try {
+    const buildings = await db.collection('buildings')
+      .find({ area: req.params.area })
+      .toArray();
+    res.json(buildings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  DELIVERY API
+// ============================================================
+
+app.get('/api/delivery/fee', async (req, res) => {
+  try {
+    const { address } = req.query;
+    if (!address) {
+      return res.json({ fee: 15, area: 'braamfontein', label: 'Braamfontein' });
+    }
+    const area = detectDeliveryArea(address);
+    const fee = DELIVERY_AREAS[area]?.fee || 15;
+    res.json({ fee, area, label: DELIVERY_AREAS[area]?.label || 'Braamfontein' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ============================================================
 //  PRODUCTS API
@@ -420,14 +735,6 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
-app.get('/api/featured-products', async (req, res) => {
-  try {
-    res.json(await db.collection('products').find({ featured: true }).limit(3).toArray());
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ============================================================
 //  ORDERS API
 // ============================================================
@@ -464,7 +771,11 @@ app.post('/api/orders', async (req, res) => {
         { $inc: { rewardBalance: rewardAmount, totalRewardsEarned: rewardResult.rewardSets, eligibleItemsPurchased: rewardResult.eligibleItems }, $set: { lastOrderDate: new Date().toISOString() } }
       );
       if (order.customer?.email) {
-        await sendRewardNotification(order.customer.email, rewardAmount, `You earned R${rewardAmount.toFixed(2)} from ${rewardResult.rewardSets} sets of 10 items!`);
+        await sendEmail(order.customer.email, '🎁 Rewards Earned!',
+          `<h2>You earned R${rewardAmount.toFixed(2)} in rewards!</h2>
+           <p>From ${rewardResult.rewardSets} sets of 10 items.</p>
+           <p>Your total reward balance: R${rewardAmount.toFixed(2)}</p>`
+        );
       }
     } else if (order.userId) {
       await db.collection('users').updateOne(
@@ -474,7 +785,7 @@ app.post('/api/orders', async (req, res) => {
     }
 
     if (order.proofOfPayment?.includes('base64')) {
-      const fp = saveBase64File(order.proofOfPayment, order.id);
+      const fp = saveBase64File(order.proofOfPayment, order.id, 'pop');
       if (fp) {
         order.proofOfPaymentPath = fp;
         delete order.proofOfPayment;
@@ -482,9 +793,9 @@ app.post('/api/orders', async (req, res) => {
     }
 
     await db.collection('orders').insertOne(order);
-    await sendOrderInvoice(order);
     res.status(201).json(order);
   } catch (err) {
+    console.error('Order error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -498,9 +809,15 @@ app.put('/api/orders/:id', async (req, res) => {
     );
     if (!result.value) return res.status(404).json({ error: 'Not found' });
     const order = result.value;
-    if (req.body.status === 'completed') {
-      await sendDeliveryNotification(order);
+    
+    if (req.body.status === 'paid' || req.body.status === 'completed') {
+      await sendEmail(order.customer?.email, `🚚 Order #${order.id} Update`,
+        `<h2>Your order has been ${req.body.status === 'paid' ? 'paid' : 'completed'}!</h2>
+         <p><strong>Order ID:</strong> ${order.id}</p>
+         ${req.body.status === 'paid' ? '<p>Your payment has been confirmed. We\'re preparing your order.</p>' : '<p>Your order has been delivered. Thank you for shopping with us!</p>'}`
+      );
     }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -522,47 +839,6 @@ app.delete('/api/orders/:id', async (req, res) => {
     }
     await db.collection('orders').deleteOne({ id: req.params.id });
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================
-//  USERS API
-// ============================================================
-
-app.post('/api/register', async (req, res) => {
-  try {
-    if (await db.collection('users').findOne({ email: req.body.email })) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
-    const nu = {
-      ...req.body,
-      rewardBalance: 0,
-      totalRewardsEarned: 0,
-      eligibleItemsPurchased: 0,
-      subscriptionTier: null,
-      streakCount: 0,
-      lastOrderDate: null,
-      createdAt: new Date().toISOString()
-    };
-    await db.collection('users').insertOne(nu);
-    const { password, ...safe } = nu;
-    res.status(201).json(safe);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  try {
-    const user = await db.collection('users').findOne({
-      email: req.body.email,
-      password: req.body.password
-    });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const { password, ...safe } = user;
-    res.json(safe);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -597,6 +873,11 @@ app.get('/api/user/rewards/:userId', async (req, res) => {
       rewardBalance: rewardData.totalRewardBalance,
       totalRewardsEarned: rewardData.totalRewardsEarned,
       tier: rewardData.tier,
+      isStudent: user.isStudent || false,
+      studentVerified: user.studentVerified || false,
+      studentDiscountActive: user.isStudent && new Date() < new Date(DISCOUNT_EXPIRY),
+      whatsapp: user.whatsapp || null,
+      address: user.address || null,
       breakdown: { baseRewards: rewardData.baseRewards, streakBonus: rewardData.streakBonus, subscriptionBonus: rewardData.subscriptionBonus, milestoneBonus: rewardData.milestoneBonus, tierBonus: rewardData.tierBonus },
       progress: { eligibleItems: rewardData.progress.eligibleItems, progressToNext: rewardData.progress.progressToNext, itemsNeededForNext: rewardData.progress.itemsNeededForNext, progressPercent: rewardData.progress.progressPercent },
       streak: { count: rewardData.streakCount, nextBonusAt: rewardData.streakCount >= 12 ? null : Math.ceil((rewardData.streakCount + 1) / 4) * 4 },
@@ -608,13 +889,6 @@ app.get('/api/user/rewards/:userId', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-function getNextTier(totalRewardsEarned) {
-  if (totalRewardsEarned < 50) return { tier: 'silver', minItems: 50, gap: 50 - totalRewardsEarned };
-  if (totalRewardsEarned < 150) return { tier: 'gold', minItems: 150, gap: 150 - totalRewardsEarned };
-  if (totalRewardsEarned < 300) return { tier: 'platinum', minItems: 300, gap: 300 - totalRewardsEarned };
-  return null;
-}
 
 app.post('/api/user/redeem-rewards', async (req, res) => {
   try {
@@ -763,7 +1037,9 @@ app.post('/api/forgot-password', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'No account found' });
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[req.body.email] = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-    const sent = await sendPasswordResetOTP(req.body.email, otp);
+    const sent = await sendEmail(req.body.email, 'Quick 2 Shop - Password Reset OTP',
+      `<h2>Your OTP: ${otp}</h2><p>This OTP expires in 10 minutes.</p>`
+    );
     res.json({ message: sent ? 'OTP sent' : 'OTP saved', devMode: !sent, otp: !sent ? otp : undefined });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -907,6 +1183,19 @@ app.delete('/api/slides/:id', async (req, res) => {
 });
 
 // ============================================================
+//  FORCE SEED ENDPOINT
+// ============================================================
+
+app.post('/api/admin/force-seed', async (req, res) => {
+  try {
+    await seedDefaultData();
+    res.json({ success: true, message: 'Database seeded successfully!' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
 //  STATIC FILES & FALLBACK
 // ============================================================
 
@@ -932,6 +1221,13 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🛒 Quick 2 Shop running on port ${PORT}`);
   console.log(`📧 Gmail: ${emailConfigured ? 'READY' : 'NOT CONFIGURED'}`);
+  console.log(`\n📊 Delivery Areas & Fees:`);
+  console.log(`  • Braamfontein: R15`);
+  console.log(`  • Doornfontein: R20`);
+  console.log(`  • Parktown: R25`);
+  console.log(`  • Auckland Park: R25`);
+  console.log(`\n🎓 Student Discount: ${STUDENT_DISCOUNT}% off delivery fee`);
+  console.log(`📅 Valid until: ${DISCOUNT_EXPIRY}`);
   console.log(`\n📊 Reward Rules:`);
   console.log(`  • ${REWARD_CONFIG.itemsPerReward} items (R${REWARD_CONFIG.minItemPrice}+) = R${REWARD_CONFIG.rewardAmount} reward`);
   console.log(`  • ${REWARD_CONFIG.streak.enabled ? '✅' : '❌'} Streak rewards enabled`);

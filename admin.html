@@ -371,6 +371,86 @@ document.addEventListener('keydown', e=>{if(e.key==='Escape'){closeModal();close
 if(sessionStorage.getItem('habibi_admin')){try{adminUser=JSON.parse(sessionStorage.getItem('habibi_admin'));showAdminShell();}catch{sessionStorage.removeItem('habibi_admin');}}
 
 document.addEventListener('DOMContentLoaded',()=>{document.getElementById('login-email').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin();});document.getElementById('login-password').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin();});});
+
+function renderStudents() {
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <h2 style="font-family:var(--font-head);font-size:20px;">🎓 Student Verifications</h2>
+      <button class="btn btn-sm btn-outline" onclick="renderStudents()">🔄 Refresh</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>WhatsApp</th>
+              <th>Proof</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-table-body">
+            <tr><td colspan="6"><div style="text-align:center;padding:40px;">Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  fetch('/api/admin/student-verifications')
+    .then(r => r.json())
+    .then(users => {
+      const badge = document.getElementById('student-badge');
+      if (badge) badge.textContent = users.length;
+      
+      const tbody = document.getElementById('students-table-body');
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6"><div style="text-align:center;padding:40px;color:var(--muted);">No pending verifications</div></td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><strong>${u.name}</strong></td>
+          <td>${u.email}</td>
+          <td>${u.whatsapp || 'N/A'}</td>
+          <td><a href="${u.studentProof}" target="_blank" style="color:var(--orange);">📄 View</a></td>
+          <td><span class="badge badge-warn">Pending</span></td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-success btn-sm" onclick="verifyStudent('${u._id}', true)">✅ Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="verifyStudent('${u._id}', false)">❌ Reject</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    })
+    .catch(() => {
+      document.getElementById('students-table-body').innerHTML = '<tr><td colspan="6"><div style="text-align:center;padding:40px;color:var(--muted);">Could not load verifications</div></td></tr>';
+    });
+}
+
+async function verifyStudent(userId, approved) {
+  try {
+    const response = await fetch(`/api/admin/verify-student/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approved })
+    });
+    
+    if (response.ok) {
+      toast(`✅ Student ${approved ? 'approved' : 'rejected'}`);
+      renderStudents();
+    } else {
+      const data = await response.json();
+      toast('❌ ' + data.error);
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
 </script>
 </body>
 </html>

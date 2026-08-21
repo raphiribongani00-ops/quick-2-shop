@@ -381,16 +381,15 @@ async function loginUser(e, p) {
   return r.json();
 }
 
-async function registerUser(n, e, p) {
+async function registerUser(n, e, p, w, a) {
   const r = await fetch(`${API}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: n, email: e, password: p })
+    body: JSON.stringify({ name: n, email: e, password: p, whatsapp: w, address: a })
   });
   if (!r.ok) throw new Error((await r.json()).error);
   return r.json();
 }
-
 async function fetchOrders() {
   const res = await fetch(`${API}/orders`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1705,11 +1704,13 @@ function renderCheckout() {
 
   const subtotal = Cart.total();
   
-  // Get delivery address and calculate fee
-  const address = document.getElementById('co-address')?.value || '';
+  // Use saved user data
+  const userWhatsapp = state.user?.whatsapp || '';
+  const userAddress = state.user?.address || '';
+  
+  // Get delivery fee based on address
   let deliveryFee = 15;
   let deliveryArea = 'Braamfontein';
-  
   const savedFee = localStorage.getItem('delivery_fee');
   const savedArea = localStorage.getItem('delivery_area');
   if (savedFee && savedArea) {
@@ -1720,7 +1721,6 @@ function renderCheckout() {
   const discount = state.discountAmount || 0;
   const rewardDiscount = Math.min(state.rewardBalance, subtotal);
   
-  // Calculate student discount (20% off delivery fee)
   const isStudent = state.user?.isStudent || false;
   const studentVerified = state.user?.studentVerified || false;
   const studentDiscountActive = isStudent && studentVerified && new Date() < new Date('2026-09-30');
@@ -1740,6 +1740,7 @@ function renderCheckout() {
   const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
   const deliveryAreaDisplay = `📍 ${deliveryArea}`;
   
+  // Get saved addresses for dropdown
   const savedAddresses = getUserAddresses();
   const defaultAddress = getDefaultAddress();
   
@@ -1772,34 +1773,32 @@ function renderCheckout() {
                 <p style="font-size:13px;color:var(--orange-dark);font-weight:600;">${deliveryNote}</p>
                 <p style="font-size:12px;color:var(--muted);">${deliveryAreaDisplay}</p>
               </div>
+              
+              <div class="form-group">
+                <label>WhatsApp Number</label>
+                <input class="form-input" id="co-phone" type="tel" value="${userWhatsapp}" placeholder="072 405 2868">
+                <small style="color:var(--muted);">Update if different from your saved number</small>
+              </div>
+              
               ${addressSelectorHTML}
               
               <div class="form-group" style="position:relative;">
                 <label>Search & Select Your Building/Residence</label>
-                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." oninput="searchBuildings(this.value)">
+                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." value="${defaultAddress?.street || ''}" oninput="searchCheckoutBuildings(this.value)">
                 <div id="building-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
               </div>
               
               <div class="form-group">
-                <label>House/Building Number & Street Name *</label>
-                <input class="form-input" id="co-street" placeholder="e.g. 1 Kingsway Avenue" value="${defaultAddress?.street || ''}" oninput="detectAddressAndFee()">
-              </div>
-              
-              <div class="form-group">
                 <label>Full Address</label>
-                <textarea class="form-input" id="co-address" rows="3" placeholder="Full address will appear here" oninput="detectAddressAndFee()">${defaultAddress?.address || ''}</textarea>
+                <textarea class="form-input" id="co-address" rows="3" placeholder="Your delivery address" oninput="detectAddressAndFee()">${userAddress || defaultAddress?.address || ''}</textarea>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-                  <button class="btn btn-outline btn-sm" onclick="updateFullAddress()">📝 Update Full Address</button>
+                  <button class="btn btn-outline btn-sm" onclick="updateFullAddress()">📝 Update Address</button>
                   <button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
                   ${state.user ? `<button class="btn btn-outline btn-sm" onclick="saveCurrentAddress()">💾 Save Address</button>` : ''}
                 </div>
+                <small style="color:var(--muted);">Update your address if different from saved</small>
               </div>
               <input type="hidden" id="co-coordinates">
-              
-              <div class="form-group">
-                <label>WhatsApp Number *</label>
-                <input class="form-input" id="co-phone" type="tel" placeholder="072 405 2868" value="${state.user?.phone || ''}">
-              </div>
               
               <div class="form-group">
                 <label>Delivery Notes (Optional)</label>
@@ -2072,87 +2071,109 @@ async function submitOrder() {
 function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference, studentDiscount) {
   const s = document.getElementById('checkout-section');
   
-  const paymentMessage = 'We will verify your payment and start preparing your order.';
-  const paymentStatus = '<span class="badge badge-warn">Awaiting Payment Verification</span>';
-
   const deliveryDisplay = `R${(deliveryFee || 15).toFixed(2)}`;
   const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
+  
+  const orderDate = new Date(o.createdAt);
+  const formattedDate = orderDate.toLocaleDateString('en-ZA', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 
   s.innerHTML = `
     <div class="container">
-      <div style="text-align:center;padding:40px 20px;">
-        <div style="font-size:56px;margin-bottom:16px;">✅</div>
-        <h1 style="font-family:var(--font-head);font-size:28px;margin-bottom:8px;">Order Placed Successfully!</h1>
-        <p style="color:var(--muted);margin-bottom:8px;">${paymentMessage}</p>
-        <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:32px;border-left:4px solid #DC2626;display:inline-block;">
-          <p style="font-size:14px;font-weight:600;color:#DC2626;">📌 Use this reference for your Instant EFT payment:</p>
-          <p style="font-size:24px;font-weight:800;font-family:monospace;color:#DC2626;">${reference || o.paymentReference || 'N/A'}</p>
-        </div>
-        <div class="card" style="max-width:500px;margin:0 auto;text-align:left;">
-          <div class="card-body">
-            <h3 style="margin-bottom:16px;">📋 Order Summary</h3>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Order ID</span>
-              <span style="font-family:monospace;font-weight:700;">${o.id}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Status</span>
-              ${paymentStatus}
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Payment Method</span>
-              <span>💳 Instant EFT (Payshap)</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Payment Reference</span>
-              <span style="font-family:monospace;font-weight:700;background:#fff5f5;padding:2px 8px;border-radius:4px;border:1px solid #ffcccc;">${reference || o.paymentReference || 'N/A'}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">WhatsApp</span>
-              <span>${o.customer?.phone}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Address</span>
-              <span>${o.customer?.address}</span>
-            </div>
-            ${studentDiscount > 0 ? `
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-                <span style="font-weight:600;">🎓 Student Discount Applied</span>
-                <span style="color:#2E7D32;font-weight:700;">-R${studentDiscount.toFixed(2)}</span>
-              </div>
-            ` : ''}
-            <div style="margin-top:16px;">
-              <h4 style="margin-bottom:8px;">🛒 Items</h4>
-              ${(o.items||[]).map(i => `
-                <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;">
-                  <span>${i.name} × ${i.qty}</span>
-                  <span>R${(i.price*i.qty).toFixed(2)}</span>
-                </div>
-              `).join('')}
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);">
-              <span style="font-weight:600;">Subtotal</span>
-              <span>R${(o.subtotal || 0).toFixed(2)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-200);color:var(--orange);font-weight:600;">
-              <span>🚚 Delivery Fee</span>
-              <span>${deliveryDisplay}</span>
-            </div>
-            <div style="font-size:11px;color:var(--orange);text-align:center;margin:4px 0;">${deliveryNote}</div>
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--orange);margin-top:12px;font-weight:800;font-size:18px;">
-              <span>Total</span>
-              <span style="color:var(--orange);">R${total.toFixed(2)}</span>
-            </div>
-            <p style="font-size:12px;color:#DC2626;margin-top:8px;text-align:center;font-weight:600;">
-              ⚠️ Your order will be processed once payment is verified.
-            </p>
-            <p style="font-size:12px;color:var(--muted);text-align:center;">
-              Use <strong>${reference || o.paymentReference || 'N/A'}</strong> as your payment reference.
-            </p>
+      <div style="max-width:600px;margin:0 auto;background:var(--white);border:2px solid var(--border);border-radius:var(--radius-lg);padding:32px 24px;box-shadow:var(--shadow-lg);">
+        
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--orange);padding-bottom:16px;margin-bottom:20px;">
+          <div>
+            <div style="font-size:22px;font-weight:800;color:var(--black);">Quick 2 Shop</div>
+            <div style="font-size:12px;color:var(--muted);">Braamfontein, Johannesburg</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;color:var(--muted);">Order Confirmed</div>
+            <div style="font-size:11px;color:var(--muted);">${formattedDate}</div>
           </div>
         </div>
-        <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn btn-orange" onclick="navigateTo('home')">🏠 Continue Shopping</button>
+
+        <!-- Order Info -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Order ID</div>
+            <div style="font-weight:700;font-size:14px;">${o.id}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Status</div>
+            <div style="font-weight:700;font-size:14px;color:var(--orange);">Awaiting Payment</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Payment Method</div>
+            <div style="font-weight:700;font-size:14px;">💳 Instant EFT</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Payment Reference</div>
+            <div style="font-weight:700;font-size:14px;font-family:monospace;color:#DC2626;">${reference || o.paymentReference || 'N/A'}</div>
+          </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div style="margin-bottom:20px;background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Delivery Details</div>
+          <div style="font-weight:600;">${o.customer?.name || 'Guest'}</div>
+          <div style="font-size:13px;color:var(--muted);">📞 ${o.customer?.phone || 'N/A'}</div>
+          <div style="font-size:13px;color:var(--muted);">📍 ${o.customer?.address || 'N/A'}</div>
+        </div>
+
+        <!-- Items Table -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.06em;margin-bottom:8px;">Order Items</div>
+          ${(o.items||[]).map(i => `
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:14px;">
+              <span>${i.name} × ${i.qty}</span>
+              <span>R${(i.price * i.qty).toFixed(2)}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Totals -->
+        <div style="border-top:2px solid var(--gray-200);padding-top:12px;">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;">
+            <span style="color:var(--muted);">Subtotal</span>
+            <span>R${(o.subtotal || 0).toFixed(2)}</span>
+          </div>
+          ${studentDiscount > 0 ? `
+            <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;color:#2E7D32;">
+              <span>🎓 Student Discount</span>
+              <span>-R${studentDiscount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;font-weight:600;color:var(--orange);">
+            <span>🚚 Delivery Fee</span>
+            <span>${deliveryDisplay}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0 4px 0;font-size:18px;font-weight:800;border-top:2px solid var(--orange);margin-top:4px;">
+            <span>Total</span>
+            <span style="color:var(--orange);">R${total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <!-- Payment Instructions -->
+        <div style="margin-top:16px;background:#FFF8E1;border-radius:var(--radius-sm);padding:12px 16px;border-left:4px solid #DC2626;">
+          <p style="font-size:12px;font-weight:600;color:#DC2626;margin:0;">⚠️ Payment Required</p>
+          <p style="font-size:12px;color:var(--muted);margin:4px 0 0 0;">
+            Use reference <strong style="font-family:monospace;">${reference || o.paymentReference || 'N/A'}</strong> for your Instant EFT.
+          </p>
+          <p style="font-size:12px;color:var(--muted);margin:4px 0 0 0;">
+            Beneficiary: <strong>Quick 2 Shop</strong> • Standard Bank • 10217451673
+          </p>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:12px;margin-top:20px;">
+          <button class="btn btn-orange" style="flex:1;" onclick="navigateTo('home')">🏠 Continue Shopping</button>
           <button class="btn btn-outline" onclick="navigateTo('orders')">📋 My Orders</button>
         </div>
       </div>
@@ -2268,8 +2289,85 @@ function loginForm() {
   return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
 }
 
+// In app.js - Updated registerForm function
 function registerForm() {
-  return `<form onsubmit="event.preventDefault();submitRegister();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="auth-name" required></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" id="auth-password-confirm" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button></form>`;
+  return `
+    <form onsubmit="event.preventDefault();submitRegister();">
+      <div id="auth-error" class="form-error" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input class="form-input" id="auth-name" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input class="form-input" id="auth-email" type="email" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp Number *</label>
+        <input class="form-input" id="auth-whatsapp" type="tel" placeholder="072 405 2868" required>
+        <small style="color:var(--muted);">We'll use this for delivery updates</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Delivery Address *</label>
+        <div style="position:relative;">
+          <input type="text" class="form-input" id="auth-address-search" placeholder="Search for your building or street..." oninput="searchRegisterAddress(this.value)">
+          <div id="auth-address-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
+        </div>
+        <textarea class="form-input" id="auth-address" rows="2" placeholder="Your full delivery address" style="margin-top:8px;"></textarea>
+        <small style="color:var(--muted);">Select from the dropdown or type manually</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input class="form-input" id="auth-password" type="password" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <input class="form-input" id="auth-password-confirm" type="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button>
+    </form>
+  `;
+}
+
+// Register address search
+function searchRegisterAddress(query) {
+  const resultsContainer = document.getElementById('auth-address-results');
+  const addressField = document.getElementById('auth-address');
+  
+  if (!resultsContainer) return;
+
+  if (!query || query.length < 2) {
+    resultsContainer.style.display = 'none';
+    return;
+  }
+
+  fetch(`/api/buildings?search=${encodeURIComponent(query)}`)
+    .then(r => r.json())
+    .then(buildings => {
+      if (buildings.length === 0) {
+        resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Type address manually.</div>';
+        resultsContainer.style.display = 'block';
+        return;
+      }
+
+      resultsContainer.innerHTML = buildings.map(b => `
+        <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
+             onclick="selectRegisterAddress('${b.name}', '${b.address || b.name}')">
+          <strong>${b.name}</strong>
+          <span style="font-size:11px;color:var(--muted);">${b.address || ''}</span>
+        </div>
+      `).join('');
+      resultsContainer.style.display = 'block';
+    })
+    .catch(() => {
+      resultsContainer.style.display = 'none';
+    });
+}
+
+function selectRegisterAddress(name, address) {
+  document.getElementById('auth-address-search').value = name;
+  document.getElementById('auth-address').value = address;
+  document.getElementById('auth-address-results').style.display = 'none';
 }
 
 function switchAuthTab(t, el) {
@@ -2368,26 +2466,45 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
-  const n = document.getElementById('auth-name')?.value?.trim(),
-    e = document.getElementById('auth-email')?.value?.trim(),
-    p = document.getElementById('auth-password')?.value,
-    cp = document.getElementById('auth-password-confirm')?.value,
-    err = document.getElementById('auth-error'),
-    btn = document.getElementById('auth-submit-btn');
+  const n = document.getElementById('auth-name')?.value?.trim();
+  const e = document.getElementById('auth-email')?.value?.trim();
+  const w = document.getElementById('auth-whatsapp')?.value?.trim();
+  const a = document.getElementById('auth-address')?.value?.trim();
+  const p = document.getElementById('auth-password')?.value;
+  const cp = document.getElementById('auth-password-confirm')?.value;
+  const err = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-submit-btn');
+  
   err.style.display = 'none';
-  if (!n || !e || !p || !cp) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
-  if (p !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  if (!n || !e || !w || !a || !p || !cp) {
+    err.textContent = 'All fields required';
+    err.style.display = 'block';
+    return;
+  }
+  if (p !== cp) {
+    err.textContent = 'Passwords mismatch';
+    err.style.display = 'block';
+    return;
+  }
+  
   btn.disabled = true;
   btn.textContent = 'Creating…';
+  
   try {
-    const u = await registerUser(n, e, p);
+    const u = await registerUser(n, e, p, w, a);
     state.user = u;
     localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
     await loadUserRewards();
     toast(`🎉 Welcome, ${u.name}!`);
-  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+  } catch (x) {
+    err.textContent = x.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
 }
 
 function logout() {
