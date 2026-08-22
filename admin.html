@@ -67,6 +67,7 @@
     .btn-outline{background:transparent;border-color:var(--border);color:var(--dark)}.btn-outline:hover{border-color:var(--dark)}
     .btn-success{background:var(--success);color:#fff}.btn-info{background:var(--info);color:#fff}.btn-sm{padding:6px 12px;font-size:12px}
     .btn-orange{background:var(--orange);color:#fff}.btn-orange:hover{background:#D35400}
+    .btn-warning{background:#FFA726;color:#fff}.btn-warning:hover{background:#F57C00}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-group{display:flex;flex-direction:column;gap:6px}.form-group.full{grid-column:1/-1}
     label{font-size:12px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.05em}
     .form-input{padding:10px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--border);font-size:14px;background:var(--surface);color:var(--dark);transition:border .2s}
@@ -114,6 +115,8 @@
     .select-all-cell input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--orange)}
     .row-selected{background:var(--orange-light) !important}
     .row-selected td{background:var(--orange-light) !important}
+    .notification-badge{background:#DC2626;color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:4px;animation:pulse 2s infinite}
+    @keyframes pulse{0%{opacity:1}50%{opacity:0.5}100%{opacity:1}}
     @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:800px){#sidebar{transform:translateX(-100%)}#sidebar.open{transform:translateX(0)}#main{margin-left:0}.stats-grid{grid-template-columns:1fr 1fr}.grid-2,.grid-3{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}}
   </style>
@@ -150,7 +153,7 @@
     <div class="nav-item" data-page="customers" onclick="goTo('customers', this)"><span class="icon">👥</span> Customers</div>
     <div class="nav-item" data-page="categories" onclick="goTo('categories', this)"><span class="icon">🏷</span> Categories <span class="nav-badge" id="category-count">0</span></div>
     <div class="nav-item" data-page="slideshow" onclick="goTo('slideshow', this)"><span class="icon">🖼</span> Slideshow</div>
-    <div class="nav-item" data-page="students" onclick="goTo('students', this)"><span class="icon">🎓</span> Students <span class="nav-badge" id="student-badge">0</span></div>
+    <div class="nav-item" data-page="buildings" onclick="goTo('buildings', this)"><span class="icon">🏢</span> Buildings <span class="nav-badge" id="building-count">0</span></div>
     <div class="nav-item" data-page="payment-reviews" onclick="goTo('payment-reviews', this)">
       <span class="icon">💳</span> Payment Reviews 
       <span class="nav-badge" id="payment-review-badge">0</span>
@@ -173,6 +176,9 @@
       <div class="topbar-actions">
         <a class="store-link" href="index.html" target="_blank">🌐 View Store</a>
         <button class="btn btn-primary btn-sm" onclick="goTo('products');openProductModal()">+ Add Product</button>
+        <div id="notification-icon" style="display:none;position:relative;cursor:pointer;" onclick="goTo('payment-reviews')">
+          🔔<span class="notification-badge" id="notification-count">0</span>
+        </div>
       </div>
     </div>
     <div id="content"></div>
@@ -185,9 +191,10 @@
 
 <script>
 const ADMIN_EMAIL='admin@habibi.co.za',ADMIN_PASSWORD='admin123',ADMIN_USER={id:1,name:'Admin',email:ADMIN_EMAIL,role:'admin'},API='/api';
-let adminUser=null,allProducts=[],allOrders=[],allCategories=[],allCustomers=[],allSlides=[];
+let adminUser=null,allProducts=[],allOrders=[],allCategories=[],allCustomers=[],allSlides=[],allBuildings=[];
 let selectedImageFile=null,selectedImageDataUrl=null,slideImageFile=null,slideImageDataUrl=null;
 let selectedProducts=new Set(),selectedCategories=new Set();
+let notificationCheckInterval=null;
 
 async function adminLogin(){
   const e=document.getElementById('login-email').value.trim();
@@ -202,17 +209,17 @@ async function adminLogin(){
   } catch{err.textContent='Invalid credentials. Use admin@habibi.co.za / admin123';}
 }
 
-function adminLogout(){sessionStorage.removeItem('habibi_admin');adminUser=null;document.getElementById('login-screen').style.display='flex';document.getElementById('admin-shell').style.display='none';}
+function adminLogout(){sessionStorage.removeItem('habibi_admin');adminUser=null;document.getElementById('login-screen').style.display='flex';document.getElementById('admin-shell').style.display='none';if(notificationCheckInterval){clearInterval(notificationCheckInterval);notificationCheckInterval=null;}}
 
-function showAdminShell(){document.getElementById('login-screen').style.display='none';document.getElementById('admin-shell').style.display='flex';document.getElementById('sb-name').textContent=adminUser.name;document.getElementById('sb-avatar').textContent=adminUser.name[0].toUpperCase();loadAllData().then(()=>goTo('dashboard',document.querySelector('[data-page=dashboard]')));}
+function showAdminShell(){document.getElementById('login-screen').style.display='none';document.getElementById('admin-shell').style.display='flex';document.getElementById('sb-name').textContent=adminUser.name;document.getElementById('sb-avatar').textContent=adminUser.name[0].toUpperCase();loadAllData().then(()=>goTo('dashboard',document.querySelector('[data-page=dashboard]')));checkNotifications();if(notificationCheckInterval){clearInterval(notificationCheckInterval);}notificationCheckInterval=setInterval(checkNotifications,30000);}
 
-async function loadAllData(){try{const[p,o,c,s]=await Promise.all([fetch(`${API}/products`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/orders`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/categories`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/slides/admin`).then(r=>r.json()).catch(()=>[])]);allProducts=p;allOrders=o;allCategories=c;allSlides=s;}catch{allProducts=[];allOrders=[];allSlides=[];allCategories=[];}const cmap={};allOrders.forEach(o=>{if(o.customer?.email&&!cmap[o.customer.email])cmap[o.customer.email]={...o.customer,orders:0,spent:0};if(o.customer?.email){cmap[o.customer.email].orders++;cmap[o.customer.email].spent+=o.total||0;}});allCustomers=Object.values(cmap);const pbadge=document.getElementById('pending-badge');if(pbadge){const pc=allOrders.filter(o=>o.status==='pending'||o.status==='pending_payment').length;pbadge.textContent=pc;pbadge.style.display=pc>0?'':'none';}const prodBadge=document.getElementById('product-count');if(prodBadge)prodBadge.textContent=allProducts.length;const catBadge=document.getElementById('category-count');if(catBadge)catBadge.textContent=allCategories.length;}
+async function loadAllData(){try{const[p,o,c,s,b]=await Promise.all([fetch(`${API}/products`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/orders`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/categories`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/slides/admin`).then(r=>r.json()).catch(()=>[]),fetch(`${API}/buildings`).then(r=>r.json()).catch(()=>[])]);allProducts=p;allOrders=o;allCategories=c;allSlides=s;allBuildings=b;}catch{allProducts=[];allOrders=[];allSlides=[];allCategories=[];allBuildings=[];}const cmap={};allOrders.forEach(o=>{if(o.customer?.email&&!cmap[o.customer.email])cmap[o.customer.email]={...o.customer,orders:0,spent:0};if(o.customer?.email){cmap[o.customer.email].orders++;cmap[o.customer.email].spent+=o.total||0;}});allCustomers=Object.values(cmap);const pbadge=document.getElementById('pending-badge');if(pbadge){const pc=allOrders.filter(o=>o.status==='pending'||o.status==='awaiting_pop'||o.status==='pop_uploaded'||o.status==='pending_manual_review').length;pbadge.textContent=pc;pbadge.style.display=pc>0?'':'none';}const prodBadge=document.getElementById('product-count');if(prodBadge)prodBadge.textContent=allProducts.length;const catBadge=document.getElementById('category-count');if(catBadge)catBadge.textContent=allCategories.length;const buildBadge=document.getElementById('building-count');if(buildBadge)buildBadge.textContent=allBuildings.length;}
 
 function goTo(page,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el)el.classList.add('active');
   else document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
-  const t={dashboard:'Dashboard',products:'Products',orders:'Orders',customers:'Customers',categories:'Categories',slideshow:'Slideshow',analytics:'Analytics',students:'Students','payment-reviews':'Payment Reviews'};
+  const t={dashboard:'Dashboard',products:'Products',orders:'Orders',customers:'Customers',categories:'Categories',slideshow:'Slideshow',analytics:'Analytics','payment-reviews':'Payment Reviews',buildings:'Buildings'};
   document.getElementById('topbar-title').textContent=t[page]||page;
   document.getElementById('topbar-sub').textContent=new Date().toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'});
   selectedProducts.clear();
@@ -225,18 +232,21 @@ function goTo(page,el){
     case'customers':renderCustomers();break;
     case'categories':renderCategories();break;
     case'slideshow':renderSlideshow();break;
-    case'students':renderStudents();break;
     case'payment-reviews':renderPaymentReviews();break;
+    case'buildings':renderBuildings();break;
   }
 }
-
-function renderDashboard(){document.getElementById('content').innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Total Revenue</div><div class="stat-value">R${allOrders.reduce((s,o)=>s+(o.total||0),0).toFixed(2)}</div></div><div class="stat-card"><div class="stat-icon">🧾</div><div class="stat-label">Total Orders</div><div class="stat-value">${allOrders.length}</div></div><div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Products</div><div class="stat-value">${allProducts.length}</div></div><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Customers</div><div class="stat-value">${allCustomers.length}</div></div></div><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">📋 Recent Orders</span><span>${allOrders.filter(o=>o.status==='pending'||o.status==='pending_payment').length} pending</span></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody>${allOrders.slice(0,5).reverse().map(o=>`<tr><td><strong>${o.id||o._id?.slice(-6)}</strong></td><td>${o.customer?.name||'Guest'}</td><td>R${(o.total||0).toFixed(2)}</td><td><span class="badge ${o.status==='pending'||o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-muted'}">${o.status}</span></td></tr>`).join('')}</tbody></table></div></div></div><div class="card"><div class="card-header"><span class="card-title">🏷 Top Categories</span></div><div class="card-body">${allCategories.map(c=>{const cnt=allProducts.filter(p=>p.category===c.id).length;return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${c.icon} ${c.label}</span><span style="font-weight:600;">${cnt}</span></div>`}).join('')}</div></div></div>`;}
+function renderDashboard(){document.getElementById('content').innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Total Revenue</div><div class="stat-value">R${allOrders.reduce((s,o)=>s+(o.total||0),0).toFixed(2)}</div></div><div class="stat-card"><div class="stat-icon">🧾</div><div class="stat-label">Total Orders</div><div class="stat-value">${allOrders.length}</div></div><div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Products</div><div class="stat-value">${allProducts.length}</div></div><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Customers</div><div class="stat-value">${allCustomers.length}</div></div></div><div class="grid-2"><div class="card"><div class="card-header"><span class="card-title">📋 Recent Orders</span><span>${allOrders.filter(o=>o.status==='pending'||o.status==='awaiting_pop'||o.status==='pop_uploaded'||o.status==='pending_manual_review').length} pending</span></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead><tbody>${allOrders.slice(0,5).reverse().map(o=>`<tr><td><strong>${o.id||o._id?.slice(-6)}</strong></td><td>${o.customer?.name||'Guest'}</td><td>R${(o.total||0).toFixed(2)}</td><td><span class="badge ${o.status==='pending'||o.status==='awaiting_pop'?'badge-warn':o.status==='pop_uploaded'?'badge-info':o.status==='pending_manual_review'?'badge-warn':o.status==='paid'?'badge-success':o.status==='completed'?'badge-success':'badge-muted'}">${o.status}</span></td></tr>`).join('')}</tbody></table></div></div></div><div class="card"><div class="card-header"><span class="card-title">🏷 Top Categories</span></div><div class="card-body">${allCategories.map(c=>{const cnt=allProducts.filter(p=>p.category===c.id).length;return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${c.icon} ${c.label}</span><span style="font-weight:600;">${cnt}</span></div>`}).join('')}</div></div></div>`;}
 
 function formatDuration(ms){if(!ms||ms<0)return'0s';const seconds=Math.floor(ms/1000);if(seconds<60)return seconds+'s';const minutes=Math.floor(seconds/60);const remainingSeconds=seconds%60;if(minutes<60)return minutes+'m '+remainingSeconds+'s';const hours=Math.floor(minutes/60);const remainingMinutes=minutes%60;return hours+'h '+remainingMinutes+'m';}
 
 let analyticsPeriod='7d';
 
 async function renderAnalytics(){document.getElementById('content').innerHTML=`<div style="text-align:center;padding:60px;"><div style="font-size:32px;">📊</div><p>Loading analytics...</p></div>`;try{const response=await fetch(`${API}/analytics/stats?period=${analyticsPeriod}`);const stats=await response.json();const orders=allOrders||[];const totalRevenue=orders.reduce((sum,o)=>sum+(o.total||0),0);document.getElementById('content').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;"><h2 style="font-family:var(--font-head);font-size:20px;">📊 Analytics Dashboard</h2><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><div class="analytics-period-selector"><button class="${analyticsPeriod==='7d'?'active':''}" onclick="analyticsPeriod='7d';renderAnalytics();">7d</button><button class="${analyticsPeriod==='14d'?'active':''}" onclick="analyticsPeriod='14d';renderAnalytics();">14d</button><button class="${analyticsPeriod==='30d'?'active':''}" onclick="analyticsPeriod='30d';renderAnalytics();">30d</button><button class="${analyticsPeriod==='90d'?'active':''}" onclick="analyticsPeriod='90d';renderAnalytics();">90d</button></div><button class="btn btn-sm btn-outline" onclick="renderAnalytics()">🔄 Refresh</button><span style="font-size:11px;color:var(--muted);">Updated: ${new Date().toLocaleTimeString()}</span></div></div><div class="stats-grid"><div class="stat-card"><div class="stat-icon">👤</div><div class="stat-label">Unique Visitors</div><div class="stat-value">${stats.summary?.uniqueVisitors||0}</div><div style="font-size:11px;color:var(--muted);">Last ${analyticsPeriod.replace('d','')} days</div></div><div class="stat-card"><div class="stat-icon">⏱️</div><div class="stat-label">Avg. Session Duration</div><div class="stat-value">${formatDuration(stats.summary?.averageSessionDuration||0)}</div><div style="font-size:11px;color:var(--muted);">Time on site</div></div><div class="stat-card"><div class="stat-icon">📄</div><div class="stat-label">Page Views</div><div class="stat-value">${stats.events?.page_view||0}</div><div style="font-size:11px;color:var(--muted);">Total views</div></div><div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-label">Conversion Rate</div><div class="stat-value">${stats.summary?.dropOffRate||'0%'}</div><div style="font-size:11px;color:var(--muted);">Views → Purchases</div></div></div><div class="grid-2" style="margin-bottom:20px;"><div class="card"><div class="card-header"><span class="card-title">🔄 Sales Funnel</span><span style="font-size:12px;color:var(--muted);">Customer journey</span></div><div class="card-body"><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;text-align:center;"><div style="background:var(--orange-light);border-radius:8px;padding:12px;"><div style="font-size:11px;color:var(--muted);">Viewed</div><div style="font-size:20px;font-weight:800;">${stats.cartFunnel?.viewed||0}</div></div><div style="background:#E3F2FD;border-radius:8px;padding:12px;"><div style="font-size:11px;color:var(--muted);">Added to Cart</div><div style="font-size:20px;font-weight:800;">${stats.cartFunnel?.addedToCart||0}</div></div><div style="background:#FFF3E0;border-radius:8px;padding:12px;"><div style="font-size:11px;color:var(--muted);">Checkout</div><div style="font-size:20px;font-weight:800;">${stats.cartFunnel?.checkoutStarted||0}</div></div><div style="background:#E8F5E9;border-radius:8px;padding:12px;"><div style="font-size:11px;color:var(--muted);">Purchased</div><div style="font-size:20px;font-weight:800;color:#2E7D32;">${stats.cartFunnel?.purchased||0}</div></div></div><div style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center;">📊 ${stats.cartFunnel?.viewed>0?`Conversion: ${((stats.cartFunnel?.purchased/stats.cartFunnel?.viewed)*100).toFixed(1)}%`:'No data yet'}</div></div></div><div class="card"><div class="card-header"><span class="card-title">📈 Top Pages</span></div><div class="card-body">${!stats.pageViews||stats.pageViews.length===0?'<p style="color:var(--muted);">No page views yet</p>':stats.pageViews.slice(0,5).map((page,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${i+1}. ${page._id||'Home'}</span><span style="font-weight:600;">${page.count} views</span></div>`).join('')}</div></div></div><div class="grid-2" style="margin-bottom:20px;"><div class="card"><div class="card-header"><span class="card-title">🏆 Most Viewed Products</span></div><div class="card-body">${!stats.topProducts||stats.topProducts.length===0?'<p style="color:var(--muted);">No products viewed yet</p>':stats.topProducts.map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${i+1}. ${p.productName||'Unknown'}</span><span style="font-weight:600;">${p.views} views</span></div>`).join('')}</div></div><div class="card"><div class="card-header"><span class="card-title">⚠️ Drop-off Points</span><span style="font-size:12px;color:var(--orange);">${stats.dropOffSessions||0} users left</span></div><div class="card-body"><div style="font-size:14px;color:var(--muted);margin-bottom:12px;">Users who viewed products but didn't purchase</div>${stats.dropOffSessions>0?`<div style="background:#FFF3E0;border-radius:8px;padding:12px;border-left:3px solid var(--orange);"><div style="display:flex;justify-content:space-between;"><span>Drop-off Rate</span><span style="font-weight:700;color:var(--orange);">${stats.summary?.dropOffRate||'0%'}</span></div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${stats.dropOffSessions} sessions viewed products but didn't complete purchase</div></div>`:'<p style="color:var(--muted);">No drop-offs detected</p>'}<div style="margin-top:12px;padding:8px 12px;background:#E3F2FD;border-radius:8px;font-size:12px;">💡 <strong>Tip:</strong> ${stats.dropOffSessions>0?'Consider adding more product images, reviews, or special offers to convert more visitors.':'Keep up the good work! Great conversion rate!'}</div></div></div></div><div class="card"><div class="card-header"><span class="card-title">💳 Order Summary</span></div><div class="card-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;"><div style="text-align:center;padding:12px;background:var(--surface);border-radius:8px;"><div style="font-size:11px;color:var(--muted);">Total Orders</div><div style="font-size:22px;font-weight:800;">${orders.length}</div></div><div style="text-align:center;padding:12px;background:var(--surface);border-radius:8px;"><div style="font-size:11px;color:var(--muted);">Revenue</div><div style="font-size:22px;font-weight:800;color:var(--orange);">R${totalRevenue.toFixed(2)}</div></div><div style="text-align:center;padding:12px;background:var(--surface);border-radius:8px;"><div style="font-size:11px;color:var(--muted);">Avg. Order Value</div><div style="font-size:22px;font-weight:800;">${orders.length>0?'R'+(totalRevenue/orders.length).toFixed(2):'R0.00'}</div></div></div></div></div>`;}catch(error){console.error('Analytics error:',error);document.getElementById('content').innerHTML=`<div style="text-align:center;padding:60px;"><div style="font-size:32px;">⚠️</div><h3>Could not load analytics</h3><p style="color:var(--muted);">${error.message||'Please try again'}</p><button class="btn btn-outline" onclick="renderAnalytics()" style="margin-top:12px;">🔄 Retry</button></div>`;}}
+
+// ============================================================
+//  PRODUCTS
+// ============================================================
 
 let productSearch='';
 
@@ -262,6 +272,10 @@ function clearImage(){selectedImageFile=null;selectedImageDataUrl=null;document.
 
 async function saveProduct(id){const n=document.getElementById('p-name').value.trim();const pr=parseFloat(document.getElementById('p-price').value);const st=parseInt(document.getElementById('p-stock').value);const cat=document.getElementById('p-cat').value;const rat=parseFloat(document.getElementById('p-rating').value);const img=document.getElementById('p-image-url').value.trim();const desc=document.getElementById('p-desc').value.trim();const feat=document.getElementById('p-featured')?.checked||false;const specialEnabled=document.getElementById('p-special-enabled').value==='yes';if(!n||isNaN(pr)){toast('⚠️ Name and price required');return;}let fi=img;if(selectedImageFile&&selectedImageDataUrl)fi=selectedImageDataUrl;else if(!fi&&!id)fi='https://via.placeholder.com/320x320?text=No+Image';const body={name:n,price:pr,stock:st||0,category:cat,rating:rat||4.5,image:fi,description:desc||'',featured:feat};if(specialEnabled){const qty=parseInt(document.getElementById('p-special-qty').value);const specialPrice=parseFloat(document.getElementById('p-special-price').value);const expiry=document.getElementById('p-special-expiry').value;if(!qty||qty<2){toast('⚠️ Buy quantity must be at least 2');return;}if(!specialPrice||isNaN(specialPrice)){toast('⚠️ Please enter a special price');return;}body.special={type:'bulk',quantity:qty,price:specialPrice,expiresAt:expiry?new Date(expiry).toISOString():null,label:`Buy ${qty} for R${specialPrice.toFixed(2)}`};}else{body.special=null;}try{if(id){await fetch(`${API}/products/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Product updated');}else{await fetch(`${API}/products`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Product added');}closeModal();selectedImageFile=null;selectedImageDataUrl=null;await loadAllData();renderProducts();}catch{toast('❌ Save failed');}}
 
+// ============================================================
+//  CATEGORIES
+// ============================================================
+
 function renderCategories(){const selectedCount=selectedCategories.size;document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="openCategoryModal()">+ Add Category</button>${selectedCount>0?`<span style="display:inline-flex;align-items:center;gap:8px;background:var(--orange-light);padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--orange);">✅ ${selectedCount} category${selectedCount>1?'s':''} selected</span><button class="btn btn-danger btn-sm" onclick="bulkDeleteCategories()">🗑 Delete Selected</button><button class="btn btn-outline btn-sm" onclick="clearCategorySelection()">Clear Selection</button>`:''}</div><div class="card"><div class="table-wrap"><table><thead><tr><th class="select-all-cell"><input type="checkbox" id="select-all-categories" onchange="toggleAllCategories(this.checked)"></th><th>Icon</th><th>ID</th><th>Label</th><th>Products</th><th>Actions</th></tr></thead><tbody>${allCategories.length===0?`<tr><td colspan="6"><div class="empty-state"><div class="e-icon">🏷</div><h3>No categories</h3></div></td></tr>`:allCategories.map(c=>{const isSelected=selectedCategories.has(c.id);const cnt=allProducts.filter(p=>p.category===c.id).length;return`<tr class="${isSelected?'row-selected':''}"><td class="checkbox-cell"><input type="checkbox" ${isSelected?'checked':''} onchange="toggleCategorySelection('${c.id}',this.checked)"></td><td style="font-size:24px;">${c.icon||'🏷️'}</td><td><code>${c.id}</code></td><td>${c.label}</td><td>${cnt}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="openCategoryModal('${c.id}')">✏️</button>${cnt===0?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('category','${c.id}','${c.label}')">🗑</button>`:'<span style="font-size:11px;color:var(--muted);">Has products</span>'}</div></td></tr>`}).join('')}</tbody></table></div></div>`;}
 
 function toggleCategorySelection(id,checked){if(checked)selectedCategories.add(id);else selectedCategories.delete(id);renderCategories();}
@@ -275,16 +289,27 @@ async function bulkDeleteCategories(){if(selectedCategories.size===0){toast('⚠
 function openCategoryModal(id){const c=id?allCategories.find(x=>x.id===id):null;document.getElementById('modal-box').innerHTML=`<div class="modal-head"><h3>${c?'Edit Category':'Add Category'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>ID (unique slug)</label><input class="form-input" id="cat-id" value="${c?.id||''}" ${c?'readonly':''} placeholder="e.g. food"></div><div class="form-group"><label>Icon (emoji)</label><input class="form-input" id="cat-icon" value="${c?.icon||'🏷️'}" placeholder="🍕"></div><div class="form-group full"><label>Label</label><input class="form-input" id="cat-label" value="${c?.label||''}" placeholder="Food & Snacks"></div></div><div class="form-actions"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCategory('${c?.id||''}')">${c?'Save':'Add'}</button></div></div>`;openModal();}
 
 async function saveCategory(id){const cid=document.getElementById('cat-id').value.trim();const icon=document.getElementById('cat-icon').value.trim()||'🏷️';const label=document.getElementById('cat-label').value.trim();if(!cid||!label){toast('⚠️ ID and label required');return;}if(id&&cid!==id){toast('⚠️ Cannot change category ID');return;}try{if(id){await fetch(`${API}/categories/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,icon})});toast('✅ Category updated');}else{await fetch(`${API}/categories`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:cid,label,icon})});toast('✅ Category added');}closeModal();await loadAllData();renderCategories();}catch{toast('❌ Save failed');}}
+// ============================================================
+//  ORDERS
+// ============================================================
 
 let orderSearch='',orderFilter='all';
 
-function renderOrders(){let f=[...allOrders].reverse().filter(o=>{const ms=o.id.toLowerCase().includes(orderSearch.toLowerCase())||(o.customer?.name||'').toLowerCase().includes(orderSearch.toLowerCase())||(o.customer?.phone||'').includes(orderSearch);if(orderFilter==='all')return ms;return ms&&o.status===orderFilter;});document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;"><div class="search-bar" style="flex:1;min-width:200px;"><span class="s-icon">🔍</span><input placeholder="Search orders…" value="${orderSearch}" oninput="orderSearch=this.value;renderOrders()"></div><select class="form-input" style="width:auto;" onchange="orderFilter=this.value;renderOrders()"><option value="all">All</option><option value="pending" ${orderFilter==='pending'?'selected':''}>Pending</option><option value="pending_payment" ${orderFilter==='pending_payment'?'selected':''}>Awaiting Payment</option><option value="paid" ${orderFilter==='paid'?'selected':''}>Paid</option><option value="completed" ${orderFilter==='completed'?'selected':''}>Completed</option><option value="cancelled" ${orderFilter==='cancelled'?'selected':''}>Cancelled</option></select></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody>${f.length===0?`<tr><td colspan="7"><div class="empty-state"><div class="e-icon">🧾</div><h3>No orders found</h3></div></td></tr>`:f.map(o=>`<tr><td><strong style="font-size:13px;">${o.id||o._id?.slice(-8)}</strong></td><td>${o.customer?.name||'Guest'}<br><small style="color:var(--muted);">${o.customer?.phone||''}</small></td><td>${o.items?.length||0}</td><td><strong>R${(o.total||0).toFixed(2)}</strong></td><td><span class="badge ${o.paymentMethod==='cash'?'badge-success':'badge-info'}">${o.paymentMethod==='cash'?'💵 Cash':'💳 EFT'}</span></td><td><span class="badge ${o.status==='pending'||o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status}</span></td><td><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="viewOrder('${o._id}')">📄</button>${o.status==='pending'||o.status==='pending_payment'?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('order','${o._id}','${o.id||'order'}')">🗑</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></div>`;}
+function renderOrders(){let f=[...allOrders].reverse().filter(o=>{const ms=o.id.toLowerCase().includes(orderSearch.toLowerCase())||(o.customer?.name||'').toLowerCase().includes(orderSearch.toLowerCase())||(o.customer?.phone||'').includes(orderSearch);if(orderFilter==='all')return ms;return ms&&o.status===orderFilter;});document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;"><div class="search-bar" style="flex:1;min-width:200px;"><span class="s-icon">🔍</span><input placeholder="Search orders…" value="${orderSearch}" oninput="orderSearch=this.value;renderOrders()"></div><select class="form-input" style="width:auto;" onchange="orderFilter=this.value;renderOrders()"><option value="all">All</option><option value="pending" ${orderFilter==='pending'?'selected':''}>Pending</option><option value="awaiting_pop" ${orderFilter==='awaiting_pop'?'selected':''}>Awaiting POP</option><option value="pop_uploaded" ${orderFilter==='pop_uploaded'?'selected':''}>POP Uploaded</option><option value="pop_verified" ${orderFilter==='pop_verified'?'selected':''}>POP Verified</option><option value="pending_manual_review" ${orderFilter==='pending_manual_review'?'selected':''}>Manual Review</option><option value="paid" ${orderFilter==='paid'?'selected':''}>Paid</option><option value="completed" ${orderFilter==='completed'?'selected':''}>Completed</option><option value="cancelled" ${orderFilter==='cancelled'?'selected':''}>Cancelled</option></select></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>POP</th><th>Status</th><th>Actions</th></tr></thead><tbody>${f.length===0?`<tr><td colspan="7"><div class="empty-state"><div class="e-icon">🧾</div><h3>No orders found</h3></div></td></tr>`:f.map(o=>`<tr><td><strong style="font-size:13px;">${o.id||o._id?.slice(-8)}</strong></td><td>${o.customer?.name||'Guest'}<br><small style="color:var(--muted);">${o.customer?.phone||''}</small></td><td>${o.items?.length||0}</td><td><strong>R${(o.total||0).toFixed(2)}</strong></td><td>${o.popPath?`<a href="${o.popPath}" target="_blank" style="color:var(--orange);">📄 View</a>`:'❌'}</td><td><span class="badge ${o.status==='pending'||o.status==='awaiting_pop'?'badge-warn':o.status==='pop_uploaded'?'badge-info':o.status==='pending_manual_review'?'badge-warn':o.status==='paid'?'badge-success':o.status==='completed'?'badge-success':'badge-danger'}">${o.status}</span></td><td><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="viewOrderAdmin('${o.id}')">📄</button>${o.status==='pending'||o.status==='awaiting_pop'||o.status==='pop_uploaded'||o.status==='pending_manual_review'?`<button class="btn btn-danger btn-sm" onclick="confirmDelete('order','${o.id}','${o.id||'order'}')">🗑</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></div>`;}
 
-function viewOrder(id){const o=allOrders.find(x=>x._id===id);if(!o){toast('⚠️ Order not found');return;}document.getElementById('modal-box').innerHTML=`<div class="modal-head"><h3>🧾 Order #${o.id||o._id?.slice(-8)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="detail-section"><div class="detail-grid"><div><div class="detail-label">Customer</div><div class="detail-value">${o.customer?.name||'Guest'}</div></div><div><div class="detail-label">Phone</div><div class="detail-value">${o.customer?.phone||'N/A'}</div></div><div><div class="detail-label">Address</div><div class="detail-value">${o.customer?.address||'N/A'}</div></div><div><div class="detail-label">Payment</div><div class="detail-value">${o.paymentMethod==='cash'?'💵 Cash on Delivery':'💳 Payshap'}</div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge ${o.status==='pending'||o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status}</span></div></div><div><div class="detail-label">Total</div><div class="detail-value" style="font-size:18px;">R${(o.total||0).toFixed(2)}</div></div></div></div><h4 style="font-family:var(--font-head);font-weight:700;margin-bottom:8px;">Items</h4>${(o.items||[]).map(i=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}${o.customer?.notes?`<p style="margin-top:12px;padding:8px 12px;background:var(--surface);border-radius:8px;font-size:13px;"><strong>Notes:</strong> ${o.customer.notes}</p>`:''}${o.proofOfPaymentPath?`<div style="margin-top:12px;"><label style="font-size:12px;font-weight:700;">Proof of Payment</label><br><img src="${o.proofOfPaymentPath}" class="pop-image" onclick="window.open('${o.proofOfPaymentPath}','_blank')"></div>`:''}<div class="form-actions" style="margin-top:16px;"><button class="btn btn-outline" onclick="closeModal()">Close</button>${o.status==='pending'||o.status==='pending_payment'?`<button class="btn btn-success btn-sm" onclick="updateOrderStatus('${o._id}','paid')">✅ Mark Paid</button>`:''}${o.status==='paid'?`<button class="btn btn-success btn-sm" onclick="updateOrderStatus('${o._id}','completed')">📦 Mark Complete</button>`:''}</div></div>`;openModal();}
+async function viewOrderAdmin(orderId){try{const orders=await fetch(`${API}/orders`).then(r=>r.json());const order=orders.find(o=>o.id===orderId);if(!order){toast('⚠️ Order not found');return;}const historyRes=await fetch(`${API}/order-history/${orderId}`);const history=historyRes.ok?await historyRes.json():[];document.getElementById('modal-box').innerHTML=`<div class="modal-head"><h3>🧾 Order #${order.id}</h3><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px;"><div><strong>Customer:</strong> ${order.customer?.name||'Guest'}</div><div><strong>WhatsApp:</strong> ${order.customer?.phone||'N/A'}</div><div style="grid-column:1/-1;"><strong>Address:</strong> ${order.customer?.address||'N/A'}</div></div><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:12px;"><div><strong>Status:</strong> <span class="badge ${order.status==='pending'||order.status==='awaiting_pop'?'badge-warn':order.status==='pop_uploaded'?'badge-info':order.status==='pending_manual_review'?'badge-warn':order.status==='paid'?'badge-success':order.status==='completed'?'badge-success':'badge-danger'}">${order.status}</span></div><div><strong>Total:</strong> <span style="font-weight:700;color:var(--orange);">R${(order.total||0).toFixed(2)}</span></div></div>${history.length>0?`<div style="margin-bottom:12px;max-height:150px;overflow-y:auto;"><strong>Timeline:</strong>${history.map(h=>`<div style="display:flex;gap:8px;padding:2px 0;font-size:12px;border-bottom:1px solid var(--border);"><span>${h.status.replace(/_/g,' ').toUpperCase()}</span><span style="color:var(--muted);margin-left:auto;">${new Date(h.timestamp).toLocaleString()}</span></div>`).join('')}</div>`:''}<div style="margin-bottom:12px;"><strong>Items:</strong>${(order.items||[]).map(i=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:13px;border-bottom:1px solid var(--gray-100);"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}</div>${order.popPath?`<div style="margin-bottom:12px;"><strong>POP:</strong><br>${order.popPath.endsWith('.pdf')?`<a href="${order.popPath}" target="_blank" style="color:var(--orange);">📄 View PDF</a>`:`<img src="${order.popPath}" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;" onclick="window.open('${order.popPath}','_blank')">`}</div>`:''}<div style="display:flex;gap:4px;flex-wrap:wrap;"><button class="btn btn-outline" onclick="closeModal()">Close</button>${order.status==='pending'||order.status==='awaiting_pop'||order.status==='pop_uploaded'?`<button class="btn btn-success" onclick="updateOrderStatusAdmin('${order.id}','paid')">✅ Mark Paid</button>`:''}${order.status==='paid'?`<button class="btn btn-success" onclick="updateOrderStatusAdmin('${order.id}','completed')">📦 Complete</button>`:''}${order.status==='pending_manual_review'?`<button class="btn btn-success" onclick="updateOrderStatusAdmin('${order.id}','paid')">✅ Approve Payment</button><button class="btn btn-danger" onclick="updateOrderStatusAdmin('${order.id}','cancelled')">❌ Reject</button>`:''}</div></div>`;openModal();}catch(err){toast('❌ Could not load order');}}
 
-async function updateOrderStatus(id,status){try{await fetch(`${API}/orders/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});toast('✅ Order updated');closeModal();await loadAllData();renderOrders();}catch{toast('❌ Update failed');}}
+async function updateOrderStatusAdmin(orderId,status){try{await fetch(`${API}/orders/${orderId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});toast('✅ Order updated');closeModal();await loadAllData();renderOrders();}catch{toast('❌ Update failed');}}
+
+// ============================================================
+//  CUSTOMERS
+// ============================================================
 
 function renderCustomers(){document.getElementById('content').innerHTML=`<div class="card"><div class="card-header"><span class="card-title">👥 Customers (${allCustomers.length})</span></div><div class="card-body"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Orders</th><th>Spent</th></tr></thead><tbody>${allCustomers.length===0?`<tr><td colspan="5"><div class="empty-state"><div class="e-icon">👥</div><h3>No customers yet</h3></div></td></tr>`:allCustomers.map(c=>`<tr><td><strong>${c.name||'N/A'}</strong></td><td>${c.email||'N/A'}</td><td>${c.phone||'N/A'}</td><td>${c.orders||0}</td><td><strong>R${(c.spent||0).toFixed(2)}</strong></td></tr>`).join('')}</tbody></table></div></div></div>`;}
+
+// ============================================================
+//  SLIDESHOW
+// ============================================================
 
 function renderSlideshow(){document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;"><button class="btn btn-primary" onclick="openSlideModal()">+ Add Slide</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Image</th><th>Caption</th><th>Order</th><th>Actions</th></tr></thead><tbody>${allSlides.length===0?`<tr><td colspan="4"><div class="empty-state"><div class="e-icon">🖼</div><h3>No slides</h3></div></td></tr>`:allSlides.map(s=>`<tr><td><img src="${s.image}" style="width:80px;height:50px;object-fit:cover;border-radius:4px;background:#f5f5f5;" onerror="this.src='https://via.placeholder.com/80x50?text=📷'"></td><td>${s.caption||''}</td><td>${s.order||0}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="openSlideModal('${s._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="confirmDelete('slide','${s._id}','slide')">🗑</button></div></td></tr>`).join('')}</tbody></table></div></div>`;}
 
@@ -297,8 +322,41 @@ function handleSlideUrl(url){if(url){slideImageFile=null;slideImageDataUrl=url;d
 function clearSlideImage(){slideImageFile=null;slideImageDataUrl=null;document.getElementById('s-image-preview').style.display='none';document.getElementById('s-upload-placeholder').style.display='';document.getElementById('s-clear-btn').style.display='none';document.getElementById('s-image-url').value='';document.getElementById('s-image-file').value='';}
 
 async function saveSlide(id){const img=document.getElementById('s-image-url').value.trim();const cap=document.getElementById('s-caption').value.trim();const order=parseInt(document.getElementById('s-order').value)||0;const active=document.getElementById('s-active').checked;let fi=img;if(slideImageFile&&slideImageDataUrl)fi=slideImageDataUrl;else if(!fi&&!id){toast('⚠️ Image required');return;}const body={image:fi,caption:cap,order:order,active:active};try{if(id){await fetch(`${API}/slides/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Slide updated');}else{await fetch(`${API}/slides`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Slide added');}closeModal();slideImageFile=null;slideImageDataUrl=null;await loadAllData();renderSlideshow();}catch{toast('❌ Save failed');}}
+// ============================================================
+//  BUILDINGS
+// ============================================================
 
-async function confirmDelete(type,id,name){document.getElementById('confirm-title').textContent=`Delete ${type}?`;document.getElementById('confirm-msg').textContent=`Are you sure you want to delete "${name}"? This cannot be undone.`;document.getElementById('confirm-ok').onclick=async()=>{closeConfirm();try{const ep=type==='product'?`${API}/products/${id}`:type==='order'?`${API}/orders/${id}`:type==='category'?`${API}/categories/${id}`:`${API}/slides/${id}`;await fetch(ep,{method:'DELETE'});toast(`✅ ${type} deleted`);await loadAllData();const page=document.querySelector('.nav-item.active')?.dataset?.page||'products';goTo(page);if(page==='orders')renderOrders();else if(page==='categories')renderCategories();else if(page==='slideshow')renderSlideshow();else renderProducts();}catch{toast('❌ Delete failed');}};document.getElementById('confirm-overlay').classList.add('open');}
+function renderBuildings(){document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="openBuildingModal()">+ Add Building</button><div class="search-bar" style="flex:1;min-width:200px;"><span class="s-icon">🔍</span><input placeholder="Search buildings…" id="building-search-input" oninput="filterBuildings()"></div><select class="form-input" style="width:auto;" id="building-area-filter" onchange="filterBuildings()"><option value="all">All Areas</option><option value="braamfontein">Braamfontein</option><option value="doornfontein">Doornfontein</option><option value="parktown">Parktown</option><option value="aucklandpark">Auckland Park</option></select></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Street</th><th>Area</th><th>Postal Code</th><th>Actions</th></tr></thead><tbody id="buildings-table-body"><tr><td colspan="5"><div style="text-align:center;padding:40px;">Loading...</div></td></tr></tbody></table></div></div>`;filterBuildings();}
+
+function filterBuildings(){const search=document.getElementById('building-search-input')?.value?.toLowerCase()||'';const area=document.getElementById('building-area-filter')?.value||'all';let filtered=allBuildings.filter(b=>{const matchSearch=b.name.toLowerCase().includes(search)||b.street.toLowerCase().includes(search);const matchArea=area==='all'||b.area===area;return matchSearch&&matchArea;});const tbody=document.getElementById('buildings-table-body');if(filtered.length===0){tbody.innerHTML='<tr><td colspan="5"><div style="text-align:center;padding:40px;color:var(--muted);">No buildings found</div></td></tr>';return;}tbody.innerHTML=filtered.map(b=>`<tr><td><strong>${b.name}</strong></td><td>${b.street}</td><td><span class="badge badge-muted">${b.area}</span></td><td>${b.postalCode||'N/A'}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="openBuildingModal('${b._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteBuilding('${b._id}')">🗑</button></div></td></tr>`).join('');}
+
+function openBuildingModal(id){const b=id?allBuildings.find(x=>x._id===id):null;document.getElementById('modal-box').innerHTML=`<div class="modal-head"><h3>${b?'Edit Building':'Add Building'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>Building Name *</label><input class="form-input" id="b-name" value="${b?.name||''}"></div><div class="form-group"><label>Street Address *</label><input class="form-input" id="b-street" value="${b?.street||''}"></div><div class="form-group"><label>Area *</label><select class="form-input" id="b-area"><option value="braamfontein" ${b?.area==='braamfontein'?'selected':''}>Braamfontein</option><option value="doornfontein" ${b?.area==='doornfontein'?'selected':''}>Doornfontein</option><option value="parktown" ${b?.area==='parktown'?'selected':''}>Parktown</option><option value="aucklandpark" ${b?.area==='aucklandpark'?'selected':''}>Auckland Park</option></select></div><div class="form-group"><label>Postal Code</label><input class="form-input" id="b-postal" value="${b?.postalCode||''}"></div><div class="form-group full"><label>Notes</label><textarea class="form-input" id="b-notes" rows="2">${b?.notes||''}</textarea></div></div><div class="form-actions"><button class="btn btn-outline" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBuilding('${b?._id||''}')">${b?'Save':'Add'}</button></div></div>`;openModal();}
+
+async function saveBuilding(id){const name=document.getElementById('b-name').value.trim();const street=document.getElementById('b-street').value.trim();const area=document.getElementById('b-area').value;const postalCode=document.getElementById('b-postal').value.trim();const notes=document.getElementById('b-notes').value.trim();if(!name||!street){toast('⚠️ Name and street required');return;}const body={name,street,area,postalCode,notes};try{if(id){await fetch(`${API}/buildings/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Building updated');}else{await fetch(`${API}/buildings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});toast('✅ Building added');}closeModal();await loadAllData();renderBuildings();}catch{toast('❌ Save failed');}}
+
+async function deleteBuilding(id){if(!confirm('Delete this building?'))return;try{await fetch(`${API}/buildings/${id}`,{method:'DELETE'});toast('✅ Building deleted');await loadAllData();renderBuildings();}catch{toast('❌ Delete failed');}}
+
+// ============================================================
+//  PAYMENT REVIEWS
+// ============================================================
+
+function renderPaymentReviews(){document.getElementById('content').innerHTML=`<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;"><h2 style="font-family:var(--font-head);font-size:20px;">💳 Payment Reviews</h2><button class="btn btn-sm btn-outline" onclick="renderPaymentReviews()">🔄 Refresh</button><span style="font-size:12px;color:var(--muted);">Orders pending payment verification</span></div><div class="card" id="payment-reviews-container"><div style="text-align:center;padding:40px;">Loading...</div></div>`;fetch('/api/admin/payment-reviews').then(r=>r.json()).then(orders=>{const badge=document.getElementById('payment-review-badge');if(badge)badge.textContent=orders.length;const container=document.getElementById('payment-reviews-container');if(orders.length===0){container.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">✅ No pending payment reviews</div>';return;}container.innerHTML=orders.map(o=>`<div style="padding:16px;border-bottom:1px solid var(--border);${o.status==='pending_manual_review'?'background:#FFF8E1;':''}"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;"><div><strong style="font-size:16px;">${o.id}</strong><span class="badge ${o.status==='pending_manual_review'?'badge-warn':o.status==='pop_uploaded'?'badge-info':'badge-warn'}" style="margin-left:8px;">${o.status}</span></div><div><span style="font-weight:600;">R${o.total.toFixed(2)}</span><span style="font-size:12px;color:var(--muted);margin-left:8px;">${new Date(o.createdAt).toLocaleDateString()}</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px;"><div><strong>Customer:</strong> ${o.customer?.name||'Guest'}</div><div><strong>WhatsApp:</strong> ${o.customer?.phone||'N/A'}</div><div><strong>Reference:</strong> <span style="font-family:monospace;">${o.paymentReference}</span></div><div><strong>POP:</strong> ${o.popPath?`<a href="${o.popPath}" target="_blank" style="color:var(--orange);">📄 View POP</a>`:'❌ No POP uploaded'}</div></div>${o.verificationResult?`<div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;"><span><strong>Decision:</strong> ${o.verificationResult.allPassed?'✅ Passed':'⚠️ Failed'}</span><span><strong>Score:</strong> ${((o.verificationResult.passedCount/o.verificationResult.totalRules)*100).toFixed(0)||0}%</span><span><strong>Passed:</strong> ${o.verificationResult.passedCount}/${o.verificationResult.totalRules}</span></div>${o.verificationResult.failedRules&&o.verificationResult.failedRules.length>0?`<div style="font-size:12px;color:#DC2626;margin-top:4px;">⚠️ Issues: ${o.verificationResult.failedRules.join(', ')}</div>`:''}</div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;">${o.status!=='paid'&&o.status!=='completed'?`<button class="btn btn-success btn-sm" onclick="markOrderPaid('${o.id}')">✅ Mark Paid</button><button class="btn btn-danger btn-sm" onclick="markOrderCancelled('${o.id}')">❌ Reject</button>`:''}<button class="btn btn-outline btn-sm" onclick="viewOrderAdmin('${o.id}')">📄 View</button></div></div>`).join('');}).catch(()=>{document.getElementById('payment-reviews-container').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">Could not load payment reviews</div>';});}
+
+async function markOrderPaid(orderId){if(!confirm(`Mark order ${orderId} as paid?`))return;try{await fetch(`${API}/orders/${orderId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'paid'})});toast('✅ Order marked as paid');await loadAllData();renderPaymentReviews();}catch{toast('❌ Failed');}}
+
+async function markOrderCancelled(orderId){if(!confirm(`Cancel order ${orderId}?`))return;try{await fetch(`${API}/orders/${orderId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})});toast('🗑 Order cancelled');await loadAllData();renderPaymentReviews();}catch{toast('❌ Failed');}}
+
+// ============================================================
+//  NOTIFICATIONS
+// ============================================================
+
+async function checkNotifications(){try{const res=await fetch(`${API}/admin/notifications/unread-count`);if(res.ok){const data=await res.json();const count=data.count||0;const icon=document.getElementById('notification-icon');const badge=document.getElementById('notification-count');if(count>0){icon.style.display='inline-block';badge.textContent=count;}else{icon.style.display='none';}}}catch{console.warn('Notification check failed');}}
+
+// ============================================================
+//  CONFIRM DELETE
+// ============================================================
+
+async function confirmDelete(type,id,name){document.getElementById('confirm-title').textContent=`Delete ${type}?`;document.getElementById('confirm-msg').textContent=`Are you sure you want to delete "${name}"? This cannot be undone.`;document.getElementById('confirm-ok').onclick=async()=>{closeConfirm();try{const ep=type==='product'?`${API}/products/${id}`:type==='order'?`${API}/orders/${id}`:type==='category'?`${API}/categories/${id}`:`${API}/slides/${id}`;await fetch(ep,{method:'DELETE'});toast(`✅ ${type} deleted`);await loadAllData();const page=document.querySelector('.nav-item.active')?.dataset?.page||'products';goTo(page);if(page==='orders')renderOrders();else if(page==='categories')renderCategories();else if(page==='slideshow')renderSlideshow();else if(page==='buildings')renderBuildings();else renderProducts();}catch{toast('❌ Delete failed');}};document.getElementById('confirm-overlay').classList.add('open');}
 
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 
@@ -308,329 +366,7 @@ function closeModal(){document.getElementById('modal-overlay').classList.remove(
 
 function toast(m,d=2800){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),d);}
 
-// ============================================================
-//  STUDENT VERIFICATION ADMIN
-// ============================================================
-
-function renderStudents() {
-  document.getElementById('content').innerHTML = `
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-      <h2 style="font-family:var(--font-head);font-size:20px;">🎓 Student Verifications</h2>
-      <button class="btn btn-sm btn-outline" onclick="renderStudents()">🔄 Refresh</button>
-    </div>
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>WhatsApp</th>
-              <th>Proof</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="students-table-body">
-            <tr><td colspan="6"><div style="text-align:center;padding:40px;">Loading...</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  fetch('/api/admin/student-verifications')
-    .then(r => r.json())
-    .then(users => {
-      const badge = document.getElementById('student-badge');
-      if (badge) badge.textContent = users.length;
-      
-      const tbody = document.getElementById('students-table-body');
-      if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6"><div style="text-align:center;padding:40px;color:var(--muted);">No pending verifications</div></td></tr>';
-        return;
-      }
-      
-      tbody.innerHTML = users.map(u => `
-        <tr>
-          <td><strong>${u.name}</strong></td>
-          <td>${u.email}</td>
-          <td>${u.whatsapp || 'N/A'}</td>
-          <td><a href="${u.studentProof}" target="_blank" style="color:var(--orange);">📄 View</a></td>
-          <td><span class="badge badge-warn">Pending</span></td>
-          <td>
-            <div style="display:flex;gap:4px;">
-              <button class="btn btn-success btn-sm" onclick="verifyStudent('${u._id}', true)">✅ Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="verifyStudent('${u._id}', false)">❌ Reject</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    })
-    .catch(() => {
-      document.getElementById('students-table-body').innerHTML = '<tr><td colspan="6"><div style="text-align:center;padding:40px;color:var(--muted);">Could not load verifications</div></td></tr>';
-    });
-}
-
-async function verifyStudent(userId, approved) {
-  try {
-    const response = await fetch(`/api/admin/verify-student/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approved })
-    });
-    
-    if (response.ok) {
-      toast(`✅ Student ${approved ? 'approved' : 'rejected'}`);
-      renderStudents();
-    } else {
-      const data = await response.json();
-      toast('❌ ' + data.error);
-    }
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-// ============================================================
-//  PAYMENT REVIEWS DASHBOARD
-// ============================================================
-
-function renderPaymentReviews() {
-  document.getElementById('content').innerHTML = `
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-      <h2 style="font-family:var(--font-head);font-size:20px;">💳 Payment Reviews</h2>
-      <button class="btn btn-sm btn-outline" onclick="renderPaymentReviews()">🔄 Refresh</button>
-      <span style="font-size:12px;color:var(--muted);">Orders pending payment verification</span>
-    </div>
-    <div class="card" id="payment-reviews-container">
-      <div style="text-align:center;padding:40px;">Loading...</div>
-    </div>
-  `;
-
-  fetch('/api/admin/payment-reviews')
-    .then(r => r.json())
-    .then(orders => {
-      const badge = document.getElementById('payment-review-badge');
-      if (badge) badge.textContent = orders.length;
-      
-      const container = document.getElementById('payment-reviews-container');
-      
-      if (orders.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">✅ No pending payment reviews</div>';
-        return;
-      }
-      
-      container.innerHTML = orders.map(o => `
-        <div style="padding:16px;border-bottom:1px solid var(--border);${o.status === 'investigation' ? 'background:#FFF3E0;' : ''}">
-          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <div>
-              <strong style="font-size:16px;">${o.id}</strong>
-              <span class="badge ${o.status === 'investigation' ? 'badge-danger' : 'badge-warn'}" style="margin-left:8px;">
-                ${o.status === 'investigation' ? '🚨 Investigation' : o.status}
-              </span>
-            </div>
-            <div>
-              <span style="font-weight:600;">R${o.total.toFixed(2)}</span>
-              <span style="font-size:12px;color:var(--muted);margin-left:8px;">${new Date(o.createdAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-          
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px;">
-            <div><strong>Customer:</strong> ${o.customer?.name || 'Guest'}</div>
-            <div><strong>WhatsApp:</strong> ${o.customer?.phone || 'N/A'}</div>
-            <div><strong>Reference:</strong> <span style="font-family:monospace;">${o.paymentReference}</span></div>
-            <div><strong>POP:</strong> ${o.proofOfPaymentPath ? `<a href="${o.proofOfPaymentPath}" target="_blank">📄 View POP</a>` : '❌ No POP uploaded'}</div>
-          </div>
-          
-          ${o.paymentVerification ? `
-            <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
-              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
-                <span><strong>Decision:</strong> ${o.paymentVerification.decision}</span>
-                <span><strong>Score:</strong> ${o.paymentVerification.overallScore?.toFixed(0) || 0}%</span>
-                <span><strong>Critical:</strong> ${o.paymentVerification.summary?.criticalPassed || 0}/${o.paymentVerification.summary?.criticalTotal || 0}</span>
-                <span><strong>Important:</strong> ${o.paymentVerification.summary?.importantPassed || 0}/${o.paymentVerification.summary?.importantTotal || 0}</span>
-              </div>
-              ${o.paymentVerification.failedRules && o.paymentVerification.failedRules.length > 0 ? `
-                <div style="font-size:12px;color:#DC2626;margin-top:4px;">
-                  ⚠️ Failed: ${o.paymentVerification.failedRules.join(', ')}
-                </div>
-              ` : ''}
-            </div>
-          ` : ''}
-          
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${o.status !== 'paid' && o.status !== 'completed' ? `
-              <button class="btn btn-success btn-sm" onclick="openVerifyPaymentModal('${o.id}', ${JSON.stringify(o).replace(/"/g, '&quot;')})">✅ Verify & Mark Paid</button>
-              <button class="btn btn-danger btn-sm" onclick="openAdminOverrideModal('${o.id}', 'reject')">❌ Reject</button>
-              ${o.status !== 'investigation' ? `<button class="btn btn-warning btn-sm" onclick="openAdminOverrideModal('${o.id}', 'investigate')">🔍 Investigate</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="openCommChatAdmin('${o.id}')">💬 Chat</button>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-    })
-    .catch(() => {
-      document.getElementById('payment-reviews-container').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Could not load payment reviews</div>';
-    });
-}
-
-function openVerifyPaymentModal(orderId, order) {
-  document.getElementById('modal-box').innerHTML = `
-    <div class="modal-head">
-      <h3>Verify Payment - ${orderId}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:16px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-          <div><strong>Order Total:</strong> R${order.total.toFixed(2)}</div>
-          <div><strong>Reference:</strong> ${order.paymentReference}</div>
-          ${order.proofOfPaymentPath ? `<div style="grid-column:1/-1;"><a href="${order.proofOfPaymentPath}" target="_blank" style="color:var(--orange);">📄 View POP</a></div>` : ''}
-        </div>
-      </div>
-      
-      <div style="background:#FFF8E1;padding:12px;border-radius:var(--radius-sm);margin-bottom:16px;border-left:4px solid var(--orange);">
-        <p style="font-size:12px;color:var(--muted);">Enter the payment details as they appear on the POP</p>
-      </div>
-      
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Payment Amount (R)</label>
-          <input class="form-input" id="verify-pop-amount" type="number" step="0.01" placeholder="e.g. 150.00">
-        </div>
-        <div class="form-group">
-          <label>Payment Reference</label>
-          <input class="form-input" id="verify-pop-reference" placeholder="e.g. PAY-1234567890-1234">
-        </div>
-        <div class="form-group">
-          <label>Payment Date</label>
-          <input class="form-input" id="verify-pop-date" type="datetime-local">
-        </div>
-        <div class="form-group">
-          <label>Bank Name</label>
-          <input class="form-input" id="verify-pop-bank" placeholder="e.g. Standard Bank">
-        </div>
-      </div>
-      
-      <div class="form-group" style="margin-top:12px;">
-        <label>Admin Notes (Optional)</label>
-        <textarea class="form-input" id="verify-pop-notes" rows="2" placeholder="Any notes about this verification..."></textarea>
-      </div>
-      
-      <div class="form-actions" style="margin-top:16px;">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-success" onclick="submitPaymentVerification('${orderId}')">✅ Verify Payment</button>
-      </div>
-    </div>
-  `;
-  openModal();
-  
-  document.getElementById('verify-pop-reference').value = order.paymentReference;
-}
-
-async function submitPaymentVerification(orderId) {
-  const amount = parseFloat(document.getElementById('verify-pop-amount').value);
-  const reference = document.getElementById('verify-pop-reference').value.trim();
-  const date = document.getElementById('verify-pop-date').value;
-  const bank = document.getElementById('verify-pop-bank').value.trim();
-  const notes = document.getElementById('verify-pop-notes').value.trim();
-  
-  if (!amount || !reference || !date) {
-    toast('⚠️ Please fill in amount, reference, and date');
-    return;
-  }
-  
-  try {
-    const response = await fetch('/api/admin/verify-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: orderId,
-        popAmount: amount,
-        popReference: reference,
-        popDate: date,
-        popBank: bank,
-        popBeneficiary: 'Quick 2 Shop',
-        adminNotes: notes
-      })
-    });
-    
-    const data = await response.json();
-    if (response.ok) {
-      toast('✅ Payment verified');
-      closeModal();
-      renderPaymentReviews();
-    } else {
-      toast('❌ ' + data.error);
-    }
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-function openAdminOverrideModal(orderId, decision) {
-  const labels = {
-    'reject': { title: 'Reject Payment', color: 'danger', message: 'Are you sure you want to reject this payment? This will cancel the order.' },
-    'investigate': { title: 'Investigate Payment', color: 'warning', message: 'Mark this payment for investigation. The customer will be notified.' }
-  };
-  
-  const label = labels[decision] || labels['reject'];
-  
-  document.getElementById('modal-box').innerHTML = `
-    <div class="modal-head">
-      <h3>${label.title} - ${orderId}</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="margin-bottom:12px;">${label.message}</p>
-      <div class="form-group">
-        <label>Reason / Notes</label>
-        <textarea class="form-input" id="override-notes" rows="3" placeholder="Explain why you're making this decision..."></textarea>
-      </div>
-      <div class="form-actions" style="margin-top:16px;">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-${label.color}" onclick="submitAdminOverride('${orderId}', '${decision}')">
-          ${decision === 'reject' ? '❌ Reject' : '🔍 Investigate'}
-        </button>
-      </div>
-    </div>
-  `;
-  openModal();
-}
-
-async function submitAdminOverride(orderId, decision) {
-  const notes = document.getElementById('override-notes').value.trim();
-  
-  try {
-    const response = await fetch('/api/admin/override-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: orderId,
-        decision: decision,
-        adminNotes: notes || 'No reason provided'
-      })
-    });
-    
-    const data = await response.json();
-    if (response.ok) {
-      toast(`✅ Order ${decision === 'reject' ? 'rejected' : 'marked for investigation'}`);
-      closeModal();
-      renderPaymentReviews();
-    } else {
-      toast('❌ ' + data.error);
-    }
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-function openCommChatAdmin(orderId) {
-  toast('💬 Chat feature coming soon');
-}
-
-document.addEventListener('keydown', e=>{if(e.key==='Escape'){closeModal();closeConfirm();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeConfirm();}});
 
 if(sessionStorage.getItem('habibi_admin')){try{adminUser=JSON.parse(sessionStorage.getItem('habibi_admin'));showAdminShell();}catch{sessionStorage.removeItem('habibi_admin');}}
 

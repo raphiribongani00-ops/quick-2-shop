@@ -10,6 +10,7 @@
   <meta name="description" content="Quick 2 Shop — your community store. Food, shoes, clothing and more delivered to your doorstep.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
   <link rel="stylesheet" href="css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -26,6 +27,7 @@
       <a href="#" data-page="home" onclick="navigateTo('home'); document.getElementById('shop-section').scrollIntoView({behavior:'smooth'}); return false;">Shop</a>
       <a href="#" data-page="orders" onclick="navigateTo('orders'); return false;">My Orders</a>
       <a href="#" data-page="communications" onclick="navigateTo('communications'); return false;">💬 Support</a>
+      <a href="#" data-page="profile" onclick="navigateTo('profile'); return false;">Profile</a>
     </div>
     <div class="nav-actions">
       <div id="user-display" style="display:none"></div>

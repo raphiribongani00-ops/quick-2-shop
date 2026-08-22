@@ -185,6 +185,8 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .btn-danger { background: #DC2626; color: white; }
 .btn-danger:hover { background: #B91C1C; }
 .btn-danger:active { transform: scale(0.97); }
+.btn-warning { background: #FFA726; color: white; }
+.btn-warning:hover { background: #F57C00; }
 
 /* ── NAV ── */
 #navbar {
@@ -326,28 +328,30 @@ h1, h2, h3, h4, h5 { font-weight: 700; line-height: 1.2; }
 .hamburger.active span:nth-child(2) { opacity: 0; }
 .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(4px, -4px); }
 
-/* Mobile Menu */
+/* Mobile Menu - Slide from right */
 .nav-links.mobile-open { 
   display: flex; 
   flex-direction: column; 
   position: fixed; 
   top: var(--nav-h); 
-  left: 0; 
-  right: 0; 
+  right: 0;
+  width: 280px;
+  max-width: 80vw;
   background: var(--white); 
+  border-left: 2px solid var(--gray-200);
   border-bottom: 2px solid var(--gray-200);
   padding: 12px 16px; 
   z-index: 999; 
   box-shadow: var(--shadow-lg);
   gap: 2px;
-  animation: slideDown 0.25s ease;
+  animation: slideInRight 0.3s ease;
 }
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 .nav-links.mobile-open a { 
-  padding: 10px 14px; 
+  padding: 12px 14px; 
   font-size: 15px;
   border-radius: var(--radius-sm);
   width: 100%;
@@ -1627,296 +1631,6 @@ footer {
 .stagger > *:nth-child(6) { animation-delay: 0.3s; }
 .stagger > *:nth-child(7) { animation-delay: 0.35s; }
 .stagger > *:nth-child(8) { animation-delay: 0.4s; }
-
-/* ── REWARDS UI ── */
-.reward-progress-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  margin-bottom: 10px;
-  border: 1px solid var(--border);
-}
-@media (min-width: 640px) {
-  .reward-progress-card { padding: 12px 16px; margin-bottom: 12px; }
-}
-
-.reward-progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-@media (min-width: 640px) {
-  .reward-progress-header { margin-bottom: 8px; }
-}
-
-.reward-progress-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 13px;
-}
-@media (min-width: 640px) {
-  .reward-progress-title { gap: 8px; font-size: 14px; }
-}
-.reward-balance {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--orange);
-}
-@media (min-width: 640px) {
-  .reward-balance { font-size: 16px; }
-}
-
-.reward-tier-badge { font-size: 18px; line-height: 1; }
-@media (min-width: 640px) {
-  .reward-tier-badge { font-size: 20px; }
-}
-
-.reward-progress-body { display: flex; flex-direction: column; gap: 4px; }
-@media (min-width: 640px) {
-  .reward-progress-body { gap: 6px; }
-}
-.reward-progress-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--muted);
-}
-@media (min-width: 640px) {
-  .reward-progress-info { font-size: 12px; }
-}
-.reward-progress-track {
-  background: var(--gray-200);
-  height: 5px;
-  border-radius: 99px;
-  overflow: hidden;
-}
-@media (min-width: 640px) {
-  .reward-progress-track { height: 6px; }
-}
-.reward-progress-fill {
-  background: var(--orange);
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.3s ease;
-}
-.reward-progress-helper {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--gray-700);
-}
-@media (min-width: 640px) {
-  .reward-progress-helper { font-size: 12px; }
-}
-.reward-streak-bonus {
-  font-size: 10px;
-  color: var(--orange);
-  font-weight: 600;
-}
-@media (min-width: 640px) {
-  .reward-streak-bonus { font-size: 11px; }
-}
-.reward-subscription-badge {
-  font-size: 9px;
-  background: var(--orange);
-  color: var(--white);
-  padding: 2px 8px;
-  border-radius: 99px;
-  display: inline-block;
-  width: fit-content;
-}
-@media (min-width: 640px) {
-  .reward-subscription-badge { font-size: 10px; padding: 2px 10px; }
-}
-.reward-progress-empty {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 6px 0;
-  text-align: center;
-}
-@media (min-width: 640px) {
-  .reward-progress-empty { font-size: 13px; padding: 8px 0; }
-}
-
-/* ── REWARDS MODAL ── */
-.rewards-modal-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
-  margin: 12px 0;
-}
-@media (min-width: 640px) {
-  .rewards-modal-stats { gap: 8px; margin: 16px 0; }
-}
-.rewards-stat {
-  background: var(--surface);
-  padding: 10px;
-  border-radius: var(--radius-sm);
-  text-align: center;
-}
-@media (min-width: 640px) {
-  .rewards-stat { padding: 12px; }
-}
-.rewards-stat-value {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--orange);
-}
-@media (min-width: 640px) {
-  .rewards-stat-value { font-size: 18px; }
-}
-.rewards-stat-label {
-  font-size: 10px;
-  color: var(--muted);
-}
-@media (min-width: 640px) {
-  .rewards-stat-label { font-size: 11px; }
-}
-
-.rewards-progress-section {
-  background: var(--surface);
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 12px;
-}
-@media (min-width: 640px) {
-  .rewards-progress-section { padding: 16px; margin-bottom: 16px; }
-}
-.rewards-progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-@media (min-width: 640px) {
-  .rewards-progress-label { font-size: 13px; }
-}
-.rewards-progress-bar {
-  background: var(--gray-200);
-  height: 5px;
-  border-radius: 99px;
-  overflow: hidden;
-}
-@media (min-width: 640px) {
-  .rewards-progress-bar { height: 6px; }
-}
-.rewards-progress-bar-fill {
-  background: var(--orange);
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.3s ease;
-}
-
-.rewards-subscription-section {
-  background: var(--surface);
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 12px;
-}
-@media (min-width: 640px) {
-  .rewards-subscription-section { padding: 16px; margin-bottom: 16px; }
-}
-.rewards-subscription-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.rewards-subscription-title { font-weight: 700; font-size: 14px; }
-.rewards-subscription-status { font-size: 11px; color: var(--muted); }
-@media (min-width: 640px) {
-  .rewards-subscription-status { font-size: 12px; }
-}
-.rewards-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-@media (min-width: 640px) {
-  .rewards-actions { gap: 8px; }
-}
-.rewards-note {
-  font-size: 10px;
-  color: var(--muted);
-  text-align: center;
-  margin-top: 12px;
-}
-@media (min-width: 640px) {
-  .rewards-note { font-size: 11px; margin-top: 16px; }
-}
-
-/* ── SUBSCRIPTION MODAL ── */
-.subscription-card {
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-@media (min-width: 640px) {
-  .subscription-card { padding: 16px; }
-}
-.subscription-card:hover {
-  border-color: var(--orange);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-orange);
-}
-.subscription-card:active { transform: scale(0.97); }
-.subscription-card.premium {
-  border-color: var(--orange);
-  position: relative;
-}
-.subscription-card .best-badge {
-  position: absolute;
-  top: -8px;
-  right: 8px;
-  background: var(--orange);
-  color: white;
-  font-size: 9px;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-@media (min-width: 640px) {
-  .subscription-card .best-badge { font-size: 10px; padding: 2px 10px; }
-}
-.subscription-card .icon { font-size: 22px; }
-@media (min-width: 640px) {
-  .subscription-card .icon { font-size: 24px; }
-}
-.subscription-card .name { font-weight: 700; font-size: 14px; }
-.subscription-card .price {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--orange);
-}
-@media (min-width: 640px) {
-  .subscription-card .price { font-size: 20px; }
-}
-.subscription-card .price small {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
-}
-@media (min-width: 640px) {
-  .subscription-card .price small { font-size: 14px; }
-}
-.subscription-card ul {
-  text-align: left;
-  font-size: 11px;
-  color: var(--muted);
-  list-style: none;
-  padding: 0;
-  margin: 6px 0;
-}
-@media (min-width: 640px) {
-  .subscription-card ul { font-size: 12px; margin: 8px 0; }
-}
-.subscription-card ul li { padding: 2px 0; }
 
 /* ── RESPONSIVE BREAKPOINTS SUMMARY ── */
 

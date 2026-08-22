@@ -8,96 +8,12 @@ const DELIVERY_FEE = 10;
 const DELIVERY_AREA = 'Braamfontein';
 const DELIVERY_NOTE = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
 
-// ============================================================
-//  BRAAMFONTEIN BUILDINGS DATABASE - COMPLETE LIST
-// ============================================================
-
-const BRAAMFONTEIN_BUILDINGS = [
-  // ===== UNIVERSITY RESIDENCES =====
-  { name: "UJ Kingsway Campus Residences", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
-  { name: "UJ APK Residences", address: "University of Johannesburg, Braamfontein", area: "braamfontein" },
-  { name: "UJ Soweto Campus Residences", address: "Soweto, Braamfontein", area: "braamfontein" },
-  { name: "UJ Doornfontein Campus Residences", address: "Doornfontein, Braamfontein", area: "doornfontein" },
-  { name: "UJ Auckland Park Residences", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
-  { name: "Wits Junction", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "Wits Junction Park", address: "Ennis Road, Braamfontein", area: "braamfontein" },
-  { name: "Wits East Campus Residences", address: "Braamfontein", area: "braamfontein" },
-  { name: "Wits West Campus Residences", address: "Braamfontein", area: "braamfontein" },
-  { name: "Wits Braamfontein Campus", address: "Braamfontein", area: "braamfontein" },
-  { name: "Wits Parktown Residences", address: "Parktown, Johannesburg", area: "parktown" },
-  
-  // ===== SOUTH POINT RESIDENCES =====
-  { name: "South Point - 56 Jorissen", address: "56 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 2 De Korte", address: "2 De Korte Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 8 De Korte", address: "8 De Korte Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 22 De Korte", address: "22 De Korte Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 31 Jorissen", address: "31 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 36 Jorissen", address: "36 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 69 Jorissen", address: "69 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 105 Jorissen", address: "105 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 114 Jorissen", address: "114 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 120 Jorissen", address: "120 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 128 Jorissen", address: "128 Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "South Point - 134 Jorissen", address: "134 Jorissen Street, Braamfontein", area: "braamfontein" },
-  
-  // ===== OTHER STUDENT ACCOMMODATION =====
-  { name: "The Lab Res", address: "Braamfontein", area: "braamfontein" },
-  { name: "The Lofts", address: "Biccard Street, Braamfontein", area: "braamfontein" },
-  { name: "Campus Village", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "Braamfontein Student Village", address: "Jorissen Street, Braamfontein", area: "braamfontein" },
-  { name: "Wits 1952", address: "Braamfontein", area: "braamfontein" },
-  { name: "The Edge", address: "D streets, Braamfontein", area: "braamfontein" },
-  { name: "The Square", address: "Braamfontein", area: "braamfontein" },
-  
-  // ===== DOORNFONTEIN =====
-  { name: "Doornfontein Towers", address: "Doornfontein, Johannesburg", area: "doornfontein" },
-  { name: "Bezuidenhout Street Apartments", address: "Bezuidenhout Street, Doornfontein", area: "doornfontein" },
-  { name: "Twist Street Residences", address: "Twist Street, Doornfontein", area: "doornfontein" },
-  { name: "De Villiers Court", address: "De Villiers Street, Doornfontein", area: "doornfontein" },
-  { name: "Goud Street Student Accommodation", address: "Goud Street, Doornfontein", area: "doornfontein" },
-  { name: "Doornfontein Student Village", address: "Doornfontein, Johannesburg", area: "doornfontein" },
-  
-  // ===== PARKTOWN =====
-  { name: "Parktown Heights", address: "Parktown, Johannesburg", area: "parktown" },
-  { name: "York Road Apartments", address: "York Road, Parktown", area: "parktown" },
-  { name: "Jan Smuts Avenue Residences", address: "Jan Smuts Avenue, Parktown", area: "parktown" },
-  { name: "Riviera Court", address: "Riviera, Parktown", area: "parktown" },
-  { name: "Oxford Street Apartments", address: "Oxford Street, Parktown", area: "parktown" },
-  { name: "Parktown Student Village", address: "Parktown, Johannesburg", area: "parktown" },
-  
-  // ===== AUCKLAND PARK =====
-  { name: "Auckland Park Heights", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
-  { name: "Greenhill Apartments", address: "Greenhill, Auckland Park", area: "aucklandpark" },
-  { name: "Greenwood Court", address: "Greenwood, Auckland Park", area: "aucklandpark" },
-  { name: "Marthin Street Residences", address: "Marthin Street, Auckland Park", area: "aucklandpark" },
-  { name: "University View Apartments", address: "University View, Auckland Park", area: "aucklandpark" },
-  { name: "Auckland Park Student Village", address: "Auckland Park, Johannesburg", area: "aucklandpark" },
-  
-  // ===== APARTMENTS & BUILDINGS =====
-  { name: "Auckland House", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
-  { name: "Braamfontein Towers", address: "Biccard Street, Braamfontein", area: "braamfontein" },
-  { name: "Metropolitan Tower", address: "Kingsway Avenue, Braamfontein", area: "braamfontein" },
-  { name: "Braamfontein Centre", address: "Melle Street, Braamfontein", area: "braamfontein" },
-  { name: "The Annex", address: "Ennis Road, Braamfontein", area: "braamfontein" },
-  { name: "City Lights", address: "Empire Road, Braamfontein", area: "braamfontein" },
-  { name: "Braamfontein Gateway", address: "Braamfontein", area: "braamfontein" },
-  
-  // ===== MANUAL ENTRY =====
-  { name: "Other (Manual Entry)", address: "", area: "braamfontein" }
-];
-
 const state = {
   cart: JSON.parse(localStorage.getItem('habibi_cart') || '[]'),
   user: JSON.parse(localStorage.getItem('habibi_user') || 'null'),
   wishlist: JSON.parse(localStorage.getItem('habibi_wishlist') || '[]'),
   products: [], categories: [],
   currentCategory: 'all', searchQuery: '', sortBy: 'default', currentPage: 'home',
-  points: 0, discountAmount: 0,
-  rewardBalance: 0,
-  rewardProgress: null,
-  tier: 'bronze',
-  streak: { count: 0, bonusAmount: 0 },
-  subscription: null,
 };
 
 // ============================================================
@@ -386,169 +302,12 @@ async function registerUser(n, e, p, w, a) {
   if (!r.ok) throw new Error((await r.json()).error);
   return r.json();
 }
+
 async function fetchOrders() {
   const res = await fetch(`${API}/orders`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
-
-async function fetchUserPoints(email) {
-  if (!email) return;
-  try {
-    const r = await fetch(`${API}/user/points?email=${email}`);
-    if (r.ok) {
-      const d = await r.json();
-      state.points = d.points || 0;
-      updatePointsDisplay();
-    }
-  } catch {}
-}
-
-// ============================================================
-//  REWARD FUNCTIONS
-// ============================================================
-
-function updateRewardUI() {
-  const btn = document.getElementById('rewards-btn');
-  if (btn && state.user) {
-    btn.style.display = 'inline-flex';
-    btn.innerHTML = `🎁 R${state.rewardBalance.toFixed(2)}`;
-    btn.title = `${state.tier.charAt(0).toUpperCase() + state.tier.slice(1)} Tier`;
-  }
-  const tierBadge = document.getElementById('tier-badge');
-  if (tierBadge) {
-    const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-    tierBadge.textContent = tierIcons[state.tier] || '🥉';
-  }
-}
-
-function getTierIcon(tier) {
-  const icons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-  return icons[tier] || '🥉';
-}
-
-async function loadUserRewards() {
-  if (!state.user) return;
-  try {
-    const res = await fetch(`${API}/user/rewards/${state.user._id}`);
-    if (res.ok) {
-      const data = await res.json();
-      state.rewardBalance = data.rewardBalance || 0;
-      state.totalRewardsEarned = data.totalRewardsEarned || 0;
-      state.tier = data.tier || 'bronze';
-      state.streak = data.streak || { count: 0, bonusAmount: 0 };
-      state.subscription = data.subscription || null;
-      state.rewardProgress = data.progress || null;
-      state.user.isStudent = data.isStudent || false;
-      state.user.studentVerified = data.studentVerified || false;
-      updateRewardUI();
-    }
-  } catch (e) { /* silent fail */ }
-}
-
-async function loadRewardProgress() {
-  if (!state.user) return;
-  try {
-    const res = await fetch(`${API}/user/reward-progress?userId=${state.user._id}`);
-    if (res.ok) {
-      state.rewardProgress = await res.json();
-      updateRewardUI();
-    }
-  } catch (e) { /* silent fail */ }
-}
-
-function showSubscribeModal() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
-      <div class="modal-header">
-        <h3>⭐ Subscribe & Save</h3>
-        <button class="modal-close" onclick="closeModal()">✕</button>
-      </div>
-      <div class="modal-body" style="padding:24px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div style="border:2px solid var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;"
-               onclick="subscribeToTier('basic')">
-            <div style="font-size:24px;">📦</div>
-            <div style="font-weight:700;">Basic</div>
-            <div style="font-size:20px;font-weight:800;color:var(--orange);">R50<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
-            <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
-              <li>✅ R2 monthly bonus</li>
-              <li>✅ Free delivery</li>
-              <li>✅ 5% off all orders</li>
-            </ul>
-            <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();subscribeToTier('basic')">Subscribe</button>
-          </div>
-          <div style="border:2px solid var(--orange);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;"
-               onclick="subscribeToTier('premium')">
-            <span style="position:absolute;top:-8px;right:8px;background:var(--orange);color:white;font-size:10px;padding:2px 10px;border-radius:99px;">BEST</span>
-            <div style="font-size:24px;">💎</div>
-            <div style="font-weight:700;">Premium</div>
-            <div style="font-size:20px;font-weight:800;color:var(--orange);">R100<span style="font-size:14px;font-weight:400;color:var(--muted);">/mo</span></div>
-            <ul style="text-align:left;font-size:12px;color:var(--muted);list-style:none;padding:0;margin:8px 0;">
-              <li>✅ R5 monthly bonus</li>
-              <li>✅ Free delivery</li>
-              <li>✅ 10% off all orders</li>
-              <li>✅ Free item monthly</li>
-            </ul>
-            <button class="btn btn-orange btn-sm" onclick="event.stopPropagation();subscribeToTier('premium')">Subscribe</button>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">
-          Cancel anytime. No commitment.
-        </p>
-      </div>
-    </div>
-  `;
-  document.getElementById('modal-overlay').classList.add('open');
-}
-
-async function subscribeToTier(tier) {
-  if (!state.user) {
-    toast('⚠️ Please sign in first');
-    return;
-  }
-  try {
-    const res = await fetch(`${API}/user/subscribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: state.user._id, tier: tier })
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const data = await res.json();
-    toast(`✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} tier activated!`);
-    closeModal();
-    await loadUserRewards();
-    updateRewardUI();
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-function showUnsubscribeModal() {
-  document.getElementById('confirm-title').textContent = 'Cancel Subscription?';
-  document.getElementById('confirm-msg').textContent = 'You will lose all subscription benefits immediately.';
-  document.getElementById('confirm-ok').textContent = 'Cancel';
-  document.getElementById('confirm-ok').className = 'btn btn-danger';
-  document.getElementById('confirm-ok').onclick = async () => {
-    closeConfirm();
-    try {
-      const res = await fetch(`${API}/user/unsubscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: state.user._id })
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      toast('✅ Subscription cancelled');
-      await loadUserRewards();
-      updateRewardUI();
-    } catch (err) {
-      toast('❌ ' + err.message);
-    }
-  };
-  document.getElementById('confirm-overlay').classList.add('open');
-}
-
-function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
 
 // ============================================================
 //  STARS HTML
@@ -564,7 +323,7 @@ function starsHTML(rating) {
 }
 
 // ============================================================
-//  PRODUCTS & CATEGORIES - FIXED
+//  PRODUCTS & CATEGORIES
 // ============================================================
 
 async function loadProducts() {
@@ -601,9 +360,7 @@ async function loadProducts() {
     console.log('📦 Products loaded:', p.length, 'for category:', state.currentCategory);
     state.products = p;
     renderProducts(p);
-    
-    // Call renderCategories AFTER products are loaded
-    await renderCategories();
+    renderCategories();
     
   } catch (err) {
     console.error('❌ Failed to load products:', err);
@@ -747,7 +504,6 @@ async function renderCategories() {
     const g = document.getElementById('categories-grid');
     if (!g) return;
 
-    // If no products are loaded yet, try to load them first
     if (state.products.length === 0) {
       await loadProducts();
       return;
@@ -759,7 +515,6 @@ async function renderCategories() {
 
     console.log('🏷️ Active categories (with products):', activeCategories.length);
 
-    // If no active categories, show "All" and a message
     let html = '';
     
     if (activeCategories.length === 0) {
@@ -860,7 +615,6 @@ function addToCartById(id) {
     }
   }
 }
-
 // ============================================================
 //  PRODUCT MODAL
 // ============================================================
@@ -1057,9 +811,6 @@ function updateCartUI() {
     el.textContent = c;
     el.style.display = c > 0 ? 'flex' : 'none';
   });
-  const drawer = document.getElementById('cart-drawer');
-  if (drawer && drawer.classList.contains('open')) {
-  }
 }
 
 // ============================================================
@@ -1170,18 +921,6 @@ function openCart() {
   document.getElementById('cart-overlay').classList.add('open');
   document.getElementById('cart-drawer').classList.add('open');
   document.body.style.overflow = 'hidden';
-
-  if (state.user) {
-    loadRewardProgress();
-  }
-
-  const footer = document.querySelector('.cart-footer');
-  if (footer && !document.getElementById('reward-progress-container')) {
-    const container = document.createElement('div');
-    container.id = 'reward-progress-container';
-    container.style.marginBottom = '12px';
-    footer.parentNode.insertBefore(container, footer);
-  }
 }
 
 function closeCart() {
@@ -1204,7 +943,7 @@ function fileToBase64(file) {
 }
 
 // ============================================================
-//  BUILDING SEARCH
+//  BUILDING SEARCH - FOR DROPDOWN
 // ============================================================
 
 let allBuildings = [];
@@ -1220,55 +959,57 @@ async function loadBuildings() {
   }
 }
 
-function searchBuildings(query) {
-  const resultsContainer = document.getElementById('building-results');
-  if (!resultsContainer) return;
-
-  if (!query || query.length < 2) {
-    resultsContainer.style.display = 'none';
-    return;
-  }
-
-  const filtered = allBuildings.filter(b => 
-    b.name.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 10);
-
-  if (filtered.length === 0) {
-    resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Please enter address manually.</div>';
-    resultsContainer.style.display = 'block';
-    return;
-  }
-
-  resultsContainer.innerHTML = filtered.map(b => `
-    <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
-         onclick="selectBuilding('${b.name}', '${b.area || 'braamfontein'}')">
-      <strong>${b.name}</strong>
-      <span style="font-size:11px;color:var(--muted);">${b.area || ''}</span>
-    </div>
-  `).join('');
-  resultsContainer.style.display = 'block';
+function getBuildingsByArea(area) {
+  return allBuildings.filter(b => b.area === area);
 }
 
-function selectBuilding(name, area) {
-  const addressInput = document.getElementById('co-address');
-  const streetInput = document.getElementById('co-street');
+function renderBuildingDropdown() {
+  const container = document.getElementById('building-dropdown-container');
+  if (!container) return;
+
+  const areas = ['braamfontein', 'doornfontein', 'parktown', 'aucklandpark'];
+  const areaLabels = {
+    braamfontein: 'Braamfontein',
+    doornfontein: 'Doornfontein', 
+    parktown: 'Parktown',
+    aucklandpark: 'Auckland Park'
+  };
+
+  let html = `<select class="form-input" id="building-select" onchange="selectBuilding(this.value)">`;
+  html += `<option value="">-- Select Your Building --</option>`;
+
+  areas.forEach(area => {
+    const buildings = getBuildingsByArea(area);
+    if (buildings.length > 0) {
+      html += `<optgroup label="--- ${areaLabels[area]} ---">`;
+      buildings.forEach(b => {
+        html += `<option value="${b._id}">${b.name}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+  });
+
+  html += `</select>`;
+  container.innerHTML = html;
+}
+
+function selectBuilding(buildingId) {
+  if (!buildingId) return;
   
-  const building = allBuildings.find(b => b.name === name);
-  if (building) {
-    streetInput.value = building.address || name;
-    addressInput.value = building.address || name;
-  } else {
-    streetInput.value = name;
-    addressInput.value = name;
-  }
+  const building = allBuildings.find(b => b._id === buildingId);
+  if (!building) return;
+
+  // Build full address
+  const fullAddress = `${building.name}, ${building.street}, ${building.area.charAt(0).toUpperCase() + building.area.slice(1)}${building.postalCode ? ', ' + building.postalCode : ''}`;
   
-  document.getElementById('building-results').style.display = 'none';
-  document.getElementById('building-search').value = name;
+  document.getElementById('co-address').value = fullAddress;
+  document.getElementById('co-street').value = building.street;
+  document.getElementById('co-building-name').value = building.name;
+  document.getElementById('co-area').value = building.area;
   
+  toast(`✅ ${building.name} selected`);
   detectAddressAndFee();
-  toast(`✅ ${name} selected`);
 }
-
 // ============================================================
 //  DELIVERY FEE DETECTION
 // ============================================================
@@ -1291,7 +1032,6 @@ async function detectAddressAndFee() {
       localStorage.setItem('delivery_fee', data.fee);
       localStorage.setItem('delivery_area', data.label);
       
-      // Update the delivery fee display
       const deliveryDisplay = document.querySelector('.order-line .delivery-fee');
       if (deliveryDisplay) {
         deliveryDisplay.textContent = `R${data.fee.toFixed(2)}`;
@@ -1303,328 +1043,8 @@ async function detectAddressAndFee() {
 }
 
 // ============================================================
-//  STUDENT VERIFICATION
-// ============================================================
-
-async function uploadStudentProof() {
-  const fileInput = document.getElementById('student-proof-input');
-  const file = fileInput?.files?.[0];
-  
-  if (!file) {
-    toast('⚠️ Please select a file');
-    return;
-  }
-
-  // Check file size (5MB limit)
-  if (file.size > 5 * 1024 * 1024) {
-    toast('⚠️ File too large. Maximum 5MB');
-    return;
-  }
-
-  // Check file type
-  const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    toast('⚠️ Please upload PDF, JPG, PNG, or WebP');
-    return;
-  }
-
-  if (!state.user) {
-    toast('⚠️ Please sign in first');
-    return;
-  }
-
-  try {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const base64 = e.target.result;
-      
-      const response = await fetch('/api/user/verify-student', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: state.user._id,
-          proofBase64: base64
-        })
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast('✅ Proof submitted! Pending verification.');
-        setTimeout(() => loadUserData(), 1000);
-      } else {
-        toast('❌ ' + data.error);
-      }
-    };
-    reader.readAsDataURL(file);
-  } catch (err) {
-    toast('❌ Upload failed: ' + err.message);
-  }
-}
-
-// ============================================================
-//  PROFILE PICTURE UPLOAD
-// ============================================================
-
-async function uploadProfilePicture() {
-  const fileInput = document.getElementById('profile-pic-input');
-  const file = fileInput?.files?.[0];
-  
-  if (!file) {
-    toast('⚠️ Please select a picture');
-    return;
-  }
-
-  // Check file size (5MB limit)
-  if (file.size > 5 * 1024 * 1024) {
-    toast('⚠️ File too large. Maximum 5MB');
-    return;
-  }
-
-  // Check file type
-  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    toast('⚠️ Please upload JPG, PNG, or WebP');
-    return;
-  }
-
-  if (!state.user) {
-    toast('⚠️ Please sign in first');
-    return;
-  }
-
-  try {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const base64 = e.target.result;
-      
-      const response = await fetch(`/api/user/${state.user._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profilePicture: base64
-        })
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        state.user = data;
-        localStorage.setItem('habibi_user', JSON.stringify(data));
-        toast('✅ Profile picture updated!');
-        updateAuthUI();
-        renderProfilePage();
-      } else {
-        toast('❌ ' + data.error);
-      }
-    };
-    reader.readAsDataURL(file);
-  } catch (err) {
-    toast('❌ Upload failed: ' + err.message);
-  }
-}
-
-// ============================================================
-//  PROFILE PAGE - FIXED
-// ============================================================
-
-function renderProfilePage() {
-  const s = document.getElementById('profile-section');
-  if (!s) {
-    const container = document.createElement('section');
-    container.id = 'profile-section';
-    container.className = 'profile-section';
-    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
-    container.style.minHeight = '100vh';
-    document.body.appendChild(container);
-  }
-  
-  const section = document.getElementById('profile-section');
-  if (!section) return;
-  
-  if (!state.user) {
-    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
-    return;
-  }
-
-  const isStudent = state.user.isStudent || false;
-  const studentVerified = state.user.studentVerified || false;
-  const studentProof = state.user.studentProof || null;
-  const discountActive = isStudent && new Date() < new Date('2026-09-30');
-  const profilePic = state.user.profilePicture || '';
-
-  section.innerHTML = `
-    <div class="container">
-      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">👤 My Profile</h1>
-      
-      <div class="checkout-card">
-        <h3>Profile Picture</h3>
-        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-          <div style="width:100px;height:100px;border-radius:50%;background:var(--surface);border:3px solid var(--orange);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            ${profilePic ? 
-              `<img src="${profilePic}" style="width:100%;height:100%;object-fit:cover;">` :
-              `<span style="font-size:40px;font-weight:700;color:var(--gray-500);">${state.user.name[0].toUpperCase()}</span>`
-            }
-          </div>
-          <div>
-            <input type="file" id="profile-pic-input" accept="image/jpeg,image/png,image/webp" style="margin-bottom:8px;">
-            <button class="btn btn-primary btn-sm" id="upload-pic-btn">📷 Upload Picture</button>
-            <p style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, WebP • Max 5MB</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="checkout-card">
-        <h3>Personal Information</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div><strong>Name:</strong> ${state.user.name}</div>
-          <div><strong>Email:</strong> ${state.user.email}</div>
-          <div><strong>WhatsApp:</strong> ${state.user.whatsapp || 'Not set'}</div>
-          <div><strong>Address:</strong> ${state.user.address || 'Not set'}</div>
-          <div><strong>Member Since:</strong> ${new Date(state.user.createdAt).toLocaleDateString()}</div>
-        </div>
-        <div style="margin-top:12px;">
-          <button class="btn btn-outline btn-sm" onclick="editWhatsApp()">✏️ Update WhatsApp</button>
-          <button class="btn btn-outline btn-sm" onclick="editAddress()">✏️ Update Address</button>
-        </div>
-      </div>
-
-      <div class="checkout-card">
-        <h3>🎓 Student Status</h3>
-        ${studentVerified ? `
-          <div style="background:#E8F5E9;padding:16px;border-radius:8px;border-left:4px solid #4CAF50;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:24px;">✅</span>
-              <div>
-                <strong style="color:#2E7D32;">Verified Student</strong>
-                <p style="font-size:13px;color:#2E7D32;margin:0;">
-                  ${discountActive ? 
-                    `🎉 20% off delivery fee • Valid until ${new Date('2026-09-30').toLocaleDateString()}` :
-                    '⚠️ Discount has expired. Please re-verify.'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-        ` : studentProof ? `
-          <div style="background:#FFF8E1;padding:16px;border-radius:8px;border-left:4px solid #FFA726;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:24px;">⏳</span>
-              <div>
-                <strong style="color:#E65100;">Pending Verification</strong>
-                <p style="font-size:13px;color:#E65100;margin:0;">Your proof is being reviewed. You'll be notified once approved.</p>
-              </div>
-            </div>
-          </div>
-        ` : `
-          <div style="background:#FFF3E0;padding:16px;border-radius:8px;border-left:4px solid #FF9800;margin-bottom:12px;">
-            <p style="margin-bottom:8px;"><strong>Become a verified student and get 20% off delivery fees!</strong></p>
-            <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
-              Upload your proof of registration (PDF or image) to verify your student status.
-              Discount valid until 30 September 2026.
-            </p>
-            <input type="file" id="student-proof-input" accept="application/pdf,image/jpeg,image/png,image/webp">
-            <button class="btn btn-orange btn-sm" id="upload-proof-btn" style="margin-top:8px;">📤 Upload Proof</button>
-            <p style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, JPG, PNG, WebP • Max 5MB</p>
-          </div>
-        `}
-      </div>
-    </div>
-  `;
-
-  // Add event listeners AFTER rendering
-  const uploadPicBtn = document.getElementById('upload-pic-btn');
-  if (uploadPicBtn) {
-    uploadPicBtn.addEventListener('click', function() {
-      const fileInput = document.getElementById('profile-pic-input');
-      if (fileInput) {
-        fileInput.click();
-      }
-    });
-    // Also handle file selection
-    const fileInput = document.getElementById('profile-pic-input');
-    if (fileInput) {
-      fileInput.addEventListener('change', function(e) {
-        if (this.files && this.files[0]) {
-          uploadProfilePicture();
-        }
-      });
-    }
-  }
-
-  const uploadProofBtn = document.getElementById('upload-proof-btn');
-  if (uploadProofBtn) {
-    uploadProofBtn.addEventListener('click', function() {
-      const fileInput = document.getElementById('student-proof-input');
-      if (fileInput) {
-        fileInput.click();
-      }
-    });
-    const proofInput = document.getElementById('student-proof-input');
-    if (proofInput) {
-      proofInput.addEventListener('change', function(e) {
-        if (this.files && this.files[0]) {
-          uploadStudentProof();
-        }
-      });
-    }
-  }
-}
-
-// ============================================================
-//  EDIT WHATSAPP & ADDRESS
-// ============================================================
-
-function editWhatsApp() {
-  const current = state.user?.whatsapp || '';
-  const newNumber = prompt('Enter your WhatsApp number:', current);
-  if (newNumber && newNumber !== current) {
-    updateUserField('whatsapp', newNumber);
-  }
-}
-
-function editAddress() {
-  const current = state.user?.address || '';
-  const newAddress = prompt('Enter your delivery address:', current);
-  if (newAddress && newAddress !== current) {
-    updateUserField('address', newAddress);
-  }
-}
-
-async function updateUserField(field, value) {
-  if (!state.user) return;
-  try {
-    const response = await fetch(`/api/user/${state.user._id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value })
-    });
-    const data = await response.json();
-    if (response.ok) {
-      state.user = data;
-      localStorage.setItem('habibi_user', JSON.stringify(data));
-      toast(`✅ ${field} updated!`);
-      renderProfilePage();
-      updateAuthUI();
-    } else {
-      toast('❌ ' + data.error);
-    }
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-// ============================================================
 //  PAYMENT METHODS & CHECKOUT
 // ============================================================
-
-function getBuildingOptions() {
-  let options = '';
-  BRAAMFONTEIN_BUILDINGS.forEach(building => {
-    options += `<option value="${building.name}|${building.address}" data-area="${building.area}">${building.name}</option>`;
-  });
-  return options;
-}
 
 function renderCheckout() {
   const s = document.getElementById('checkout-section');
@@ -1636,11 +1056,9 @@ function renderCheckout() {
 
   const subtotal = Cart.total();
   
-  // Use saved user data
   const userWhatsapp = state.user?.whatsapp || '';
   const userAddress = state.user?.address || '';
   
-  // Get delivery fee based on address
   let deliveryFee = 15;
   let deliveryArea = 'Braamfontein';
   const savedFee = localStorage.getItem('delivery_fee');
@@ -1650,29 +1068,12 @@ function renderCheckout() {
     deliveryArea = savedArea;
   }
   
-  const discount = state.discountAmount || 0;
-  const rewardDiscount = Math.min(state.rewardBalance, subtotal);
+  const total = subtotal + deliveryFee;
   
-  const isStudent = state.user?.isStudent || false;
-  const studentVerified = state.user?.studentVerified || false;
-  const studentDiscountActive = isStudent && studentVerified && new Date() < new Date('2026-09-30');
-  const studentDiscount = studentDiscountActive ? deliveryFee * 0.2 : 0;
-  const finalDeliveryFee = deliveryFee - studentDiscount;
-  
-  const total = Math.max(0, subtotal - discount - rewardDiscount + finalDeliveryFee);
-  
-  let subscriptionDiscount = 0;
-  let subscriptionPercent = 0;
-  if (state.subscription?.active && state.subscription.config?.discountPercent) {
-    subscriptionPercent = state.subscription.config.discountPercent;
-    subscriptionDiscount = (subtotal * subscriptionPercent) / 100;
-  }
-  
-  const deliveryDisplay = `R${finalDeliveryFee.toFixed(2)}`;
+  const deliveryDisplay = `R${deliveryFee.toFixed(2)}`;
   const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
   const deliveryAreaDisplay = `📍 ${deliveryArea}`;
   
-  // Get saved addresses for dropdown
   const savedAddresses = getUserAddresses();
   const defaultAddress = getDefaultAddress();
   
@@ -1714,21 +1115,22 @@ function renderCheckout() {
               
               ${addressSelectorHTML}
               
-              <div class="form-group" style="position:relative;">
-                <label>Search & Select Your Building/Residence</label>
-                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." value="${defaultAddress?.street || ''}" oninput="searchBuildings(this.value)">
-                <div id="building-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
+              <div class="form-group" id="building-dropdown-container">
+                <!-- Building dropdown will be rendered here -->
               </div>
+              
+              <input type="hidden" id="co-street">
+              <input type="hidden" id="co-building-name">
+              <input type="hidden" id="co-area">
               
               <div class="form-group">
                 <label>Full Address</label>
-                <textarea class="form-input" id="co-address" rows="3" placeholder="Your delivery address" oninput="detectAddressAndFee()">${userAddress || defaultAddress?.address || ''}</textarea>
+                <textarea class="form-input" id="co-address" rows="3" placeholder="Select a building above to auto-fill address" oninput="detectAddressAndFee()">${userAddress || defaultAddress?.address || ''}</textarea>
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-                  <button class="btn btn-outline btn-sm" onclick="updateFullAddress()">📝 Update Address</button>
-                  <button id="location-btn" class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
+                  <button class="btn btn-outline btn-sm" onclick="shareLocation()">📍 Share My Location</button>
                   ${state.user ? `<button class="btn btn-outline btn-sm" onclick="saveCurrentAddress()">💾 Save Address</button>` : ''}
                 </div>
-                <small style="color:var(--muted);">Update your address if different from saved</small>
+                <small style="color:var(--muted);">Select a building from the dropdown or enter manually</small>
               </div>
               <input type="hidden" id="co-coordinates">
               
@@ -1762,48 +1164,12 @@ function renderCheckout() {
                   <button class="btn btn-sm btn-outline" onclick="copyReference()" style="margin-left:8px;">📋 Copy</button>
                 </div>
               </div>
-              
-              <div class="form-group">
-                <label>Upload Proof of Payment (POP) *</label>
-                <input type="file" id="co-pop" accept="image/*,application/pdf" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);">
-                <small style="color:var(--muted);">Upload a screenshot or photo of your Instant EFT confirmation.</small>
-              </div>
-              
-              <div style="background:#E8F5E9;padding:12px;border-radius:8px;font-size:13px;color:#2E7D32;margin-top:8px;">
-                ✅ Your order will be processed immediately once payment is confirmed.
-              </div>
-            </div>
-
-            <div class="checkout-card">
-              <h3>🎁 Rewards & Savings</h3>
-              ${state.user ? `
-                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-                  <span>Reward Balance</span>
-                  <span><strong style="color:var(--orange);">R${state.rewardBalance.toFixed(2)}</strong></span>
-                </div>
-                ${studentDiscountActive ? `
-                  <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-                    <span>🎓 Student Discount (20% off delivery)</span>
-                    <span style="color:#2E7D32;font-weight:700;">-R${studentDiscount.toFixed(2)}</span>
-                  </div>
-                ` : ''}
-                ${state.rewardBalance >= 2 ? `
-                  <div style="display:flex;gap:8px;margin-top:8px;">
-                    <button class="btn btn-orange btn-sm" onclick="redeemRewards()" style="flex:1;">
-                      Apply R${Math.min(state.rewardBalance, subtotal).toFixed(2)} off
-                    </button>
-                  </div>
-                ` : '<p style="font-size:12px;color:var(--muted);">Earn R2 for every 10 items</p>'}
-              ` : '<p style="font-size:12px;color:var(--muted);">Sign in to use rewards</p>'}
             </div>
           </div>
 
           <div class="order-summary-card">
             <h3>Order Summary</h3>
             ${state.cart.map(i => `<div class="order-line"><span>${i.name} × ${i.qty}</span><span>R${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}
-            ${subscriptionDiscount > 0 ? `<div class="order-line" style="color:green;"><span>${state.subscription.tier} Discount (${subscriptionPercent}%)</span><span>-R${subscriptionDiscount.toFixed(2)}</span></div>` : ''}
-            ${discount > 0 ? `<div class="order-line" style="color:green;"><span>Points Discount</span><span>-R${discount.toFixed(2)}</span></div>` : ''}
-            ${rewardDiscount > 0 ? `<div class="order-line" style="color:green;"><span>🎁 Reward Discount</span><span>-R${rewardDiscount.toFixed(2)}</span></div>` : ''}
             <div class="order-line" style="font-weight:600;border-top:2px solid var(--gray-300);padding-top:12px;margin-top:12px;">
               <span>Subtotal (Items Only)</span>
               <span>R${subtotal.toFixed(2)}</span>
@@ -1812,20 +1178,10 @@ function renderCheckout() {
               <span>🚚 Delivery Fee</span>
               <span class="delivery-fee">${deliveryDisplay}</span>
             </div>
-            ${studentDiscountActive ? `
-              <div class="order-line" style="color:#2E7D32;font-weight:600;">
-                <span>🎓 Student Discount (20%)</span>
-                <span>-R${studentDiscount.toFixed(2)}</span>
-              </div>
-            ` : ''}
             <div style="font-size:12px;color:var(--orange);text-align:center;margin:4px 0;">${deliveryNote}</div>
             <div class="order-line total"><span>Total</span><span class="amount">R${total.toFixed(2)}</span></div>
             
-            <div style="margin:12px 0;padding:8px 12px;background:var(--gray-100);border-radius:4px;font-size:13px;">
-              💳 Payment: <strong>Instant EFT (Payshap)</strong>
-            </div>
-            
-            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="submitOrder()">
+            <button class="btn btn-orange btn-full" id="place-order-btn" onclick="placeOrderWithPOP()">
               Pay & Place Order — R${total.toFixed(2)}
             </button>
             <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">
@@ -1836,14 +1192,9 @@ function renderCheckout() {
       `}
     </div>`;
 
-  loadBuildings();
-  detectAddressAndFee();
-}
-
-function updateFullAddress() {
-  const street = document.getElementById('co-street').value.trim();
-  const address = document.getElementById('co-address');
-  address.value = street;
+  loadBuildings().then(() => {
+    renderBuildingDropdown();
+  });
   detectAddressAndFee();
 }
 
@@ -1853,7 +1204,6 @@ function loadSelectedAddress(addressId) {
   if (addr) {
     document.getElementById('co-address').value = addr.address;
     document.getElementById('co-phone').value = addr.phone || document.getElementById('co-phone').value;
-    document.getElementById('co-street').value = addr.address;
     toast('📂 Address loaded');
     detectAddressAndFee();
   }
@@ -1862,7 +1212,6 @@ function loadSelectedAddress(addressId) {
 function saveCurrentAddress() {
   const address = document.getElementById('co-address')?.value.trim();
   const phone = document.getElementById('co-phone')?.value.trim();
-  const street = document.getElementById('co-street')?.value.trim();
   
   if (!address) {
     toast('⚠️ Please enter an address first');
@@ -1874,7 +1223,7 @@ function saveCurrentAddress() {
     return;
   }
   
-  saveUserAddress({ address, phone, street });
+  saveUserAddress({ address, phone });
 }
 
 function copyReference() {
@@ -1903,50 +1252,24 @@ function copyReference() {
 }
 
 // ============================================================
-//  SUBMIT ORDER
+//  POP UPLOAD & VERIFICATION
 // ============================================================
 
-async function submitOrder() {
+async function placeOrderWithPOP() {
   const p = document.getElementById('co-phone')?.value.trim();
   const a = document.getElementById('co-address')?.value.trim();
-  const s = document.getElementById('co-street')?.value.trim();
-  const c = document.getElementById('co-coordinates')?.value.trim();
   const n = document.getElementById('co-notes')?.value.trim();
   const btn = document.getElementById('place-order-btn');
-
-  const paymentMethod = 'payshap';
-  
-  const popInput = document.getElementById('co-pop');
-  let popBase64 = null;
-  if (popInput && popInput.files && popInput.files.length > 0) {
-    popBase64 = await fileToBase64(popInput.files[0]);
-  } else {
-    toast('⚠️ Please upload proof of payment');
-    return;
-  }
 
   if (!p || !a) { toast('⚠️ Fill required fields (WhatsApp and Address)'); return; }
 
   btn.disabled = true;
-  btn.style.opacity = '0.5';
-  btn.textContent = 'Placing Order…';
+  btn.textContent = 'Creating Order…';
 
   const subtotal = Cart.total();
-  const discount = state.discountAmount || 0;
-  const rewardDiscount = Math.min(state.rewardBalance || 0, subtotal);
-  
-  // Get delivery fee
   const savedFee = localStorage.getItem('delivery_fee');
   let deliveryFee = savedFee ? parseInt(savedFee) : 15;
-  
-  // Apply student discount
-  const isStudent = state.user?.isStudent || false;
-  const studentVerified = state.user?.studentVerified || false;
-  const studentDiscountActive = isStudent && studentVerified && new Date() < new Date('2026-09-30');
-  const studentDiscount = studentDiscountActive ? deliveryFee * 0.2 : 0;
-  const finalDeliveryFee = deliveryFee - studentDiscount;
-  
-  const total = Math.max(0, subtotal - discount - rewardDiscount + finalDeliveryFee);
+  const total = subtotal + deliveryFee;
 
   try {
     const orderData = {
@@ -1955,164 +1278,350 @@ async function submitOrder() {
         email: state.user?.email || '', 
         phone: p, 
         address: a,
-        street: s,
-        coordinates: c, 
         notes: n 
       },
       items: state.cart,
       total: total,
       subtotal: subtotal,
-      deliveryFee: finalDeliveryFee,
-      originalDeliveryFee: deliveryFee,
-      studentDiscount: studentDiscount,
-      discount: discount,
-      rewardDiscount: rewardDiscount,
-      paymentMethod: paymentMethod,
-      paymentStatus: 'pending_payment',
+      deliveryFee: deliveryFee,
+      paymentMethod: 'payshap',
       userId: state.user?._id || null,
-      paymentReference: paymentReference,
-      proofOfPayment: popBase64,
-      isStudent: studentDiscountActive
+      paymentReference: paymentReference
     };
 
     const o = await placeOrder(orderData);
     
-    const ref = paymentReference;
-    paymentReference = '';
+    // Show POP upload modal
+    showPOPUploadModal(o);
     
-    Cart.clear();
-    state.discountAmount = 0;
-    state.rewardBalance = Math.max(0, state.rewardBalance - rewardDiscount);
-    
-    showOrderSuccessSummary(o, total, paymentMethod, finalDeliveryFee, ref, studentDiscount);
-    fetchUserPoints(state.user?.email);
-    updateRewardUI();
+    btn.disabled = false;
+    btn.textContent = 'Pay & Place Order';
     
   } catch (err) {
-    toast('❌ Failed to place order: ' + err.message);
+    toast('❌ Failed to create order: ' + err.message);
     btn.disabled = false;
-    btn.style.opacity = '1';
     btn.textContent = 'Pay & Place Order';
   }
 }
 
-// ============================================================
-//  ORDER SUCCESS SUMMARY
-// ============================================================
+function showPOPUploadModal(order) {
+  const ref = paymentReference;
+  paymentReference = '';
 
-function showOrderSuccessSummary(o, total, paymentMethod, deliveryFee, reference, studentDiscount) {
-  const s = document.getElementById('checkout-section');
-  
-  const deliveryDisplay = `R${(deliveryFee || 15).toFixed(2)}`;
-  const deliveryNote = '🚚 Deliveries are currently available in Braamfontein, Doornfontein, Parktown & Auckland Park.';
-  
-  const orderDate = new Date(o.createdAt);
-  const formattedDate = orderDate.toLocaleDateString('en-ZA', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
-  s.innerHTML = `
-    <div class="container">
-      <div style="max-width:600px;margin:0 auto;background:var(--white);border:2px solid var(--border);border-radius:var(--radius-lg);padding:32px 24px;box-shadow:var(--shadow-lg);">
-        
-        <!-- Header -->
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--orange);padding-bottom:16px;margin-bottom:20px;">
-          <div>
-            <div style="font-size:22px;font-weight:800;color:var(--black);">Quick 2 Shop</div>
-            <div style="font-size:12px;color:var(--muted);">Braamfontein, Johannesburg</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:12px;color:var(--muted);">Order Confirmed</div>
-            <div style="font-size:11px;color:var(--muted);">${formattedDate}</div>
-          </div>
-        </div>
-
-        <!-- Order Info -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;">
-          <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Order ID</div>
-            <div style="font-weight:700;font-size:14px;">${o.id}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Status</div>
-            <div style="font-weight:700;font-size:14px;color:var(--orange);">Awaiting Payment</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Payment Method</div>
-            <div style="font-weight:700;font-size:14px;">💳 Instant EFT</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Payment Reference</div>
-            <div style="font-weight:700;font-size:14px;font-family:monospace;color:#DC2626;">${reference || o.paymentReference || 'N/A'}</div>
-          </div>
-        </div>
-
-        <!-- Customer Info -->
-        <div style="margin-bottom:20px;background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Delivery Details</div>
-          <div style="font-weight:600;">${o.customer?.name || 'Guest'}</div>
-          <div style="font-size:13px;color:var(--muted);">📞 ${o.customer?.phone || 'N/A'}</div>
-          <div style="font-size:13px;color:var(--muted);">📍 ${o.customer?.address || 'N/A'}</div>
-        </div>
-
-        <!-- Items Table -->
-        <div style="margin-bottom:16px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.06em;margin-bottom:8px;">Order Items</div>
-          ${(o.items||[]).map(i => `
-            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:14px;">
-              <span>${i.name} × ${i.qty}</span>
-              <span>R${(i.price * i.qty).toFixed(2)}</span>
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- Totals -->
-        <div style="border-top:2px solid var(--gray-200);padding-top:12px;">
-          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;">
-            <span style="color:var(--muted);">Subtotal</span>
-            <span>R${(o.subtotal || 0).toFixed(2)}</span>
-          </div>
-          ${studentDiscount > 0 ? `
-            <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;color:#2E7D32;">
-              <span>🎓 Student Discount</span>
-              <span>-R${studentDiscount.toFixed(2)}</span>
-            </div>
-          ` : ''}
-          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;font-weight:600;color:var(--orange);">
-            <span>🚚 Delivery Fee</span>
-            <span>${deliveryDisplay}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0 4px 0;font-size:18px;font-weight:800;border-top:2px solid var(--orange);margin-top:4px;">
-            <span>Total</span>
-            <span style="color:var(--orange);">R${total.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <!-- Payment Instructions -->
-        <div style="margin-top:16px;background:#FFF8E1;border-radius:var(--radius-sm);padding:12px 16px;border-left:4px solid #DC2626;">
-          <p style="font-size:12px;font-weight:600;color:#DC2626;margin:0;">⚠️ Payment Required</p>
-          <p style="font-size:12px;color:var(--muted);margin:4px 0 0 0;">
-            Use reference <strong style="font-family:monospace;">${reference || o.paymentReference || 'N/A'}</strong> for your Instant EFT.
-          </p>
-          <p style="font-size:12px;color:var(--muted);margin:4px 0 0 0;">
-            Beneficiary: <strong>Quick 2 Shop</strong> • Standard Bank • 10217451673
-          </p>
-        </div>
-
-        <!-- Buttons -->
-        <div style="display:flex;gap:12px;margin-top:20px;">
-          <button class="btn btn-orange" style="flex:1;" onclick="navigateTo('home')">🏠 Continue Shopping</button>
-          <button class="btn btn-outline" onclick="navigateTo('orders')">📋 My Orders</button>
-        </div>
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:500px;">
+      <div class="modal-header">
+        <h3>📤 Upload Proof of Payment</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
-    </div>`;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+      <div class="modal-body">
+        <div style="background:#FFF8E1;padding:12px;border-radius:8px;margin-bottom:16px;border-left:4px solid var(--orange);">
+          <p style="font-size:13px;color:var(--orange-dark);font-weight:600;">Order #${order.id}</p>
+          <p style="font-size:13px;color:var(--muted);">Total: R${order.total.toFixed(2)}</p>
+          <p style="font-size:13px;color:var(--muted);">Reference: <strong>${ref}</strong></p>
+        </div>
+        
+        <div style="background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;">
+          <p style="font-size:13px;color:#2E7D32;">✅ Please upload your proof of payment. The system will automatically verify it.</p>
+        </div>
+        
+        <div id="pop-upload-progress" style="display:none;">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span id="pop-progress-icon">📤</span>
+            <span id="pop-progress-text">Uploading...</span>
+          </div>
+          <div style="background:var(--gray-200);height:6px;border-radius:99px;overflow:hidden;width:100%;">
+            <div id="pop-progress-bar" style="background:var(--orange);height:100%;width:0%;border-radius:99px;transition:width 0.3s;"></div>
+          </div>
+        </div>
+        
+        <div id="pop-upload-area">
+          <div class="image-upload-area" onclick="document.getElementById('pop-file-input').click()" style="padding:30px;">
+            <div style="font-size:48px;">📄</div>
+            <div>Click to upload your proof of payment</div>
+            <div style="font-size:12px;color:var(--muted);">PDF, JPG, PNG, WebP • Max 5MB</div>
+          </div>
+          <input type="file" id="pop-file-input" accept="application/pdf,image/*" style="display:none;" onchange="uploadPOPFile('${order.id}', '${ref}')">
+        </div>
+        
+        <div id="pop-verification-result" style="display:none;margin-top:16px;padding:12px;border-radius:8px;"></div>
+        
+        <div id="pop-place-order-section" style="display:none;margin-top:16px;">
+          <button class="btn btn-orange btn-full" onclick="finalizeOrder('${order.id}')">
+            ✅ Place Order — R${order.total.toFixed(2)}
+          </button>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">
+            Your payment has been verified. Click to place your order.
+          </p>
+        </div>
+        
+        <div id="pop-manual-review-section" style="display:none;margin-top:16px;">
+          <button class="btn btn-warning btn-full" onclick="finalizeOrderManual('${order.id}')">
+            ⏳ Place Order (Manual Review)
+          </button>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">
+            Your payment will be reviewed manually by an admin.
+          </p>
+        </div>
+        
+        <button class="btn btn-outline btn-full" onclick="closeModal();navigateTo('orders')" style="margin-top:8px;">
+          📋 Go to My Orders
+        </button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
+async function uploadPOPFile(orderId, reference) {
+  const fileInput = document.getElementById('pop-file-input');
+  const file = fileInput?.files?.[0];
+  
+  if (!file) {
+    toast('⚠️ Please select a file');
+    return;
+  }
+
+  // Check file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('⚠️ File too large. Maximum 5MB');
+    return;
+  }
+
+  // Show progress bar
+  document.getElementById('pop-upload-progress').style.display = 'block';
+  document.getElementById('pop-upload-area').style.display = 'none';
+  document.getElementById('pop-progress-icon').textContent = '📤';
+  document.getElementById('pop-progress-text').textContent = 'Uploading...';
+  document.getElementById('pop-progress-bar').style.width = '30%';
+
+  try {
+    const base64 = await fileToBase64(file);
+    document.getElementById('pop-progress-bar').style.width = '60%';
+    document.getElementById('pop-progress-text').textContent = 'Processing...';
+    document.getElementById('pop-progress-icon').textContent = '🔍';
+
+    // Extract text from the POP using Tesseract.js (in browser)
+    let extractedData = {
+      amount: 0,
+      reference: '',
+      date: '',
+      bank: '',
+      beneficiary: ''
+    };
+
+    try {
+      // Try to extract text from image/PDF using Tesseract
+      const result = await Tesseract.recognize(file, 'eng');
+      const text = result.data.text;
+      
+      // Parse the extracted text
+      extractedData = parsePOPText(text, reference);
+    } catch (ocrError) {
+      console.warn('OCR failed:', ocrError);
+      // If OCR fails, try to extract from PDF directly
+      if (file.type === 'application/pdf') {
+        try {
+          // Try to read PDF text
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => item.str).join(' ');
+          }
+          extractedData = parsePOPText(fullText, reference);
+        } catch (pdfError) {
+          console.warn('PDF extraction failed:', pdfError);
+        }
+      }
+    }
+
+    document.getElementById('pop-progress-bar').style.width = '80%';
+    document.getElementById('pop-progress-text').textContent = 'Verifying...';
+    document.getElementById('pop-progress-icon').textContent = '✅';
+
+    // Send to server for verification
+    const response = await fetch(`${API}/orders/${orderId}/upload-pop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        popBase64: base64,
+        extractedData: extractedData
+      })
+    });
+
+    const result = await response.json();
+    
+    document.getElementById('pop-progress-bar').style.width = '100%';
+    document.getElementById('pop-progress-text').textContent = 'Complete!';
+    
+    setTimeout(() => {
+      document.getElementById('pop-upload-progress').style.display = 'none';
+      showVerificationResult(result.verification, orderId);
+    }, 500);
+
+  } catch (err) {
+    console.error('POP upload error:', err);
+    toast('❌ Upload failed: ' + err.message);
+    document.getElementById('pop-upload-progress').style.display = 'none';
+    document.getElementById('pop-upload-area').style.display = 'block';
+  }
+}
+
+function parsePOPText(text, reference) {
+  const result = {
+    amount: 0,
+    reference: '',
+    date: '',
+    bank: '',
+    beneficiary: ''
+  };
+
+  // Try to find amount (look for R numbers)
+  const amountMatches = text.match(/R\s*(\d+\.?\d*)/gi);
+  if (amountMatches && amountMatches.length > 0) {
+    const amounts = amountMatches.map(m => parseFloat(m.replace(/[^0-9.]/g, '')));
+    result.amount = Math.max(...amounts); // Use the largest amount found
+  }
+
+  // Try to find reference (look for PAY- number)
+  const refMatches = text.match(/PAY-?(\d+[\-\d]*)/gi);
+  if (refMatches && refMatches.length > 0) {
+    result.reference = refMatches[0].replace(/[^0-9-]/g, '');
+  } else {
+    // Try to find the reference from the order
+    const refNum = reference.replace('PAY-', '');
+    if (text.includes(refNum)) {
+      result.reference = reference;
+    }
+  }
+
+  // Try to find date
+  const dateMatches = text.match(/(\d{4}[-/]\d{2}[-/]\d{2})/);
+  if (dateMatches && dateMatches.length > 0) {
+    result.date = dateMatches[0];
+  }
+
+  // Try to find bank name
+  const bankMatches = text.match(/standard|std|absa|fnb|nedbank|capitec/i);
+  if (bankMatches && bankMatches.length > 0) {
+    result.bank = bankMatches[0];
+  }
+
+  // Try to find beneficiary
+  const beneficiaryMatches = text.match(/quick|2 shop|shoppingsa/i);
+  if (beneficiaryMatches && beneficiaryMatches.length > 0) {
+    result.beneficiary = beneficiaryMatches[0];
+  }
+
+  return result;
+}
+
+function showVerificationResult(verification, orderId) {
+  const resultDiv = document.getElementById('pop-verification-result');
+  const placeOrderDiv = document.getElementById('pop-place-order-section');
+  const manualReviewDiv = document.getElementById('pop-manual-review-section');
+
+  resultDiv.style.display = 'block';
+  
+  if (verification.allPassed) {
+    resultDiv.style.background = '#E8F5E9';
+    resultDiv.style.border = '1px solid #4CAF50';
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:24px;">✅</span>
+        <div>
+          <strong style="color:#2E7D32;">Payment Verified!</strong>
+          <p style="font-size:13px;color:#2E7D32;margin:0;">${verification.message}</p>
+        </div>
+      </div>
+    `;
+    placeOrderDiv.style.display = 'block';
+    manualReviewDiv.style.display = 'none';
+  } else if (verification.status === 'pending_manual_review') {
+    resultDiv.style.background = '#FFF8E1';
+    resultDiv.style.border = '1px solid #FFA726';
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:24px;">⏳</span>
+        <div>
+          <strong style="color:#E65100;">${verification.message}</strong>
+          ${verification.failedRules.length > 0 ? `
+            <p style="font-size:12px;color:#E65100;margin:4px 0 0 0;">
+              Issues: ${verification.failedRules.join(', ')}
+            </p>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    placeOrderDiv.style.display = 'none';
+    manualReviewDiv.style.display = 'block';
+  } else {
+    resultDiv.style.background = '#FDECEA';
+    resultDiv.style.border = '1px solid #DC2626';
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:24px;">❌</span>
+        <div>
+          <strong style="color:#DC2626;">Payment Verification Failed</strong>
+          <p style="font-size:13px;color:#DC2626;margin:0;">${verification.message}</p>
+          ${verification.failedRules.length > 0 ? `
+            <p style="font-size:12px;color:#DC2626;margin:4px 0 0 0;">
+              Issues: ${verification.failedRules.join(', ')}
+            </p>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    placeOrderDiv.style.display = 'none';
+    manualReviewDiv.style.display = 'block';
+  }
+}
+
+async function finalizeOrder(orderId) {
+  try {
+    const response = await fetch(`${API}/orders/${orderId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'paid' })
+    });
+    
+    if (response.ok) {
+      closeModal();
+      toast('✅ Order placed successfully!');
+      Cart.clear();
+      navigateTo('orders');
+    } else {
+      toast('❌ Failed to place order');
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
+
+async function finalizeOrderManual(orderId) {
+  try {
+    const response = await fetch(`${API}/orders/${orderId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'pending_manual_review' })
+    });
+    
+    if (response.ok) {
+      closeModal();
+      toast('⏳ Order placed for manual review');
+      Cart.clear();
+      navigateTo('orders');
+    } else {
+      toast('❌ Failed to place order');
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
 // ============================================================
 //  ORDERS
 // ============================================================
@@ -2122,39 +1631,176 @@ async function renderOrdersPage() {
   if (!s) return;
   if (!state.user) { s.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>'; return; }
   s.innerHTML = '<div class="container"><div style="text-align:center;padding:60px;">Loading…</div></div>';
+  
   try {
     const orders = await fetchOrders();
-    const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
+    const myOrders = orders.filter(x => x.userId === state.user._id || x.userId === state.user.id || x.customer?.email === state.user?.email);
+    
     s.innerHTML = `
       <div class="container">
         <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">My Orders</h1>
         ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
           <div style="overflow-x:auto;">
             <table class="orders-table">
-              <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
               <tbody>
-                ${myOrders.reverse().map(o => {
-                  const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
-                  const showInvoice = o.status === 'paid' || o.status === 'completed';
-                  const paymentLabel = '💳 Instant EFT';
-                  return `<tr>
-                    <td style="font-weight:700;font-size:12px;">${o.id}</td>
+                ${myOrders.reverse().map(o => `
+                  <tr>
+                    <td><strong style="font-size:13px;cursor:pointer;color:var(--orange);" onclick="viewOrderDetails('${o.id}')">${o.id}</strong></td>
                     <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-                    <td>${o.items?.length||0}</td>
-                    <td><strong>R${o.total?.toFixed(2)}</strong></td>
-                    <td><span class="badge badge-info">${paymentLabel}</span></td>
-                    <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
-                    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
-                      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
-                    </div></td>
-                  </tr>`;
-                }).join('')}
+                    <td>${o.items?.length || 0}</td>
+                    <td><strong>R${(o.total || 0).toFixed(2)}</strong></td>
+                    <td><span class="badge ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' || o.status === 'awaiting_pop' ? 'badge-warn' : o.status === 'pop_verified' ? 'badge-info' : o.status === 'pending_manual_review' ? 'badge-warn' : o.status === 'pop_uploaded' ? 'badge-info' : o.status === 'completed' ? 'badge-success' : 'badge-danger'}">${o.status}</span></td>
+                    <td>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="viewOrderDetails('${o.id}')">📄 View</button>
+                        ${o.status === 'pending' || o.status === 'awaiting_pop' ? `
+                          <button class="btn btn-orange btn-sm" onclick="uploadPOPForOrder('${o.id}')">📤 Upload POP</button>
+                        ` : ''}
+                        ${o.status === 'pending' || o.status === 'awaiting_pop' || o.status === 'pop_uploaded' || o.status === 'pending_manual_review' ? `
+                          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
-          </div>`}
-      </div>`;
-  } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
+          </div>
+        `}
+      </div>
+    `;
+  } catch (err) {
+    s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>';
+  }
+}
+
+async function viewOrderDetails(orderId) {
+  try {
+    const orders = await fetchOrders();
+    const order = orders.find(o => o.id === orderId);
+    if (!order) { toast('⚠️ Order not found'); return; }
+
+    // Get order history
+    const historyResponse = await fetch(`${API}/order-history/${orderId}`);
+    const history = historyResponse.ok ? await historyResponse.json() : [];
+
+    document.getElementById('modal-overlay').innerHTML = `
+      <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;">
+        <div class="modal-header">
+          <h3>📄 Order #${order.id}</h3>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Customer Info -->
+          <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+              <div><strong>Customer:</strong> ${order.customer?.name || 'Guest'}</div>
+              <div><strong>WhatsApp:</strong> ${order.customer?.phone || 'N/A'}</div>
+              <div style="grid-column:1/-1;"><strong>Address:</strong> ${order.customer?.address || 'N/A'}</div>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+              <div><strong>Status:</strong> <span class="badge ${order.status === 'paid' ? 'badge-success' : order.status === 'pending' || order.status === 'awaiting_pop' ? 'badge-warn' : order.status === 'pop_verified' ? 'badge-info' : order.status === 'pending_manual_review' ? 'badge-warn' : order.status === 'pop_uploaded' ? 'badge-info' : order.status === 'completed' ? 'badge-success' : 'badge-danger'}">${order.status}</span></div>
+              <div><strong>Total:</strong> <span style="font-weight:700;color:var(--orange);">R${(order.total || 0).toFixed(2)}</span></div>
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          ${history.length > 0 ? `
+            <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
+              <strong style="font-size:13px;">📋 Order Timeline</strong>
+              <div style="margin-top:8px;max-height:200px;overflow-y:auto;">
+                ${history.map(h => `
+                  <div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                    <span style="font-weight:600;">${h.status === 'pending' ? '📝' : h.status === 'awaiting_pop' ? '⏳' : h.status === 'pop_uploaded' ? '📤' : h.status === 'pop_verified' ? '✅' : h.status === 'pending_manual_review' ? '🔍' : h.status === 'paid' ? '💰' : h.status === 'processing' ? '🔄' : h.status === 'shipped' ? '🚚' : h.status === 'delivered' ? '📦' : '❌'}</span>
+                    <span>${h.status.replace(/_/g, ' ').toUpperCase()}</span>
+                    <span style="color:var(--muted);margin-left:auto;">${new Date(h.timestamp).toLocaleString()}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Items -->
+          <div style="margin-bottom:12px;">
+            <strong style="font-size:13px;">🛒 Items</strong>
+            ${(order.items || []).map(i => `
+              <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--gray-100);font-size:13px;">
+                <span>${i.name} × ${i.qty}</span>
+                <span>R${(i.price * i.qty).toFixed(2)}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- POP -->
+          ${order.popPath ? `
+            <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
+              <strong style="font-size:13px;">📎 Proof of Payment</strong>
+              <div style="margin-top:8px;">
+                ${order.popPath.endsWith('.pdf') ? `
+                  <a href="${order.popPath}" target="_blank" style="color:var(--orange);">📄 View PDF</a>
+                ` : `
+                  <img src="${order.popPath}" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;" onclick="window.open('${order.popPath}','_blank')">
+                `}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Payment Details -->
+          <div style="background:var(--surface);padding:12px;border-radius:var(--radius-sm);margin-bottom:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+              <div><strong>Payment Method:</strong> ${order.paymentMethod === 'payshap' ? '💳 Instant EFT' : order.paymentMethod}</div>
+              <div><strong>Reference:</strong> <span style="font-family:monospace;">${order.paymentReference}</span></div>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="closeModal()">Close</button>
+            ${order.status === 'pending' || order.status === 'awaiting_pop' ? `
+              <button class="btn btn-orange" onclick="closeModal();uploadPOPForOrder('${order.id}')">📤 Upload POP</button>
+            ` : ''}
+            ${order.status === 'pending' || order.status === 'awaiting_pop' || order.status === 'pop_uploaded' || order.status === 'pending_manual_review' ? `
+              <button class="btn btn-danger" onclick="closeModal();cancelOrder('${order.id}')">✕ Cancel</button>
+            ` : ''}
+            ${order.popPath ? `
+              <button class="btn btn-outline" onclick="window.open('${order.popPath}','_blank')">📄 View POP</button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+  } catch (err) {
+    toast('❌ Could not load order details');
+  }
+}
+
+async function uploadPOPForOrder(orderId) {
+  closeModal();
+  
+  // Fetch the order to get details
+  const orders = await fetchOrders();
+  const order = orders.find(o => o.id === orderId);
+  if (!order) { toast('⚠️ Order not found'); return; }
+  
+  // Reuse the POP upload modal
+  showPOPUploadModal(order);
 }
 
 async function cancelOrder(orderId) {
@@ -2164,39 +1810,10 @@ async function cancelOrder(orderId) {
     if (!res.ok) { const err = await res.json(); toast('❌ ' + err.error); return; }
     toast('🗑 Order cancelled');
     renderOrdersPage();
-  } catch { toast('❌ Failed to cancel order'); }
+  } catch (err) {
+    toast('❌ Failed to cancel order');
+  }
 }
-
-function viewInvoice(order) {
-  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
-  const d = new Date(order.createdAt);
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" style="max-width:440px;">
-      <div class="modal-header"><h3>📄 Invoice</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body">
-        <img src="habibiLogo.png" style="width:50px;"><div style="font-weight:700;">Quick 2 Shop</div>
-        <table>${i}</table>
-        <p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p>
-        <p>${order.customer?.name||'Customer'}</p>
-        <p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p>
-        <p>${order.id}</p>
-        <button class="btn btn-primary btn-sm" onclick="downloadPDF(${JSON.stringify(order).replace(/"/g,'&quot;')})">📥 Download PDF</button>
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-async function downloadPDF(order) {
-  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
-  const d = new Date(order.createdAt);
-  const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Inter}.invoice{max-width:380px;margin:0 auto;padding:24px}.logo img{width:60px}.store-name{font-size:18px;font-weight:700}table{width:100%}</style></head><body><div class="invoice"><div class="logo"><img src="habibiLogo.png"><div class="store-name">Quick 2 Shop</div></div><table>${i}</table><p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p><p>${order.customer?.name||'Customer'}</p><p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p><p>${order.id}</p></div></body></html>`;
-  const w = window.open('', '_blank');
-  w.document.write(h);
-  w.document.close();
-  setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
-}
-
 // ============================================================
 //  AUTH FUNCTIONS
 // ============================================================
@@ -2240,12 +1857,8 @@ function registerForm() {
       </div>
       <div class="form-group">
         <label class="form-label">Delivery Address *</label>
-        <div style="position:relative;">
-          <input type="text" class="form-input" id="auth-address-search" placeholder="Search for your building or street..." oninput="searchRegisterAddress(this.value)">
-          <div id="auth-address-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
-        </div>
-        <textarea class="form-input" id="auth-address" rows="2" placeholder="Your full delivery address" style="margin-top:8px;"></textarea>
-        <small style="color:var(--muted);">Select from the dropdown or type manually</small>
+        <textarea class="form-input" id="auth-address" rows="2" placeholder="Your full delivery address" required></textarea>
+        <small style="color:var(--muted);">Enter your delivery address</small>
       </div>
       <div class="form-group">
         <label class="form-label">Password *</label>
@@ -2258,46 +1871,6 @@ function registerForm() {
       <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button>
     </form>
   `;
-}
-
-function searchRegisterAddress(query) {
-  const resultsContainer = document.getElementById('auth-address-results');
-  const addressField = document.getElementById('auth-address');
-  
-  if (!resultsContainer) return;
-
-  if (!query || query.length < 2) {
-    resultsContainer.style.display = 'none';
-    return;
-  }
-
-  fetch(`/api/buildings?search=${encodeURIComponent(query)}`)
-    .then(r => r.json())
-    .then(buildings => {
-      if (buildings.length === 0) {
-        resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Type address manually.</div>';
-        resultsContainer.style.display = 'block';
-        return;
-      }
-
-      resultsContainer.innerHTML = buildings.map(b => `
-        <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
-             onclick="selectRegisterAddress('${b.name}', '${b.address || b.name}')">
-          <strong>${b.name}</strong>
-          <span style="font-size:11px;color:var(--muted);">${b.address || ''}</span>
-        </div>
-      `).join('');
-      resultsContainer.style.display = 'block';
-    })
-    .catch(() => {
-      resultsContainer.style.display = 'none';
-    });
-}
-
-function selectRegisterAddress(name, address) {
-  document.getElementById('auth-address-search').value = name;
-  document.getElementById('auth-address').value = address;
-  document.getElementById('auth-address-results').style.display = 'none';
 }
 
 function switchAuthTab(t, el) {
@@ -2390,7 +1963,6 @@ async function submitLogin() {
     localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
-    await loadUserRewards();
     toast(`👋 Welcome, ${u.name}!`);
   } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
@@ -2426,7 +1998,6 @@ async function submitRegister() {
     localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
-    await loadUserRewards();
     toast(`🎉 Welcome, ${u.name}!`);
   } catch (x) {
     err.textContent = x.message;
@@ -2439,20 +2010,10 @@ async function submitRegister() {
 
 function logout() {
   state.user = null;
-  state.points = 0;
-  state.rewardBalance = 0;
   localStorage.removeItem('habibi_user');
   updateAuthUI();
   toast('👋 Signed out');
   navigateTo('home');
-}
-
-function updatePointsDisplay() {
-  const btn = document.getElementById('points-btn');
-  if (btn && state.user) {
-    btn.style.display = 'inline-flex';
-    btn.innerHTML = `🎁 ${state.points} Pts`;
-  }
 }
 
 function updateAuthUI() {
@@ -2460,24 +2021,11 @@ function updateAuthUI() {
   if (state.user) {
     if (btn) btn.style.display = 'none';
     if (userDisplay) {
-      const isStudent = state.user.isStudent || false;
-      const studentVerified = state.user.studentVerified || false;
-      const studentBadge = isStudent && studentVerified ? 
-        '<span class="student-badge verified">🎓 Student</span>' : 
-        (state.user.studentProof ? '<span class="student-badge pending">⏳ Pending</span>' : '');
-      
       userDisplay.style.display = 'flex';
       userDisplay.innerHTML = `
         <div class="user-info">
-          <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
-            🎁 R${state.rewardBalance.toFixed(2)}
-          </button>
-          ${studentBadge}
           <div class="user-avatar" onclick="navigateTo('profile')" style="cursor:pointer;">
-            ${state.user.profilePicture ? 
-              `<img src="${state.user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-              state.user.name[0].toUpperCase()
-            }
+            ${state.user.name[0].toUpperCase()}
           </div>
           <span onclick="navigateTo('profile')" style="cursor:pointer;">${state.user.name.split(' ')[0]}</span>
           <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
@@ -2491,38 +2039,98 @@ function updateAuthUI() {
 }
 
 // ============================================================
-//  POINTS
+//  PROFILE PAGE
 // ============================================================
 
-function showPointsModal() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
-      <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body" style="text-align:center;padding:24px;">
-        <div style="font-size:48px;">🎁</div>
-        <div style="font-size:32px;font-weight:800;color:var(--orange);">${state.points||0} Points</div>
-        <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
-        <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
-        <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
-        ${(state.points||0)>=10?`<button class="btn btn-orange btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
+function renderProfilePage() {
+  const s = document.getElementById('profile-section');
+  if (!s) {
+    const container = document.createElement('section');
+    container.id = 'profile-section';
+    container.className = 'profile-section';
+    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
+    container.style.minHeight = '100vh';
+    document.body.appendChild(container);
+  }
+  
+  const section = document.getElementById('profile-section');
+  if (!section) return;
+  
+  if (!state.user) {
+    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
+    return;
+  }
+
+  section.innerHTML = `
+    <div class="container">
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">👤 My Profile</h1>
+      
+      <div class="checkout-card">
+        <h3>Personal Information</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><strong>Name:</strong> ${state.user.name}</div>
+          <div><strong>Email:</strong> ${state.user.email}</div>
+          <div><strong>WhatsApp:</strong> ${state.user.whatsapp || 'Not set'}</div>
+          <div><strong>Address:</strong> ${state.user.address || 'Not set'}</div>
+          <div><strong>Member Since:</strong> ${new Date(state.user.createdAt).toLocaleDateString()}</div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-outline btn-sm" onclick="editWhatsApp()">✏️ Update WhatsApp</button>
+          <button class="btn btn-outline btn-sm" onclick="editAddress()">✏️ Update Address</button>
+        </div>
       </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+      
+      <div class="checkout-card">
+        <h3>📸 Profile Picture</h3>
+        <div style="background:#FFF8E1;padding:12px;border-radius:8px;border-left:4px solid var(--orange);">
+          <p style="font-size:13px;color:var(--orange-dark);">Profile pictures coming soon! 🚀</p>
+          <p style="font-size:12px;color:var(--muted);">You'll be able to upload a profile picture in the next update.</p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function usePointsNow() { closeModal(); navigateTo('checkout'); setTimeout(() => { if (state.points >= 10) redeemAllPoints(); }, 500); }
+function editWhatsApp() {
+  const current = state.user?.whatsapp || '';
+  const newNumber = prompt('Enter your WhatsApp number:', current);
+  if (newNumber && newNumber !== current) {
+    updateUserField('whatsapp', newNumber);
+  }
+}
 
-function redeemAllPoints() {
-  if (state.points < 10) { toast('Need at least 10 points'); return; }
-  fetch(`${API}/user/redeem-points`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: state.user.email, points: state.points })
-  }).then(r => r.json()).then(d => {
-    if (d.success) { state.discountAmount = state.points; state.points = 0; updatePointsDisplay(); renderCheckout(); toast(`✅ R${d.redeemed.toFixed(2)} off!`); }
-    else { toast('❌ ' + d.error); }
-  });
+function editAddress() {
+  const current = state.user?.address || '';
+  const newAddress = prompt('Enter your delivery address:', current);
+  if (newAddress && newAddress !== current) {
+    updateUserField('address', newAddress);
+  }
+}
+
+async function updateUserField(field, value) {
+  if (!state.user) {
+    toast('⚠️ Please sign in first');
+    return;
+  }
+  try {
+    const response = await fetch(`/api/user/${state.user._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      state.user = data;
+      localStorage.setItem('habibi_user', JSON.stringify(data));
+      toast(`✅ ${field} updated!`);
+      renderProfilePage();
+      updateAuthUI();
+    } else {
+      toast('❌ ' + data.error);
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
 }
 
 // ============================================================
@@ -2537,7 +2145,6 @@ async function shareLocation() {
 
   const b = document.getElementById('location-btn');
   const addressElement = document.getElementById('co-address');
-  const streetElement = document.getElementById('co-street');
   
   if (b) {
     b.disabled = true;
@@ -2592,9 +2199,6 @@ async function shareLocation() {
             addressElement.style.boxShadow = '';
           }, 3000);
         }
-        if (streetElement) {
-          streetElement.value = fullAddress;
-        }
         
         const coordsElement = document.getElementById('co-coordinates');
         if (coordsElement) {
@@ -2620,9 +2224,6 @@ async function shareLocation() {
             addressElement.style.borderColor = '';
             addressElement.style.boxShadow = '';
           }, 3000);
-        }
-        if (streetElement) {
-          streetElement.value = fallback;
         }
         const coordsElement = document.getElementById('co-coordinates');
         if (coordsElement) {
@@ -2694,10 +2295,9 @@ function showTerms() {
         <h4>1. Orders</h4><p>Subject to availability.</p>
         <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
         <h4>3. Payment</h4><p>Instant EFT only.</p>
-        <h4>4. Delivery</h4><p>Area-based fees in Braamfontein.</p>
-        <h4>5. Student Discount</h4><p>20% off delivery fee for verified students.</p>
-        <h4>6. Returns</h4><p>Within 24 hours.</p>
-        <h4>7. Privacy</h4><p>Never shared.</p>
+        <h4>4. Delivery</h4><p>Area-based fees.</p>
+        <h4>5. Returns</h4><p>Within 24 hours.</p>
+        <h4>6. Privacy</h4><p>Never shared.</p>
       </div>
     </div>`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -2767,7 +2367,174 @@ function closeMobileMenu() {
 }
 
 // ============================================================
-//  INIT - FIXED
+//  COMMUNICATIONS PANEL
+// ============================================================
+
+function renderCommunicationsPanel() {
+  const s = document.getElementById('communications-section');
+  if (!s) {
+    const container = document.createElement('section');
+    container.id = 'communications-section';
+    container.className = 'communications-section';
+    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
+    container.style.minHeight = '100vh';
+    document.body.appendChild(container);
+  }
+  
+  const section = document.getElementById('communications-section');
+  if (!section) return;
+  
+  if (!state.user) {
+    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
+    return;
+  }
+
+  section.innerHTML = `
+    <div class="container">
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">💬 Communications</h1>
+      
+      <div class="checkout-card">
+        <h3>Your Orders</h3>
+        <div id="comm-orders-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);">Loading your orders...</div>
+        </div>
+      </div>
+      
+      <div class="checkout-card" id="comm-chat-container" style="display:none;">
+        <h3 id="comm-chat-title">Order #ORD-XXXXX</h3>
+        <div id="comm-messages" style="max-height:300px;overflow-y:auto;padding:12px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <textarea id="comm-message-input" rows="2" placeholder="Type your message..." style="flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);resize:vertical;"></textarea>
+          <button class="btn btn-primary" onclick="sendCommunicationMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  loadUserOrdersForComm();
+}
+
+async function loadUserOrdersForComm() {
+  const list = document.getElementById('comm-orders-list');
+  if (!list) return;
+  
+  try {
+    const orders = await fetchOrders();
+    const myOrders = orders.filter(x => x.userId === state.user._id || x.userId === state.user.id);
+    
+    if (myOrders.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">No orders found</div>';
+      return;
+    }
+    
+    list.innerHTML = myOrders.map(o => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openCommChat('${o.id}')">
+        <div>
+          <strong>${o.id}</strong>
+          <span style="font-size:12px;color:var(--muted);">${new Date(o.createdAt).toLocaleDateString()}</span>
+          <br>
+          <span style="font-size:13px;">Status: <span class="badge ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' || o.status === 'awaiting_pop' ? 'badge-warn' : o.status === 'pop_verified' ? 'badge-info' : o.status === 'pending_manual_review' ? 'badge-warn' : o.status === 'pop_uploaded' ? 'badge-info' : o.status === 'completed' ? 'badge-success' : 'badge-danger'}">${o.status}</span></span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCommChat('${o.id}')">💬 Chat</button>
+      </div>
+    `).join('');
+    
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Could not load orders</div>';
+  }
+}
+
+async function openCommChat(orderId) {
+  document.getElementById('comm-chat-container').style.display = 'block';
+  document.getElementById('comm-chat-title').textContent = `Order #${orderId}`;
+  document.getElementById('comm-message-input').dataset.orderId = orderId;
+  
+  try {
+    // Load order details
+    const orders = await fetchOrders();
+    const order = orders.find(o => o.id === orderId);
+    
+    // Load messages
+    const response = await fetch(`${API}/communications/${orderId}`);
+    const messages = await response.json();
+    
+    const container = document.getElementById('comm-messages');
+    
+    // Show order details at top
+    let orderDetailsHTML = '';
+    if (order) {
+      orderDetailsHTML = `
+        <div style="background:var(--orange-light);padding:12px;border-radius:8px;margin-bottom:12px;font-size:13px;">
+          <div><strong>📄 Order #${order.id}</strong></div>
+          <div><strong>Total:</strong> R${(order.total || 0).toFixed(2)}</div>
+          <div><strong>Status:</strong> <span class="badge ${order.status === 'paid' ? 'badge-success' : order.status === 'pending' || order.status === 'awaiting_pop' ? 'badge-warn' : order.status === 'pop_verified' ? 'badge-info' : order.status === 'pending_manual_review' ? 'badge-warn' : order.status === 'pop_uploaded' ? 'badge-info' : order.status === 'completed' ? 'badge-success' : 'badge-danger'}">${order.status}</span></div>
+          <div><strong>Address:</strong> ${order.customer?.address || 'N/A'}</div>
+          <div style="margin-top:4px;">
+            <strong>Items:</strong>
+            ${(order.items || []).map(i => `<div style="font-size:12px;padding:2px 0;">${i.name} × ${i.qty} = R${(i.price * i.qty).toFixed(2)}</div>`).join('')}
+          </div>
+          ${order.popPath ? `
+            <div style="margin-top:4px;">
+              <strong>POP:</strong> 
+              ${order.popPath.endsWith('.pdf') ? 
+                `<a href="${order.popPath}" target="_blank" style="color:var(--orange);">📄 View PDF</a>` : 
+                `<img src="${order.popPath}" style="max-width:100px;max-height:100px;border-radius:4px;cursor:pointer;" onclick="window.open('${order.popPath}','_blank')">`
+              }
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    container.innerHTML = orderDetailsHTML + messages.map(m => `
+      <div style="margin-bottom:8px;${m.sender === 'admin' ? 'text-align:left;' : 'text-align:right;'}">
+        <div style="display:inline-block;padding:8px 12px;border-radius:8px;max-width:80%;${m.sender === 'admin' ? 'background:var(--surface);border:1px solid var(--border);' : 'background:var(--orange);color:white;'}">
+          <strong style="font-size:11px;">${m.sender === 'admin' ? '🛒 Admin' : 'You'}</strong>
+          <div style="font-size:14px;">${m.message}</div>
+          <div style="font-size:10px;color:${m.sender === 'admin' ? 'var(--muted)' : 'rgba(255,255,255,0.7)'};margin-top:4px;">${new Date(m.createdAt).toLocaleString()}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    container.scrollTop = container.scrollHeight;
+    
+  } catch (err) {
+    toast('❌ Could not load messages');
+  }
+}
+
+async function sendCommunicationMessage() {
+  const input = document.getElementById('comm-message-input');
+  const message = input.value.trim();
+  const orderId = input.dataset.orderId;
+  
+  if (!message || !orderId) {
+    toast('⚠️ Please enter a message');
+    return;
+  }
+  
+  try {
+    await fetch(`${API}/communications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: orderId,
+        userId: state.user._id,
+        message: message,
+        sender: 'customer'
+      })
+    });
+    
+    input.value = '';
+    toast('✅ Message sent');
+    openCommChat(orderId);
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
+
+// ============================================================
+//  INIT
 // ============================================================
 
 async function init() {
@@ -2778,13 +2545,11 @@ async function init() {
   if (u) {
     try {
       state.user = JSON.parse(u);
-      await loadUserRewards();
     } catch {
       localStorage.removeItem('habibi_user');
     }
   }
 
-  // Load products first, then categories will be rendered
   await loadProducts();
   await loadHeroSlideshow();
 
@@ -2838,141 +2603,6 @@ async function init() {
       navigateTo('profile');
     };
     navLinks.appendChild(profileLink);
-  }
-}
-
-// ============================================================
-//  COMMUNICATIONS PANEL
-// ============================================================
-
-function renderCommunicationsPanel() {
-  const s = document.getElementById('communications-section');
-  if (!s) {
-    const container = document.createElement('section');
-    container.id = 'communications-section';
-    container.className = 'communications-section';
-    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
-    container.style.minHeight = '100vh';
-    document.body.appendChild(container);
-  }
-  
-  const section = document.getElementById('communications-section');
-  if (!section) return;
-  
-  if (!state.user) {
-    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
-    return;
-  }
-
-  section.innerHTML = `
-    <div class="container">
-      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">💬 Communications</h1>
-      
-      <div class="checkout-card">
-        <h3>Your Orders</h3>
-        <div id="comm-orders-list">
-          <div style="text-align:center;padding:20px;color:var(--muted);">Loading your orders...</div>
-        </div>
-      </div>
-      
-      <div class="checkout-card" id="comm-chat-container" style="display:none;">
-        <h3 id="comm-chat-title">Order #ORD-XXXXX</h3>
-        <div id="comm-messages" style="max-height:400px;overflow-y:auto;padding:12px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:12px;"></div>
-        <div style="display:flex;gap:8px;">
-          <textarea id="comm-message-input" rows="2" placeholder="Type your message..." style="flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);resize:vertical;"></textarea>
-          <button class="btn btn-primary" onclick="sendCommunicationMessage()">Send</button>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  loadUserOrdersForComm();
-}
-
-async function loadUserOrdersForComm() {
-  const list = document.getElementById('comm-orders-list');
-  if (!list) return;
-  
-  try {
-    const orders = await fetchOrders();
-    const myOrders = orders.filter(x => x.userId === state.user._id || x.userId === state.user.id);
-    
-    if (myOrders.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">No orders found</div>';
-      return;
-    }
-    
-    list.innerHTML = myOrders.map(o => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openCommChat('${o.id}')">
-        <div>
-          <strong>${o.id}</strong>
-          <span style="font-size:12px;color:var(--muted);">${new Date(o.createdAt).toLocaleDateString()}</span>
-          <br>
-          <span style="font-size:13px;">Status: <span class="badge ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' || o.status === 'pending_payment' ? 'badge-warn' : o.status === 'completed' ? 'badge-info' : 'badge-danger'}">${o.status}</span></span>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCommChat('${o.id}')">💬 Chat</button>
-      </div>
-    `).join('');
-    
-  } catch (err) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Could not load orders</div>';
-  }
-}
-
-async function openCommChat(orderId) {
-  document.getElementById('comm-chat-container').style.display = 'block';
-  document.getElementById('comm-chat-title').textContent = `Order #${orderId}`;
-  document.getElementById('comm-message-input').dataset.orderId = orderId;
-  
-  try {
-    const response = await fetch(`${API}/communications/${orderId}`);
-    const messages = await response.json();
-    
-    const container = document.getElementById('comm-messages');
-    container.innerHTML = messages.map(m => `
-      <div style="margin-bottom:8px;${m.sender === 'admin' ? 'text-align:left;' : 'text-align:right;'}">
-        <div style="display:inline-block;padding:8px 12px;border-radius:8px;max-width:80%;${m.sender === 'admin' ? 'background:var(--surface);border:1px solid var(--border);' : 'background:var(--orange);color:white;'}">
-          <strong style="font-size:11px;">${m.sender === 'admin' ? '🛒 Admin' : 'You'}</strong>
-          <div style="font-size:14px;">${m.message}</div>
-          <div style="font-size:10px;color:${m.sender === 'admin' ? 'var(--muted)' : 'rgba(255,255,255,0.7)'};margin-top:4px;">${new Date(m.createdAt).toLocaleString()}</div>
-        </div>
-      </div>
-    `).join('');
-    
-    container.scrollTop = container.scrollHeight;
-    
-  } catch (err) {
-    toast('❌ Could not load messages');
-  }
-}
-
-async function sendCommunicationMessage() {
-  const input = document.getElementById('comm-message-input');
-  const message = input.value.trim();
-  const orderId = input.dataset.orderId;
-  
-  if (!message || !orderId) {
-    toast('⚠️ Please enter a message');
-    return;
-  }
-  
-  try {
-    await fetch(`${API}/communications`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: orderId,
-        userId: state.user._id,
-        message: message,
-        sender: 'customer'
-      })
-    });
-    
-    input.value = '';
-    toast('✅ Message sent');
-    openCommChat(orderId);
-  } catch (err) {
-    toast('❌ ' + err.message);
   }
 }
 
