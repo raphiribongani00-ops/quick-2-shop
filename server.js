@@ -13,9 +13,76 @@ const MONGO_URI = 'mongodb://habibishoppingsa_db_user:ZCy1lEJmeMDIRHjJ@ac-fwxjva
 const EMAIL_FROM = '"Quick 2 Shop" <habibishoppingsa@gmail.com>';
 const EMAIL_USER = 'habibishoppingsa@gmail.com';
 const EMAIL_PASS = 'xeujezeumwllgppk';
+const ADMIN_EMAIL = 'raphiribongani00@gmail.com';
 
 let transporter = null;
 let emailConfigured = false;
+
+// ============================================================
+//  ORDER STATUS CONSTANTS
+// ============================================================
+
+const ORDER_STATUS = {
+  PENDING: 'pending',
+  AWAITING_POP: 'awaiting_pop',
+  PAYMENT_REVIEW: 'payment_review',
+  PAYMENT_VERIFIED: 'payment_verified',
+  PAYMENT_FAILED: 'payment_failed',
+  PAID: 'paid',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  INVESTIGATION: 'investigation'
+};
+
+// ============================================================
+//  PAYMENT VERIFICATION RULES
+// ============================================================
+
+const PAYMENT_VERIFICATION_RULES = {
+  referenceMatch: {
+    check: (pop, order) => pop.reference === order.paymentReference,
+    weight: 'critical',
+    label: 'Reference Match',
+    failMessage: 'Reference number does not match order reference'
+  },
+  amountMatch: {
+    check: (pop, order) => {
+      const diff = Math.abs(pop.amount - order.total);
+      return diff <= order.total * 0.05;
+    },
+    weight: 'critical',
+    label: 'Amount Match',
+    failMessage: 'Payment amount does not match order total'
+  },
+  dateValid: {
+    check: (pop) => {
+      const popDate = new Date(pop.date);
+      const today = new Date();
+      const diffHours = (today - popDate) / (1000 * 60 * 60);
+      return diffHours <= 72;
+    },
+    weight: 'important',
+    label: 'Date Valid',
+    failMessage: 'Payment date is too old (>72 hours)'
+  },
+  beneficiaryMatch: {
+    check: (pop) => true,
+    weight: 'info',
+    label: 'Beneficiary Name',
+    failMessage: 'Beneficiary name check skipped (not required)'
+  },
+  bankValid: {
+    check: (pop) => {
+      const bank = pop.bank?.toLowerCase() || '';
+      return bank.includes('standard') || bank.includes('std') || 
+             bank.includes('absa') || bank.includes('fnb') || 
+             bank.includes('nedbank') || bank.includes('capitec');
+    },
+    weight: 'less-critical',
+    label: 'Bank Name',
+    failMessage: 'Bank name check (optional)'
+  }
+};
 
 // ============================================================
 //  DELIVERY AREAS & FEES
@@ -32,7 +99,7 @@ const DELIVERY_AREAS = {
 //  STUDENT DISCOUNT
 // ============================================================
 
-const STUDENT_DISCOUNT = 20; // 20% off delivery fee
+const STUDENT_DISCOUNT = 20;
 const DISCOUNT_EXPIRY = '2026-09-30';
 
 // ============================================================
@@ -61,34 +128,6 @@ const BUILDINGS = {
     "UJ Auckland Park Residences", "Auckland Park Heights", "Greenhill Apartments", "Greenwood Court",
     "Marthin Street Residences", "University View Apartments", "Auckland Park Student Village"
   ]
-};
-
-// ============================================================
-//  REWARDS CONFIGURATION
-// ============================================================
-
-const REWARD_CONFIG = {
-  itemsPerReward: 10,
-  rewardAmount: 2,
-  minItemPrice: 10,
-  streak: {
-    enabled: true,
-    minOrders: 3,
-    weeklyBonus: 5,
-    streakBonus: { 4: 10, 8: 25, 12: 50 }
-  },
-  subscription: {
-    enabled: true,
-    basic: { price: 50, bonusReward: 2, freeDelivery: true, discountPercent: 5 },
-    premium: { price: 100, bonusReward: 5, freeDelivery: true, discountPercent: 10, freeItemMonthly: true, freeItemValue: 30 }
-  },
-  tiers: {
-    bronze: { label: '🥉 Bronze', minItems: 0, bonusPercent: 0 },
-    silver: { label: '🥈 Silver', minItems: 50, bonusPercent: 10 },
-    gold: { label: '🥇 Gold', minItems: 150, bonusPercent: 20 },
-    platinum: { label: '💎 Platinum', minItems: 300, bonusPercent: 30 }
-  },
-  milestones: { 10: 5, 25: 15, 50: 35, 100: 80 }
 };
 
 const otpStore = {};
@@ -127,6 +166,8 @@ async function connectDB() {
     await db.collection('orders').createIndex({ userId: 1, createdAt: -1 });
     await db.collection('users').createIndex({ email: 1 });
     await db.collection('buildings').createIndex({ name: 1 });
+    await db.collection('communications').createIndex({ orderId: 1, createdAt: -1 });
+    await db.collection('payment_verifications').createIndex({ orderId: 1 });
     await seedDefaultData();
     await setupEmail();
   } catch (err) {
@@ -142,7 +183,6 @@ async function connectDB() {
 async function seedDefaultData() {
   console.log('🌱 Seeding default data...');
   try {
-    // Seed categories
     const catCount = await db.collection('categories').countDocuments();
     if (catCount === 0) {
       await db.collection('categories').insertMany([
@@ -158,7 +198,6 @@ async function seedDefaultData() {
       console.log('✅ Categories seeded');
     }
 
-    // Seed products
     const prodCount = await db.collection('products').countDocuments();
     if (prodCount === 0) {
       await db.collection('products').insertMany([
@@ -173,7 +212,6 @@ async function seedDefaultData() {
       console.log('✅ Products seeded');
     }
 
-    // Seed slides
     const slideCount = await db.collection('slides').countDocuments();
     if (slideCount === 0) {
       await db.collection('slides').insertMany([
@@ -183,7 +221,6 @@ async function seedDefaultData() {
       console.log('✅ Slides seeded');
     }
 
-    // Seed admin user
     const userCount = await db.collection('users').countDocuments();
     if (userCount === 0) {
       await db.collection('users').insertOne({
@@ -208,7 +245,6 @@ async function seedDefaultData() {
       console.log('✅ Admin user seeded');
     }
 
-    // Seed buildings
     const buildingCount = await db.collection('buildings').countDocuments();
     if (buildingCount === 0) {
       const allBuildings = [];
@@ -300,124 +336,135 @@ async function setupEmail() {
 }
 
 // ============================================================
-//  REWARD CALCULATION ENGINE
+//  PAYMENT VERIFICATION ENGINE
 // ============================================================
 
-function calculateItemReward(items) {
-  if (!items || !items.length) {
-    return { rewardAmount: 0, rewardSets: 0, eligibleItems: 0, ineligibleItems: 0, progressToNext: 0, itemsNeededForNext: REWARD_CONFIG.itemsPerReward, progressPercent: 0, details: { totalItems: 0, eligibleCount: 0, ineligibleCount: 0, rewardSets: 0 } };
+function verifyPayment(popData, order) {
+  const results = {};
+  let criticalPassed = 0;
+  let importantPassed = 0;
+  let totalCritical = 0;
+  let totalImportant = 0;
+  let failedRules = [];
+  
+  for (const [ruleName, rule] of Object.entries(PAYMENT_VERIFICATION_RULES)) {
+    const passed = rule.check(popData, order);
+    results[ruleName] = {
+      passed: passed,
+      label: rule.label,
+      weight: rule.weight,
+      failMessage: rule.failMessage
+    };
+    
+    if (!passed) {
+      failedRules.push(rule.label);
+    }
+    
+    if (rule.weight === 'critical') {
+      totalCritical++;
+      if (passed) criticalPassed++;
+    } else if (rule.weight === 'important' || rule.weight === 'less-critical') {
+      totalImportant++;
+      if (passed) importantPassed++;
+    }
   }
-
-  const eligibleItems = items.filter(item => (item.price || 0) >= REWARD_CONFIG.minItemPrice);
-  const eligibleCount = eligibleItems.length;
-  const ineligibleCount = items.length - eligibleCount;
-  const rewardSets = Math.floor(eligibleCount / REWARD_CONFIG.itemsPerReward);
-  const rewardAmount = rewardSets * REWARD_CONFIG.rewardAmount;
-  const remainingToNext = eligibleCount % REWARD_CONFIG.itemsPerReward;
-  const itemsNeededForNext = remainingToNext === 0 ? 0 : REWARD_CONFIG.itemsPerReward - remainingToNext;
-
+  
+  const criticalScore = totalCritical > 0 ? (criticalPassed / totalCritical) * 100 : 100;
+  const importantScore = totalImportant > 0 ? (importantPassed / totalImportant) * 100 : 100;
+  const overallScore = (criticalScore * 0.7) + (importantScore * 0.3);
+  
+  let decision = '';
+  let status = '';
+  let adminNeedsReview = false;
+  let customerMessage = '';
+  let adminMessage = '';
+  
+  // Scenario 1: Perfect Match
+  if (criticalPassed === totalCritical && importantPassed >= totalImportant * 0.5) {
+    decision = 'APPROVED';
+    status = ORDER_STATUS.PAYMENT_VERIFIED;
+    adminNeedsReview = false;
+    customerMessage = '✅ Your payment has been verified. Your order is being processed.';
+    adminMessage = 'Payment auto-verified. All rules passed.';
+  }
+  // Scenario 2: Partial Match (Amount slightly off)
+  else if (criticalPassed === totalCritical && !results.amountMatch.passed) {
+    decision = 'PARTIAL_APPROVAL';
+    status = ORDER_STATUS.PAYMENT_REVIEW;
+    adminNeedsReview = false;
+    customerMessage = `⚠️ Your payment amount (R${popData.amount.toFixed(2)}) doesn't match the order total (R${order.total.toFixed(2)}). Please pay the remaining balance of R${(order.total - popData.amount).toFixed(2)} using the same reference number. The system will automatically check again once you upload the additional payment.`;
+    adminMessage = 'Partial payment received. Customer notified to pay balance.';
+  }
+  // Scenario 3: Major Mismatch
+  else if (criticalPassed < totalCritical * 0.5) {
+    decision = 'REJECTED';
+    status = ORDER_STATUS.PAYMENT_FAILED;
+    adminNeedsReview = true;
+    customerMessage = `❌ The system cannot automatically review your payment due to mismatches in: ${failedRules.join(', ')}. Your order is currently being evaluated by the payment administrator. Feedback will be given shortly.`;
+    adminMessage = `Payment rejected. Mismatches: ${failedRules.join(', ')}. Needs admin review.`;
+    
+    sendEmail(ADMIN_EMAIL, '🚨 Payment Failed - Admin Review Required',
+      `<h2>Payment Failed - Needs Review</h2>
+       <p><strong>Order ID:</strong> ${order.id}</p>
+       <p><strong>Customer:</strong> ${order.customer?.name}</p>
+       <p><strong>Amount:</strong> R${order.total.toFixed(2)}</p>
+       <p><strong>Failed Rules:</strong> ${failedRules.join(', ')}</p>
+       <p><a href="https://quick-2-shop.onrender.com/admin.html">Review in Admin Panel</a></p>`
+    );
+  }
+  // Scenario 5: Suspicious POP
+  else if (criticalPassed < totalCritical * 0.75) {
+    decision = 'SUSPICIOUS';
+    status = ORDER_STATUS.INVESTIGATION;
+    adminNeedsReview = true;
+    customerMessage = `🔍 Your payment is under investigation due to ${failedRules.join(', ')}. Please go to the communications panel to provide more information.`;
+    adminMessage = `Suspicious POP detected. Mismatches: ${failedRules.join(', ')}. Needs investigation.`;
+    
+    sendEmail(ADMIN_EMAIL, '🚨 Suspicious POP Detected - Investigation Required',
+      `<h2>Suspicious POP - Investigation Required</h2>
+       <p><strong>Order ID:</strong> ${order.id}</p>
+       <p><strong>Customer:</strong> ${order.customer?.name}</p>
+       <p><strong>Amount:</strong> R${order.total.toFixed(2)}</p>
+       <p><strong>Issues:</strong> ${failedRules.join(', ')}</p>
+       <p><a href="https://quick-2-shop.onrender.com/admin.html">Review in Admin Panel</a></p>`
+    );
+  }
+  // Scenario 6: Payment Method Confusion
+  else if (criticalPassed >= totalCritical * 0.5) {
+    decision = 'REVIEW_NEEDED';
+    status = ORDER_STATUS.PAYMENT_REVIEW;
+    adminNeedsReview = true;
+    customerMessage = `📋 Your payment is being reviewed. Please go to the communications panel for manual payment review and verification.`;
+    adminMessage = `Payment needs manual review. Partial matches detected.`;
+  }
+  // Scenario 7: Wrong Amount/Account
+  else {
+    decision = 'REJECTED';
+    status = ORDER_STATUS.PAYMENT_FAILED;
+    adminNeedsReview = true;
+    customerMessage = `❌ Your payment could not be matched to your order. Please go to the communications panel to speak to us for manual verification.`;
+    adminMessage = `Payment rejected. Needs manual verification.`;
+  }
+  
   return {
-    rewardAmount: rewardAmount,
-    rewardSets: rewardSets,
-    eligibleItems: eligibleCount,
-    ineligibleItems: ineligibleCount,
-    progressToNext: remainingToNext,
-    itemsNeededForNext: itemsNeededForNext,
-    progressPercent: Math.round((remainingToNext / REWARD_CONFIG.itemsPerReward) * 100),
-    details: { totalItems: items.length, eligibleCount: eligibleCount, ineligibleCount: ineligibleCount, rewardSets: rewardSets, rewardPerSet: REWARD_CONFIG.rewardAmount }
+    decision,
+    status,
+    adminNeedsReview,
+    results,
+    overallScore,
+    criticalScore,
+    importantScore,
+    failedRules,
+    customerMessage,
+    adminMessage,
+    summary: {
+      criticalPassed,
+      criticalTotal: totalCritical,
+      importantPassed,
+      importantTotal: totalImportant
+    },
+    recommendation: adminNeedsReview ? 'Admin review required' : 'Auto-verified'
   };
-}
-
-function calculateStreak(orders) {
-  if (!orders || orders.length < REWARD_CONFIG.streak.minOrders) {
-    return { streakCount: 0, bonusAmount: 0, nextBonusAt: REWARD_CONFIG.streak.minOrders };
-  }
-
-  let streak = 1;
-  let currentDate = new Date(orders[0]?.createdAt || Date.now());
-
-  for (let i = 1; i < orders.length; i++) {
-    const orderDate = new Date(orders[i].createdAt);
-    const daysDiff = (currentDate - orderDate) / (1000 * 60 * 60 * 24);
-    if (daysDiff <= 7) {
-      streak++;
-      currentDate = orderDate;
-    } else {
-      break;
-    }
-  }
-
-  let bonusAmount = 0;
-  if (streak >= 4) bonusAmount += REWARD_CONFIG.streak.streakBonus[4] || 0;
-  if (streak >= 8) bonusAmount += REWARD_CONFIG.streak.streakBonus[8] || 0;
-  if (streak >= 12) bonusAmount += REWARD_CONFIG.streak.streakBonus[12] || 0;
-  if (streak >= REWARD_CONFIG.streak.minOrders) {
-    bonusAmount += REWARD_CONFIG.streak.weeklyBonus;
-  }
-
-  return { streakCount: streak, bonusAmount: bonusAmount, nextBonusAt: streak >= 12 ? null : Math.ceil((streak + 1) / 4) * 4 };
-}
-
-function getUserTier(totalRewardsEarned) {
-  if (totalRewardsEarned >= 300) return 'platinum';
-  if (totalRewardsEarned >= 150) return 'gold';
-  if (totalRewardsEarned >= 50) return 'silver';
-  return 'bronze';
-}
-
-function getMilestoneBonus(totalRewardsEarned) {
-  const milestones = REWARD_CONFIG.milestones;
-  let bonus = 0;
-  for (const [threshold, amount] of Object.entries(milestones)) {
-    if (totalRewardsEarned >= parseInt(threshold)) {
-      bonus += amount;
-    }
-  }
-  return bonus;
-}
-
-function calculateTotalRewardValue(user, orders) {
-  const allItems = orders.flatMap(o => o.items || []);
-  const baseResult = calculateItemReward(allItems);
-  const baseRewards = baseResult.rewardAmount;
-  const streak = calculateStreak(orders);
-  const streakBonus = streak.bonusAmount;
-
-  let subscriptionBonus = 0;
-  if (user.subscriptionTier) {
-    const subConfig = REWARD_CONFIG.subscription[user.subscriptionTier];
-    if (subConfig) {
-      subscriptionBonus = subConfig.bonusReward || 0;
-    }
-  }
-
-  const totalRewardsEarned = Math.floor(baseRewards / REWARD_CONFIG.rewardAmount);
-  const tier = getUserTier(totalRewardsEarned);
-  const tierBonusPercent = REWARD_CONFIG.tiers[tier]?.bonusPercent || 0;
-  const milestoneBonus = getMilestoneBonus(totalRewardsEarned);
-
-  const totalRewardBalance = baseRewards + streakBonus + subscriptionBonus + milestoneBonus;
-  const tierBonusAmount = (totalRewardBalance * tierBonusPercent) / 100;
-
-  return {
-    baseRewards: baseRewards,
-    streakBonus: streakBonus,
-    subscriptionBonus: subscriptionBonus,
-    milestoneBonus: milestoneBonus,
-    tierBonus: tierBonusAmount,
-    totalRewardBalance: totalRewardBalance + tierBonusAmount,
-    totalRewardsEarned: totalRewardsEarned,
-    tier: tier,
-    streakCount: streak.streakCount,
-    progress: baseResult
-  };
-}
-
-function getNextTier(totalRewardsEarned) {
-  if (totalRewardsEarned < 50) return { tier: 'silver', minItems: 50, gap: 50 - totalRewardsEarned };
-  if (totalRewardsEarned < 150) return { tier: 'gold', minItems: 150, gap: 150 - totalRewardsEarned };
-  if (totalRewardsEarned < 300) return { tier: 'platinum', minItems: 300, gap: 300 - totalRewardsEarned };
-  return null;
 }
 
 // ============================================================
@@ -533,7 +580,7 @@ app.post('/api/user/verify-student', async (req, res) => {
     );
 
     await sendEmail(
-      'habibishoppingsa@gmail.com',
+      ADMIN_EMAIL,
       `🎓 Student Verification Request - ${user.name}`,
       `<h2>New Student Verification Request</h2>
        <p><strong>Name:</strong> ${user.name}</p>
@@ -736,7 +783,7 @@ app.delete('/api/products/:id', async (req, res) => {
 });
 
 // ============================================================
-//  ORDERS API
+//  ORDERS API WITH PAYMENT VERIFICATION
 // ============================================================
 
 app.get('/api/orders', async (req, res) => {
@@ -753,42 +800,29 @@ app.post('/api/orders', async (req, res) => {
     const order = {
       ...req.body,
       id: 'ORD-' + Date.now(),
-      status: 'pending',
+      status: ORDER_STATUS.AWAITING_POP,
       createdAt: new Date().toISOString(),
       rewardEarned: 0,
       rewardDetails: null,
+      paymentVerification: null,
+      popUploaded: false
     };
 
     const items = order.items || [];
-    const rewardResult = calculateItemReward(items);
-    const rewardAmount = rewardResult.rewardAmount;
-
-    if (rewardAmount > 0 && order.userId) {
-      order.rewardEarned = rewardAmount;
-      order.rewardDetails = rewardResult.details;
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(order.userId) },
-        { $inc: { rewardBalance: rewardAmount, totalRewardsEarned: rewardResult.rewardSets, eligibleItemsPurchased: rewardResult.eligibleItems }, $set: { lastOrderDate: new Date().toISOString() } }
-      );
-      if (order.customer?.email) {
-        await sendEmail(order.customer.email, '🎁 Rewards Earned!',
-          `<h2>You earned R${rewardAmount.toFixed(2)} in rewards!</h2>
-           <p>From ${rewardResult.rewardSets} sets of 10 items.</p>
-           <p>Your total reward balance: R${rewardAmount.toFixed(2)}</p>`
-        );
-      }
-    } else if (order.userId) {
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(order.userId) },
-        { $set: { lastOrderDate: new Date().toISOString() } }
-      );
-    }
 
     if (order.proofOfPayment?.includes('base64')) {
       const fp = saveBase64File(order.proofOfPayment, order.id, 'pop');
       if (fp) {
         order.proofOfPaymentPath = fp;
+        order.popUploaded = true;
         delete order.proofOfPayment;
+        
+        const verificationResult = {
+          status: ORDER_STATUS.PAYMENT_REVIEW,
+          message: 'Payment uploaded. Awaiting verification.'
+        };
+        order.paymentVerification = verificationResult;
+        order.status = ORDER_STATUS.PAYMENT_REVIEW;
       }
     }
 
@@ -800,268 +834,219 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.put('/api/orders/:id', async (req, res) => {
-  try {
-    const result = await db.collection('orders').findOneAndUpdate(
-      { id: req.params.id },
-      { $set: req.body },
-      { returnDocument: 'after' }
-    );
-    if (!result.value) return res.status(404).json({ error: 'Not found' });
-    const order = result.value;
-    
-    if (req.body.status === 'paid' || req.body.status === 'completed') {
-      await sendEmail(order.customer?.email, `🚚 Order #${order.id} Update`,
-        `<h2>Your order has been ${req.body.status === 'paid' ? 'paid' : 'completed'}!</h2>
-         <p><strong>Order ID:</strong> ${order.id}</p>
-         ${req.body.status === 'paid' ? '<p>Your payment has been confirmed. We\'re preparing your order.</p>' : '<p>Your order has been delivered. Thank you for shopping with us!</p>'}`
-      );
-    }
+// ============================================================
+//  PAYMENT VERIFICATION ENDPOINTS
+// ============================================================
 
-    res.json(order);
+app.get('/api/admin/payment-reviews', async (req, res) => {
+  try {
+    const orders = await db.collection('orders')
+      .find({ 
+        status: { 
+          $in: [
+            ORDER_STATUS.PAYMENT_REVIEW, 
+            ORDER_STATUS.INVESTIGATION, 
+            ORDER_STATUS.PAYMENT_FAILED,
+            ORDER_STATUS.AWAITING_POP
+          ] 
+        } 
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/orders/:id', async (req, res) => {
+app.post('/api/admin/verify-payment', async (req, res) => {
   try {
-    const order = await db.collection('orders').findOne({ id: req.params.id });
-    if (!order) return res.status(404).json({ error: 'Not found' });
-    if (order.status === 'completed' || order.status === 'cancelled') {
-      return res.status(400).json({ error: 'Cannot delete completed or cancelled orders' });
-    }
-    if (order.rewardEarned > 0 && order.userId) {
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(order.userId) },
-        { $inc: { rewardBalance: -order.rewardEarned } }
+    const { orderId, popAmount, popReference, popDate, popBank, popBeneficiary, decision, adminNotes } = req.body;
+    
+    const order = await db.collection('orders').findOne({ id: orderId });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const popData = {
+      amount: popAmount,
+      reference: popReference,
+      date: popDate,
+      bank: popBank,
+      beneficiary: popBeneficiary
+    };
+
+    const verification = verifyPayment(popData, order);
+    
+    const updateData = {
+      status: verification.status,
+      paymentVerification: {
+        ...verification,
+        verifiedAt: new Date().toISOString(),
+        adminNotes: adminNotes || null,
+        reviewedBy: 'admin'
+      },
+      popData: popData
+    };
+
+    await db.collection('orders').updateOne(
+      { id: orderId },
+      { $set: updateData }
+    );
+
+    if (verification.adminNeedsReview) {
+      await sendEmail(ADMIN_EMAIL, `📋 Payment Review Needed - ${orderId}`,
+        `<h2>Payment Review Needed</h2>
+         <p><strong>Order ID:</strong> ${orderId}</p>
+         <p><strong>Customer:</strong> ${order.customer?.name}</p>
+         <p><strong>Amount:</strong> R${order.total.toFixed(2)}</p>
+         <p><strong>Status:</strong> ${verification.status}</p>
+         <p><strong>Decision:</strong> ${verification.decision}</p>
+         <p><strong>Failed Rules:</strong> ${verification.failedRules.join(', ')}</p>
+         <p><a href="https://quick-2-shop.onrender.com/admin.html">Review in Admin Panel</a></p>`
       );
     }
-    await db.collection('orders').deleteOne({ id: req.params.id });
+
+    await sendEmail(order.customer?.email, `📦 Order #${orderId} - Payment Update`,
+      `<h2>Payment Update</h2>
+       <p>${verification.customerMessage}</p>
+       <p><strong>Order ID:</strong> ${orderId}</p>
+       <p><a href="https://quick-2-shop.onrender.com">View Order</a></p>`
+    );
+
+    res.json({
+      success: true,
+      order: updateData,
+      verification: verification
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/override-payment', async (req, res) => {
+  try {
+    const { orderId, decision, adminNotes } = req.body;
+    
+    const order = await db.collection('orders').findOne({ id: orderId });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    let newStatus = order.status;
+    let customerMessage = '';
+
+    if (decision === 'approve') {
+      newStatus = ORDER_STATUS.PAID;
+      customerMessage = '✅ Your payment has been approved by the administrator. Your order is being processed.';
+    } else if (decision === 'reject') {
+      newStatus = ORDER_STATUS.CANCELLED;
+      customerMessage = '❌ Your payment was rejected by the administrator. Please contact support for more information.';
+    } else if (decision === 'investigate') {
+      newStatus = ORDER_STATUS.INVESTIGATION;
+      customerMessage = '🔍 Your payment is under further investigation. You will be contacted shortly.';
+    }
+
+    await db.collection('orders').updateOne(
+      { id: orderId },
+      { 
+        $set: { 
+          status: newStatus,
+          'paymentVerification.adminOverride': {
+            decision: decision,
+            notes: adminNotes,
+            overriddenAt: new Date().toISOString()
+          }
+        } 
+      }
+    );
+
+    await sendEmail(order.customer?.email, `📦 Order #${orderId} - Admin Update`,
+      `<h2>Order Update</h2>
+       <p>${customerMessage}</p>
+       <p><strong>Order ID:</strong> ${orderId}</p>
+       <p><a href="https://quick-2-shop.onrender.com">View Order</a></p>`
+    );
+
+    res.json({ success: true, message: 'Payment override applied' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  COMMUNICATIONS API
+// ============================================================
+
+app.post('/api/communications', async (req, res) => {
+  try {
+    const { orderId, userId, message, sender } = req.body;
+    
+    const communication = {
+      orderId: orderId,
+      userId: userId,
+      message: message,
+      sender: sender,
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    await db.collection('communications').insertOne(communication);
+    
+    if (sender === 'admin') {
+      await db.collection('communications').updateOne(
+        { _id: communication._id },
+        { $set: { read: true } }
+      );
+    }
+    
+    res.json({ success: true, communication });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/communications/:orderId', async (req, res) => {
+  try {
+    const messages = await db.collection('communications')
+      .find({ orderId: req.params.orderId })
+      .sort({ createdAt: 1 })
+      .toArray();
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/communications/user/:userId', async (req, res) => {
+  try {
+    const messages = await db.collection('communications')
+      .find({ userId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/communications/:id/read', async (req, res) => {
+  try {
+    await db.collection('communications').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { read: true } }
+    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ============================================================
-//  REWARDS API
-// ============================================================
-
-app.get('/api/user/rewards/:userId', async (req, res) => {
+app.get('/api/communications/unread/:userId', async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const orders = await db.collection('orders')
-      .find({ userId: new ObjectId(userId) })
-      .sort({ createdAt: -1 })
-      .toArray();
-
-    const rewardData = calculateTotalRewardValue(user, orders);
-
-    let subscriptionInfo = null;
-    if (user.subscriptionTier) {
-      subscriptionInfo = { tier: user.subscriptionTier, config: REWARD_CONFIG.subscription[user.subscriptionTier], active: true, startedAt: user.subscriptionStartedAt };
-    }
-
-    res.json({
-      userId: user._id,
-      name: user.name,
-      email: user.email,
-      rewardBalance: rewardData.totalRewardBalance,
-      totalRewardsEarned: rewardData.totalRewardsEarned,
-      tier: rewardData.tier,
-      isStudent: user.isStudent || false,
-      studentVerified: user.studentVerified || false,
-      studentDiscountActive: user.isStudent && new Date() < new Date(DISCOUNT_EXPIRY),
-      whatsapp: user.whatsapp || null,
-      address: user.address || null,
-      breakdown: { baseRewards: rewardData.baseRewards, streakBonus: rewardData.streakBonus, subscriptionBonus: rewardData.subscriptionBonus, milestoneBonus: rewardData.milestoneBonus, tierBonus: rewardData.tierBonus },
-      progress: { eligibleItems: rewardData.progress.eligibleItems, progressToNext: rewardData.progress.progressToNext, itemsNeededForNext: rewardData.progress.itemsNeededForNext, progressPercent: rewardData.progress.progressPercent },
-      streak: { count: rewardData.streakCount, nextBonusAt: rewardData.streakCount >= 12 ? null : Math.ceil((rewardData.streakCount + 1) / 4) * 4 },
-      subscription: subscriptionInfo,
-      recentOrders: orders.slice(0, 5).map(o => ({ id: o.id, total: o.total, rewardEarned: o.rewardEarned || 0, status: o.status, createdAt: o.createdAt })),
-      tierProgress: { current: rewardData.tier, next: getNextTier(rewardData.totalRewardsEarned) }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/user/redeem-rewards', async (req, res) => {
-  try {
-    const { email, amount } = req.body;
-    if (!email || !amount || amount <= 0) {
-      return res.status(400).json({ error: 'Email and valid amount required' });
-    }
-    const user = await db.collection('users').findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if ((user.rewardBalance || 0) < amount) {
-      return res.status(400).json({ error: 'Insufficient reward balance' });
-    }
-    await db.collection('users').updateOne(
-      { email },
-      { $inc: { rewardBalance: -amount }, $push: { rewardHistory: { type: 'redemption', amount: amount, date: new Date().toISOString() } } }
-    );
-    res.json({ success: true, redeemed: amount, remaining: (user.rewardBalance || 0) - amount, message: `Successfully redeemed R${amount.toFixed(2)}!` });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/user/reward-progress', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: 'User ID required' });
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const orders = await db.collection('orders')
-      .find({ userId: new ObjectId(userId) })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray();
-
-    const allItems = orders.flatMap(o => o.items || []);
-    const progress = calculateItemReward(allItems);
-    const streak = calculateStreak(orders);
-
-    res.json({
-      rewardBalance: user.rewardBalance || 0,
-      totalRewardsEarned: user.totalRewardsEarned || 0,
-      progress: { eligibleItems: progress.eligibleItems, itemsNeededForNext: progress.itemsNeededForNext, progressToNext: progress.progressToNext, progressPercent: progress.progressPercent, rewardSetsEarned: progress.rewardSets },
-      streak: { count: streak.streakCount, bonusAmount: streak.bonusAmount },
-      subscription: { active: !!user.subscriptionTier, tier: user.subscriptionTier || null },
-      nextRewardAt: progress.itemsNeededForNext === 0 ? 'Ready!' : `${progress.itemsNeededForNext} more items`
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/user/points', async (req, res) => {
-  try {
-    const user = await db.collection('users').findOne({ email: req.query.email });
-    if (!user) return res.status(404).json({ error: 'Not found' });
-    res.json({ points: user.points || 0 });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/user/redeem-points', async (req, res) => {
-  try {
-    const { email, points } = req.body;
-    const user = await db.collection('users').findOne({ email });
-    if (!user) return res.status(404).json({ error: 'Not found' });
-    if ((user.points || 0) < points) return res.status(400).json({ error: 'Not enough points' });
-    await db.collection('users').updateOne({ email }, { $inc: { points: -points } });
-    res.json({ success: true, remaining: (user.points || 0) - points, redeemed: points });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================
-//  SUBSCRIPTION API
-// ============================================================
-
-app.post('/api/user/subscribe', async (req, res) => {
-  try {
-    const { userId, tier } = req.body;
-    if (!['basic', 'premium'].includes(tier)) {
-      return res.status(400).json({ error: 'Invalid subscription tier' });
-    }
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const config = REWARD_CONFIG.subscription[tier];
-
-    if (user.subscriptionTier === tier) {
-      return res.status(400).json({ error: 'Already subscribed to this tier' });
-    }
-
-    if (user.subscriptionTier === 'basic' && tier === 'premium') {
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { subscriptionTier: tier, subscriptionStartedAt: new Date().toISOString(), subscriptionUpdatedAt: new Date().toISOString() }, $inc: { rewardBalance: config.bonusReward } }
-      );
-      res.json({ success: true, message: `Upgraded to ${tier} tier!` });
-      return;
-    }
-
-    await db.collection('users').updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: { subscriptionTier: tier, subscriptionStartedAt: new Date().toISOString(), subscriptionUpdatedAt: new Date().toISOString() }, $inc: { rewardBalance: config.bonusReward } }
-    );
-
-    if (user.email) {
-      await sendEmail(user.email, `🎉 Welcome to Quick 2 Shop ${tier} tier!`,
-        `<h2>Welcome to ${tier} tier!</h2><p>You've received R${config.bonusReward.toFixed(2)} in rewards!</p><ul>${config.freeDelivery ? '<li>✅ Free delivery on all orders</li>' : ''}${config.discountPercent ? `<li>✅ ${config.discountPercent}% off every order</li>` : ''}${config.freeItemMonthly ? '<li>✅ Free item every month</li>' : ''}</ul>`
-      );
-    }
-
-    res.json({ success: true, message: `Subscribed to ${tier} tier!`, bonusReward: config.bonusReward, benefits: { freeDelivery: config.freeDelivery, discountPercent: config.discountPercent, freeItemMonthly: config.freeItemMonthly || false } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/user/unsubscribe', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (!user.subscriptionTier) {
-      return res.status(400).json({ error: 'Not subscribed' });
-    }
-    await db.collection('users').updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: { subscriptionTier: null, subscriptionEndedAt: new Date().toISOString() } }
-    );
-    res.json({ success: true, message: 'Subscription cancelled' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================
-//  FORGOT PASSWORD
-// ============================================================
-
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const user = await db.collection('users').findOne({ email: req.body.email });
-    if (!user) return res.status(404).json({ error: 'No account found' });
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore[req.body.email] = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-    const sent = await sendEmail(req.body.email, 'Quick 2 Shop - Password Reset OTP',
-      `<h2>Your OTP: ${otp}</h2><p>This OTP expires in 10 minutes.</p>`
-    );
-    res.json({ message: sent ? 'OTP sent' : 'OTP saved', devMode: !sent, otp: !sent ? otp : undefined });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/reset-password', async (req, res) => {
-  const { email, otp, newPassword } = req.body;
-  if (!email || !otp || !newPassword) {
-    return res.status(400).json({ error: 'All fields required' });
-  }
-  const stored = otpStore[email];
-  if (!stored || Date.now() > stored.expiresAt) {
-    return res.status(400).json({ error: 'OTP expired' });
-  }
-  if (stored.otp !== otp) {
-    return res.status(400).json({ error: 'Invalid OTP' });
-  }
-  try {
-    await db.collection('users').updateOne({ email }, { $set: { password: newPassword } });
-    delete otpStore[email];
-    res.json({ message: 'Password reset successful' });
+    const count = await db.collection('communications')
+      .countDocuments({ 
+        userId: req.params.userId, 
+        read: false,
+        sender: 'admin'
+      });
+    res.json({ unread: count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1221,6 +1206,7 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🛒 Quick 2 Shop running on port ${PORT}`);
   console.log(`📧 Gmail: ${emailConfigured ? 'READY' : 'NOT CONFIGURED'}`);
+  console.log(`📧 Admin Email: ${ADMIN_EMAIL}`);
   console.log(`\n📊 Delivery Areas & Fees:`);
   console.log(`  • Braamfontein: R15`);
   console.log(`  • Doornfontein: R20`);
@@ -1228,9 +1214,4 @@ app.listen(PORT, () => {
   console.log(`  • Auckland Park: R25`);
   console.log(`\n🎓 Student Discount: ${STUDENT_DISCOUNT}% off delivery fee`);
   console.log(`📅 Valid until: ${DISCOUNT_EXPIRY}`);
-  console.log(`\n📊 Reward Rules:`);
-  console.log(`  • ${REWARD_CONFIG.itemsPerReward} items (R${REWARD_CONFIG.minItemPrice}+) = R${REWARD_CONFIG.rewardAmount} reward`);
-  console.log(`  • ${REWARD_CONFIG.streak.enabled ? '✅' : '❌'} Streak rewards enabled`);
-  console.log(`  • ${REWARD_CONFIG.subscription.enabled ? '✅' : '❌'} Subscriptions enabled`);
-  console.log(`  • Tiers: Bronze → Silver (50) → Gold (150) → Platinum (300)`);
 });

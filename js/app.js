@@ -246,7 +246,6 @@ const Cart = {
     }
     this.save();
     updateCartUI();
-    updateCartRewardProgress();
     toast(`✅ ${p.name} added`);
   },
   
@@ -258,7 +257,6 @@ const Cart = {
     this.save();
     updateCartUI();
     renderCartItems();
-    updateCartRewardProgress();
   },
   
   updateQty(id, d) {
@@ -279,7 +277,6 @@ const Cart = {
     this.save();
     updateCartUI();
     renderCartItems();
-    updateCartRewardProgress();
   },
   
   total() { 
@@ -311,7 +308,6 @@ const Cart = {
     this.save();
     updateCartUI();
     renderCartItems();
-    updateCartRewardProgress();
   },
   
   deliveryFee() {
@@ -412,6 +408,25 @@ async function fetchUserPoints(email) {
 //  REWARD FUNCTIONS
 // ============================================================
 
+function updateRewardUI() {
+  const btn = document.getElementById('rewards-btn');
+  if (btn && state.user) {
+    btn.style.display = 'inline-flex';
+    btn.innerHTML = `🎁 R${state.rewardBalance.toFixed(2)}`;
+    btn.title = `${state.tier.charAt(0).toUpperCase() + state.tier.slice(1)} Tier`;
+  }
+  const tierBadge = document.getElementById('tier-badge');
+  if (tierBadge) {
+    const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+    tierBadge.textContent = tierIcons[state.tier] || '🥉';
+  }
+}
+
+function getTierIcon(tier) {
+  const icons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+  return icons[tier] || '🥉';
+}
+
 async function loadUserRewards() {
   if (!state.user) return;
   try {
@@ -440,132 +455,6 @@ async function loadRewardProgress() {
       updateRewardUI();
     }
   } catch (e) { /* silent fail */ }
-}
-
-function updateRewardUI() {
-  const btn = document.getElementById('rewards-btn');
-  if (btn && state.user) {
-    btn.style.display = 'inline-flex';
-    btn.innerHTML = `🎁 R${state.rewardBalance.toFixed(2)}`;
-    btn.title = `${state.tier.charAt(0).toUpperCase() + state.tier.slice(1)} Tier`;
-  }
-  const tierBadge = document.getElementById('tier-badge');
-  if (tierBadge) {
-    const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-    tierBadge.textContent = tierIcons[state.tier] || '🥉';
-  }
-  updateCartRewardProgress();
-}
-
-function getTierIcon(tier) {
-  const icons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-  return icons[tier] || '🥉';
-}
-
-async function redeemRewards() {
-  if (!state.user) {
-    toast('⚠️ Please sign in to redeem rewards');
-    return;
-  }
-  const amount = Math.min(state.rewardBalance, state.rewardBalance);
-  if (amount < 2) {
-    toast('⚠️ Need at least R2 to redeem');
-    return;
-  }
-  try {
-    const res = await fetch(`${API}/user/redeem-rewards`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: state.user.email, amount: amount })
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const data = await res.json();
-    state.rewardBalance = data.remaining;
-    toast(`✅ Redeemed R${amount.toFixed(2)}!`);
-    updateRewardUI();
-    renderCheckout();
-  } catch (err) {
-    toast('❌ ' + err.message);
-  }
-}
-
-function showRewardsModal() {
-  const tierIcons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-  const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' };
-
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
-      <div class="modal-header">
-        <h3>🎁 My Rewards</h3>
-        <button class="modal-close" onclick="closeModal()">✕</button>
-      </div>
-      <div class="modal-body" style="padding:24px;">
-        <div style="text-align:center;padding:16px 0;">
-          <div style="font-size:48px;">${tierIcons[state.tier] || '🥉'}</div>
-          <div style="font-size:32px;font-weight:800;color:var(--orange);">R${state.rewardBalance.toFixed(2)}</div>
-          <div style="color:var(--muted);">${tierLabels[state.tier] || 'Bronze'} Tier</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0;">
-          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.totalRewardsEarned || 0}</div>
-            <div style="font-size:11px;color:var(--muted);">Rewards Earned</div>
-          </div>
-          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.streak?.count || 0}</div>
-            <div style="font-size:11px;color:var(--muted);">Week Streak</div>
-          </div>
-          <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:center;">
-            <div style="font-weight:700;font-size:18px;color:var(--orange);">${state.subscription?.active ? '✅' : '❌'}</div>
-            <div style="font-size:11px;color:var(--muted);">Subscription</div>
-          </div>
-        </div>
-        <div style="background:var(--surface);padding:16px;border-radius:8px;margin-bottom:16px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
-            <span>Next Reward</span>
-            <span>${state.rewardProgress?.itemsNeededForNext || '0'} items needed</span>
-          </div>
-          <div style="background:var(--gray-200);height:6px;border-radius:99px;overflow:hidden;">
-            <div style="background:var(--orange);height:100%;width:${100 - (state.rewardProgress?.itemsNeededForNext / 10 * 100) || 0}%;border-radius:99px;"></div>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px;">
-            ${state.rewardProgress?.eligibleItems || 0} eligible items purchased
-          </div>
-        </div>
-        <div style="background:var(--surface);padding:16px;border-radius:8px;margin-bottom:16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-weight:700;">⭐ Subscription</div>
-              <div style="font-size:12px;color:var(--muted);">
-                ${state.subscription?.active ? `Active: ${state.subscription.tier}` : 'Not subscribed'}
-              </div>
-            </div>
-            <button class="btn btn-sm ${state.subscription?.active ? 'btn-outline' : 'btn-orange'}"
-                    onclick="closeModal();${state.subscription?.active ? 'showUnsubscribeModal()' : 'showSubscribeModal()'}">
-              ${state.subscription?.active ? 'Manage' : 'Subscribe'}
-            </button>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          ${state.rewardBalance >= 2 ? `
-            <button class="btn btn-orange btn-sm" onclick="closeModal();redeemRewards()">
-              Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
-            </button>
-          ` : `
-            <button class="btn btn-outline btn-sm" disabled style="opacity:0.5;">
-              Need R2 to redeem
-            </button>
-          `}
-          <button class="btn btn-outline btn-sm" onclick="closeModal();loadRewardProgress();">
-            🔄 Refresh
-          </button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:16px;">
-          💡 Every 10 items (R10+) = R2 reward
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById('modal-overlay').classList.add('open');
 }
 
 function showSubscribeModal() {
@@ -1153,65 +1042,7 @@ function updateCartUI() {
   });
   const drawer = document.getElementById('cart-drawer');
   if (drawer && drawer.classList.contains('open')) {
-    updateCartRewardProgress();
   }
-}
-
-function updateCartRewardProgress() {
-  const progressContainer = document.getElementById('reward-progress-container');
-  if (!progressContainer) return;
-
-  const eligibleItems = state.cart.filter(item => item.price >= 10);
-  const eligibleCount = eligibleItems.length;
-  const sets = Math.floor(eligibleCount / 10);
-  const remaining = eligibleCount % 10;
-  const progress = Math.round((remaining / 10) * 100);
-
-  let streakBonus = 0;
-  if (state.streak && state.streak.count >= 3) {
-    streakBonus = state.streak.bonusAmount || 5;
-  }
-
-  progressContainer.innerHTML = `
-    <div class="reward-progress-card">
-      <div class="reward-progress-header">
-        <div class="reward-progress-title">
-          <span>🎁 Rewards</span>
-          <span class="reward-balance">R${state.rewardBalance.toFixed(2)}</span>
-        </div>
-        <div class="reward-tier-badge" id="tier-badge">
-          ${getTierIcon(state.tier)}
-        </div>
-      </div>
-
-      ${state.cart.length > 0 ? `
-        <div class="reward-progress-body">
-          <div class="reward-progress-info">
-            <span>${eligibleCount}/10 items for R2</span>
-            <span>${sets} rewards earned</span>
-          </div>
-          <div class="reward-progress-track">
-            <div class="reward-progress-fill" style="width: ${progress}%"></div>
-          </div>
-          <div class="reward-progress-helper">
-            ${remaining === 0 ? '✅ Ready for reward!' : `Add ${10 - remaining} more items for R2`}
-          </div>
-          ${streakBonus > 0 ? `<div class="reward-streak-bonus">🔥 ${state.streak.count} week streak! +R${streakBonus.toFixed(2)} bonus</div>` : ''}
-          ${state.subscription?.active ? `<div class="reward-subscription-badge">⭐ ${state.subscription.tier} subscriber</div>` : ''}
-        </div>
-      ` : `
-        <div class="reward-progress-empty">
-          Add items to your cart to earn rewards!
-        </div>
-      `}
-
-      ${state.rewardBalance >= 2 ? `
-        <button class="btn btn-sm btn-orange" onclick="redeemRewards()" style="margin-top:8px;width:100%;">
-          Redeem R${Math.min(state.rewardBalance, state.rewardBalance).toFixed(2)}
-        </button>
-      ` : ''}
-    </div>
-  `;
 }
 
 // ============================================================
@@ -1333,7 +1164,6 @@ function openCart() {
     container.id = 'reward-progress-container';
     container.style.marginBottom = '12px';
     footer.parentNode.insertBefore(container, footer);
-    updateCartRewardProgress();
   }
 }
 
@@ -1578,13 +1408,12 @@ async function uploadProfilePicture() {
 }
 
 // ============================================================
-//  PROFILE PAGE
+//  PROFILE PAGE - FIXED
 // ============================================================
 
 function renderProfilePage() {
   const s = document.getElementById('profile-section');
   if (!s) {
-    // Create profile section if it doesn't exist
     const container = document.createElement('section');
     container.id = 'profile-section';
     container.className = 'profile-section';
@@ -1622,7 +1451,7 @@ function renderProfilePage() {
           </div>
           <div>
             <input type="file" id="profile-pic-input" accept="image/jpeg,image/png,image/webp" style="margin-bottom:8px;">
-            <button class="btn btn-primary btn-sm" onclick="uploadProfilePicture()">📷 Upload Picture</button>
+            <button class="btn btn-primary btn-sm" id="upload-pic-btn">📷 Upload Picture</button>
             <p style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, WebP • Max 5MB</p>
           </div>
         </div>
@@ -1633,8 +1462,13 @@ function renderProfilePage() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div><strong>Name:</strong> ${state.user.name}</div>
           <div><strong>Email:</strong> ${state.user.email}</div>
+          <div><strong>WhatsApp:</strong> ${state.user.whatsapp || 'Not set'}</div>
+          <div><strong>Address:</strong> ${state.user.address || 'Not set'}</div>
           <div><strong>Member Since:</strong> ${new Date(state.user.createdAt).toLocaleDateString()}</div>
-          <div><strong>Reward Balance:</strong> <span style="color:var(--orange);font-weight:700;">R${state.rewardBalance.toFixed(2)}</span></div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-outline btn-sm" onclick="editWhatsApp()">✏️ Update WhatsApp</button>
+          <button class="btn btn-outline btn-sm" onclick="editAddress()">✏️ Update Address</button>
         </div>
       </div>
 
@@ -1673,13 +1507,94 @@ function renderProfilePage() {
               Discount valid until 30 September 2026.
             </p>
             <input type="file" id="student-proof-input" accept="application/pdf,image/jpeg,image/png,image/webp">
-            <button class="btn btn-orange btn-sm" onclick="uploadStudentProof()" style="margin-top:8px;">📤 Upload Proof</button>
+            <button class="btn btn-orange btn-sm" id="upload-proof-btn" style="margin-top:8px;">📤 Upload Proof</button>
             <p style="font-size:11px;color:var(--muted);margin-top:4px;">PDF, JPG, PNG, WebP • Max 5MB</p>
           </div>
         `}
       </div>
     </div>
   `;
+
+  // Add event listeners AFTER rendering
+  const uploadPicBtn = document.getElementById('upload-pic-btn');
+  if (uploadPicBtn) {
+    uploadPicBtn.addEventListener('click', function() {
+      const fileInput = document.getElementById('profile-pic-input');
+      if (fileInput) {
+        fileInput.click();
+      }
+    });
+    // Also handle file selection
+    const fileInput = document.getElementById('profile-pic-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+          uploadProfilePicture();
+        }
+      });
+    }
+  }
+
+  const uploadProofBtn = document.getElementById('upload-proof-btn');
+  if (uploadProofBtn) {
+    uploadProofBtn.addEventListener('click', function() {
+      const fileInput = document.getElementById('student-proof-input');
+      if (fileInput) {
+        fileInput.click();
+      }
+    });
+    const proofInput = document.getElementById('student-proof-input');
+    if (proofInput) {
+      proofInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+          uploadStudentProof();
+        }
+      });
+    }
+  }
+}
+
+// ============================================================
+//  EDIT WHATSAPP & ADDRESS
+// ============================================================
+
+function editWhatsApp() {
+  const current = state.user?.whatsapp || '';
+  const newNumber = prompt('Enter your WhatsApp number:', current);
+  if (newNumber && newNumber !== current) {
+    updateUserField('whatsapp', newNumber);
+  }
+}
+
+function editAddress() {
+  const current = state.user?.address || '';
+  const newAddress = prompt('Enter your delivery address:', current);
+  if (newAddress && newAddress !== current) {
+    updateUserField('address', newAddress);
+  }
+}
+
+async function updateUserField(field, value) {
+  if (!state.user) return;
+  try {
+    const response = await fetch(`/api/user/${state.user._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      state.user = data;
+      localStorage.setItem('habibi_user', JSON.stringify(data));
+      toast(`✅ ${field} updated!`);
+      renderProfilePage();
+      updateAuthUI();
+    } else {
+      toast('❌ ' + data.error);
+    }
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
 }
 
 // ============================================================
@@ -1784,7 +1699,7 @@ function renderCheckout() {
               
               <div class="form-group" style="position:relative;">
                 <label>Search & Select Your Building/Residence</label>
-                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." value="${defaultAddress?.street || ''}" oninput="searchCheckoutBuildings(this.value)">
+                <input type="text" class="form-input" id="building-search" placeholder="Type to search buildings..." value="${defaultAddress?.street || ''}" oninput="searchBuildings(this.value)">
                 <div id="building-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
               </div>
               
@@ -2289,7 +2204,6 @@ function loginForm() {
   return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
 }
 
-// In app.js - Updated registerForm function
 function registerForm() {
   return `
     <form onsubmit="event.preventDefault();submitRegister();">
@@ -2329,7 +2243,6 @@ function registerForm() {
   `;
 }
 
-// Register address search
 function searchRegisterAddress(query) {
   const resultsContainer = document.getElementById('auth-address-results');
   const addressField = document.getElementById('auth-address');
@@ -2465,444 +2378,285 @@ async function submitLogin() {
   } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
 
-async function submitRegister() {
-  const n = document.getElementById('auth-name')?.value?.trim();
-  const e = document.getElementById('auth-email')?.value?.trim();
-  const w = document.getElementById('auth-whatsapp')?.value?.trim();
-  const a = document.getElementById('auth-address')?.value?.trim();
-  const p = document.getElementById('auth-password')?.value;
-  const cp = document.getElementById('auth-password-confirm')?.value;
-  const err = document.getElementById('auth-error');
-  const btn = document.getElementById('auth-submit-btn');
-  
-  err.style.display = 'none';
-  if (!n || !e || !w || !a || !p || !cp) {
-    err.textContent = 'All fields required';
-    err.style.display = 'block';
-    return;
-  }
-  if (p !== cp) {
-    err.textContent = 'Passwords mismatch';
-    err.style.display = 'block';
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = 'Creating…';
-  
+// ============================================================
+//  ORDERS
+// ============================================================
+
+async function renderOrdersPage() {
+  const s = document.getElementById('orders-section');
+  if (!s) return;
+  if (!state.user) { s.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>'; return; }
+  s.innerHTML = '<div class="container"><div style="text-align:center;padding:60px;">Loading…</div></div>';
   try {
-    const u = await registerUser(n, e, p, w, a);
+    const orders = await fetchOrders();
+    const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
+    s.innerHTML = `
+      <div class="container">
+        <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">My Orders</h1>
+        ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
+          <div style="overflow-x:auto;">
+            <table class="orders-table">
+              <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${myOrders.reverse().map(o => {
+                  const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
+                  const showInvoice = o.status === 'paid' || o.status === 'completed';
+                  const paymentLabel = '💳 Instant EFT';
+                  return `<tr>
+                    <td style="font-weight:700;font-size:12px;">${o.id}</td>
+                    <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+                    <td>${o.items?.length||0}</td>
+                    <td><strong>R${o.total?.toFixed(2)}</strong></td>
+                    <td><span class="badge badge-info">${paymentLabel}</span></td>
+                    <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
+                    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
+                      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
+                    </div></td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`}
+      </div>`;
+  } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
+}
+
+async function cancelOrder(orderId) {
+  if (!confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${API}/orders/${orderId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); toast('❌ ' + err.error); return; }
+    toast('🗑 Order cancelled');
+    renderOrdersPage();
+  } catch { toast('❌ Failed to cancel order'); }
+}
+
+function viewInvoice(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header"><h3>📄 Invoice</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <img src="habibiLogo.png" style="width:50px;"><div style="font-weight:700;">Quick 2 Shop</div>
+        <table>${i}</table>
+        <p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p>
+        <p>${order.customer?.name||'Customer'}</p>
+        <p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p>
+        <p>${order.id}</p>
+        <button class="btn btn-primary btn-sm" onclick="downloadPDF(${JSON.stringify(order).replace(/"/g,'&quot;')})">📥 Download PDF</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+async function downloadPDF(order) {
+  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
+  const d = new Date(order.createdAt);
+  const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Inter}.invoice{max-width:380px;margin:0 auto;padding:24px}.logo img{width:60px}.store-name{font-size:18px;font-weight:700}table{width:100%}</style></head><body><div class="invoice"><div class="logo"><img src="habibiLogo.png"><div class="store-name">Quick 2 Shop</div></div><table>${i}</table><p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p><p>${order.customer?.name||'Customer'}</p><p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p><p>${order.id}</p></div></body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(h);
+  w.document.close();
+  setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
+}
+
+// ============================================================
+//  AUTH FUNCTIONS
+// ============================================================
+
+function openAuthModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Welcome 🛒</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchAuthTab('login',this)">Sign In</button>
+          <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
+        </div>
+        <div id="auth-form-wrap">${loginForm()}</div>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function loginForm() {
+  return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
+}
+
+function registerForm() {
+  return `
+    <form onsubmit="event.preventDefault();submitRegister();">
+      <div id="auth-error" class="form-error" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input class="form-input" id="auth-name" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input class="form-input" id="auth-email" type="email" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp Number *</label>
+        <input class="form-input" id="auth-whatsapp" type="tel" placeholder="072 405 2868" required>
+        <small style="color:var(--muted);">We'll use this for delivery updates</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Delivery Address *</label>
+        <div style="position:relative;">
+          <input type="text" class="form-input" id="auth-address-search" placeholder="Search for your building or street..." oninput="searchRegisterAddress(this.value)">
+          <div id="auth-address-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
+        </div>
+        <textarea class="form-input" id="auth-address" rows="2" placeholder="Your full delivery address" style="margin-top:8px;"></textarea>
+        <small style="color:var(--muted);">Select from the dropdown or type manually</small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input class="form-input" id="auth-password" type="password" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <input class="form-input" id="auth-password-confirm" type="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button>
+    </form>
+  `;
+}
+
+function searchRegisterAddress(query) {
+  const resultsContainer = document.getElementById('auth-address-results');
+  const addressField = document.getElementById('auth-address');
+  
+  if (!resultsContainer) return;
+
+  if (!query || query.length < 2) {
+    resultsContainer.style.display = 'none';
+    return;
+  }
+
+  fetch(`/api/buildings?search=${encodeURIComponent(query)}`)
+    .then(r => r.json())
+    .then(buildings => {
+      if (buildings.length === 0) {
+        resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Type address manually.</div>';
+        resultsContainer.style.display = 'block';
+        return;
+      }
+
+      resultsContainer.innerHTML = buildings.map(b => `
+        <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
+             onclick="selectRegisterAddress('${b.name}', '${b.address || b.name}')">
+          <strong>${b.name}</strong>
+          <span style="font-size:11px;color:var(--muted);">${b.address || ''}</span>
+        </div>
+      `).join('');
+      resultsContainer.style.display = 'block';
+    })
+    .catch(() => {
+      resultsContainer.style.display = 'none';
+    });
+}
+
+function selectRegisterAddress(name, address) {
+  document.getElementById('auth-address-search').value = name;
+  document.getElementById('auth-address').value = address;
+  document.getElementById('auth-address-results').style.display = 'none';
+}
+
+function switchAuthTab(t, el) {
+  document.querySelectorAll('.auth-tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('auth-form-wrap').innerHTML = t === 'login' ? loginForm() : registerForm();
+}
+
+function showForgotPasswordForm() {
+  document.getElementById('auth-form-wrap').innerHTML = `
+    <form onsubmit="event.preventDefault();requestOTP();">
+      <div id="auth-error" class="form-error" style="display:none;"></div>
+      <div id="auth-success" class="form-error" style="display:none;color:green;"></div>
+      <p>Enter your email for an OTP.</p>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reset-email" type="email" required></div>
+      <div id="otp-fields" style="display:none;">
+        <div class="form-group"><label class="form-label">OTP</label><input class="form-input" id="reset-otp" maxlength="6"></div>
+        <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="reset-new-password" type="password"></div>
+        <div class="form-group"><label class="form-label">Confirm</label><input class="form-input" id="reset-confirm-password" type="password"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="reset-submit-btn">Send OTP</button>
+    </form>
+    <p style="text-align:center;margin-top:14px;"><a href="#" onclick="switchAuthTab('login',document.querySelector('.auth-tab:first-child'))">← Back</a></p>
+  `;
+}
+
+let resetEmail = '';
+
+async function requestOTP() {
+  const e = document.getElementById('reset-email').value.trim(), err = document.getElementById('auth-error'), ok = document.getElementById('auth-success'), btn = document.getElementById('reset-submit-btn');
+  err.style.display = 'none';
+  ok.style.display = 'none';
+  if (!e) { err.textContent = 'Enter email'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${API}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: e })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    resetEmail = e;
+    document.getElementById('otp-fields').style.display = 'block';
+    btn.textContent = 'Reset Password';
+    btn.setAttribute('onclick', 'event.preventDefault();verifyOTPAndReset()');
+    ok.textContent = 'OTP sent!';
+    ok.style.display = 'block';
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; }
+}
+
+async function verifyOTPAndReset() {
+  const o = document.getElementById('reset-otp').value.trim(),
+    np = document.getElementById('reset-new-password').value,
+    cp = document.getElementById('reset-confirm-password').value,
+    err = document.getElementById('auth-error'),
+    ok = document.getElementById('auth-success'),
+    btn = document.getElementById('reset-submit-btn');
+  if (!o || !np || !cp) { err.textContent = 'All fields required'; err.style.display = 'block'; return; }
+  if (np !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch(`${API}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail, otp: o, newPassword: np })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    ok.textContent = 'Password reset!';
+    ok.style.display = 'block';
+    setTimeout(() => switchAuthTab('login', document.querySelector('.auth-tab:first-child')), 2000);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
+}
+
+async function submitLogin() {
+  const e = document.getElementById('auth-email').value.trim(),
+    p = document.getElementById('auth-password').value,
+    err = document.getElementById('auth-error'),
+    btn = document.getElementById('auth-submit-btn');
+  err.style.display = 'none';
+  if (!e || !p) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  try {
+    const u = await loginUser(e, p);
     state.user = u;
     localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
     await loadUserRewards();
-    toast(`🎉 Welcome, ${u.name}!`);
-  } catch (x) {
-    err.textContent = x.message;
-    err.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Create Account';
-  }
+    toast(`👋 Welcome, ${u.name}!`);
+  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
 
-function logout() {
-  state.user = null;
-  state.points = 0;
-  state.rewardBalance = 0;
-  localStorage.removeItem('habibi_user');
-  updateAuthUI();
-  toast('👋 Signed out');
-  navigateTo('home');
-}
-
-function updatePointsDisplay() {
-  const btn = document.getElementById('points-btn');
-  if (btn && state.user) {
-    btn.style.display = 'inline-flex';
-    btn.innerHTML = `🎁 ${state.points} Pts`;
-  }
-}
-
-function updateAuthUI() {
-  const btn = document.getElementById('auth-btn'), userDisplay = document.getElementById('user-display');
-  if (state.user) {
-    if (btn) btn.style.display = 'none';
-    if (userDisplay) {
-      const isStudent = state.user.isStudent || false;
-      const studentVerified = state.user.studentVerified || false;
-      const studentBadge = isStudent && studentVerified ? 
-        '<span class="student-badge verified">🎓 Student</span>' : 
-        (state.user.studentProof ? '<span class="student-badge pending">⏳ Pending</span>' : '');
-      
-      userDisplay.style.display = 'flex';
-      userDisplay.innerHTML = `
-        <div class="user-info">
-          <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
-            🎁 R${state.rewardBalance.toFixed(2)}
-          </button>
-          ${studentBadge}
-          <div class="user-avatar" onclick="navigateTo('profile')" style="cursor:pointer;">
-            ${state.user.profilePicture ? 
-              `<img src="${state.user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
-              state.user.name[0].toUpperCase()
-            }
-          </div>
-          <span onclick="navigateTo('profile')" style="cursor:pointer;">${state.user.name.split(' ')[0]}</span>
-          <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
-        </div>
-      `;
-    }
-  } else {
-    if (btn) btn.style.display = 'flex';
-    if (userDisplay) userDisplay.style.display = 'none';
-  }
-}
-
-// ============================================================
-//  POINTS
-// ============================================================
-
-function showPointsModal() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
-      <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body" style="text-align:center;padding:24px;">
-        <div style="font-size:48px;">🎁</div>
-        <div style="font-size:32px;font-weight:800;color:var(--orange);">${state.points||0} Points</div>
-        <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
-        <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
-        <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
-        ${(state.points||0)>=10?`<button class="btn btn-orange btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function usePointsNow() { closeModal(); navigateTo('checkout'); setTimeout(() => { if (state.points >= 10) redeemAllPoints(); }, 500); }
-
-function redeemAllPoints() {
-  if (state.points < 10) { toast('Need at least 10 points'); return; }
-  fetch(`${API}/user/redeem-points`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: state.user.email, points: state.points })
-  }).then(r => r.json()).then(d => {
-    if (d.success) { state.discountAmount = state.points; state.points = 0; updatePointsDisplay(); renderCheckout(); toast(`✅ R${d.redeemed.toFixed(2)} off!`); }
-    else { toast('❌ ' + d.error); }
-  });
-}
-
-// ============================================================
-//  LOCATION
-// ============================================================
-
-async function shareLocation() {
-  if (!navigator.geolocation) {
-    toast('⚠️ Location sharing is not supported by your browser.');
-    return;
-  }
-
-  const b = document.getElementById('location-btn');
-  const addressElement = document.getElementById('co-address');
-  const streetElement = document.getElementById('co-street');
-  
-  if (b) {
-    b.disabled = true;
-    b.textContent = '📍 Getting precise location…';
-  }
-
-  const options = {
-    enableHighAccuracy: true,
-    timeout: 15000,
-    maximumAge: 0
-  };
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const accuracy = position.coords.accuracy;
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const coordsString = `${lat.toFixed(6)},${lng.toFixed(6)}`;
-
-      let accuracyLabel = '';
-      let accuracyEmoji = '';
-      if (accuracy < 20) {
-        accuracyLabel = 'Excellent (GPS)';
-        accuracyEmoji = '📡';
-      } else if (accuracy < 50) {
-        accuracyLabel = 'Very Good';
-        accuracyEmoji = '✅';
-      } else if (accuracy < 100) {
-        accuracyLabel = 'Good';
-        accuracyEmoji = '👍';
-      } else if (accuracy < 500) {
-        accuracyLabel = 'Fair (Wi-Fi/Cell)';
-        accuracyEmoji = '📶';
-      } else {
-        accuracyLabel = 'Low Accuracy';
-        accuracyEmoji = '⚠️';
-      }
-
-      toast(`${accuracyEmoji} Location found: ±${Math.round(accuracy)}m (${accuracyLabel})`);
-
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        const data = await response.json();
-        
-        const fullAddress = data.display_name || `📍 ${coordsString}`;
-        if (addressElement) {
-          addressElement.value = fullAddress;
-          addressElement.style.borderColor = '#E67E22';
-          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
-          setTimeout(() => {
-            addressElement.style.borderColor = '';
-            addressElement.style.boxShadow = '';
-          }, 3000);
-        }
-        if (streetElement) {
-          streetElement.value = fullAddress;
-        }
-        
-        const coordsElement = document.getElementById('co-coordinates');
-        if (coordsElement) {
-          coordsElement.value = coordsString;
-        }
-
-        toast('✏️ Please review and edit the address if needed');
-        
-        if (addressElement) {
-          setTimeout(() => {
-            addressElement.focus();
-            addressElement.select();
-          }, 500);
-        }
-
-      } catch (error) {
-        const fallback = `📍 ${coordsString}`;
-        if (addressElement) {
-          addressElement.value = fallback;
-          addressElement.style.borderColor = '#E67E22';
-          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
-          setTimeout(() => {
-            addressElement.style.borderColor = '';
-            addressElement.style.boxShadow = '';
-          }, 3000);
-        }
-        if (streetElement) {
-          streetElement.value = fallback;
-        }
-        const coordsElement = document.getElementById('co-coordinates');
-        if (coordsElement) {
-          coordsElement.value = coordsString;
-        }
-        toast('✏️ Please review and edit the address if needed');
-        if (addressElement) {
-          setTimeout(() => {
-            addressElement.focus();
-            addressElement.select();
-          }, 500);
-        }
-      }
-
-      if (b) {
-        b.disabled = false;
-        b.textContent = '📍 Share My Location';
-      }
-    },
-    (error) => {
-      console.error("Geolocation error:", error);
-      let errorMessage = '⚠️ Could not get your location. ';
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage += 'Permission was denied. Please enable location access.';
-          break;
-        case error.POSITION_UNAVAILABLE:
-          errorMessage += 'Location information is unavailable.';
-          break;
-        case error.TIMEOUT:
-          errorMessage += 'The request to get your location timed out.';
-          break;
-        default:
-          errorMessage += 'An unknown error occurred.';
-      }
-      toast(errorMessage);
-      if (b) {
-        b.disabled = false;
-        b.textContent = '📍 Share My Location';
-      }
-    },
-    options
-  );
-}
-
-// ============================================================
-//  ABOUT & TERMS
-// ============================================================
-
-function showAboutUs() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal">
-      <div class="modal-header"><h3>About Quick 2 Shop</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body">
-        <p><strong>Quick 2 Shop</strong> is your community store — fresh food, clothing, electronics & more delivered to your door.</p>
-        <p>📞 WhatsApp: <strong>072 405 2868</strong></p>
-        <p>📧 habibishoppingsa@gmail.com</p>
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function showTerms() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal">
-      <div class="modal-header"><h3>Terms & Conditions</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body">
-        <h4>1. Orders</h4><p>Subject to availability.</p>
-        <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
-        <h4>3. Payment</h4><p>Instant EFT only.</p>
-        <h4>4. Delivery</h4><p>Area-based fees in Braamfontein.</p>
-        <h4>5. Student Discount</h4><p>20% off delivery fee for verified students.</p>
-        <h4>6. Returns</h4><p>Within 24 hours.</p>
-        <h4>7. Privacy</h4><p>Never shared.</p>
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-// ============================================================
-//  ROUTING
-// ============================================================
-
-function navigateTo(p) {
-  state.currentPage = p;
-  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-  
-  // Handle profile page separately
-  if (p === 'profile') {
-    renderProfilePage();
-    // Hide other pages
-    document.querySelectorAll('.page').forEach(x => x.style.display = 'none');
-    const profileSection = document.getElementById('profile-section');
-    if (profileSection) profileSection.style.display = 'block';
-    return;
-  }
-  
-  // Show the target page
-  const t = document.getElementById(`page-${p}`);
-  if (t) {
-    t.classList.add('active');
-    t.style.display = '';
-  }
-  
-  // Hide profile section
-  const profileSection = document.getElementById('profile-section');
-  if (profileSection) profileSection.style.display = 'none';
-  
-  document.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.dataset.page === p));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  closeCart();
-  if (p === 'home') { loadProducts(); loadHeroSlideshow(); }
-  if (p === 'checkout') renderCheckout();
-  if (p === 'orders') renderOrdersPage();
-}
-
-// ============================================================
-//  MOBILE MENU
-// ============================================================
-
-function toggleMobileMenu() {
-  const links = document.querySelector('.nav-links');
-  const hamburger = document.getElementById('hamburger');
-  links.classList.toggle('mobile-open');
-  hamburger.classList.toggle('active');
-}
-
-function closeMobileMenu() {
-  const links = document.querySelector('.nav-links');
-  const hamburger = document.getElementById('hamburger');
-  links.classList.remove('mobile-open');
-  hamburger.classList.remove('active');
-}
-
-// ============================================================
-//  INIT
-// ============================================================
-
-async function init() {
-  updateCartUI();
-  updateAuthUI();
-
-  const u = localStorage.getItem('habibi_user');
-  if (u) {
-    try {
-      state.user = JSON.parse(u);
-      await loadUserRewards();
-    } catch {
-      localStorage.removeItem('habibi_user');
-    }
-  }
-
-  await renderCategories();
-  await loadProducts();
-  await loadHeroSlideshow();
-
-  window.addEventListener('scroll', () => {
-    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
-  });
-
-  const si = document.getElementById('search-input');
-  if (si) {
-    let d;
-    si.addEventListener('input', e => {
-      clearTimeout(d);
-      state.searchQuery = e.target.value;
-      d = setTimeout(() => loadProducts(), 350);
-    });
-  }
-
-  const ss = document.getElementById('sort-select');
-  if (ss) {
-    ss.addEventListener('change', e => {
-      state.sortBy = e.target.value;
-      renderProducts(state.products);
-    });
-  }
-
-  document.getElementById('modal-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('modal-overlay')) closeModal();
-  });
-  document.getElementById('cart-overlay').addEventListener('click', closeCart);
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeCart(); closeMobileMenu(); }
-  });
-  
-  const hamburger = document.getElementById('hamburger');
-  if (hamburger) {
-    hamburger.addEventListener('click', toggleMobileMenu);
-  }
-  
-  document.querySelectorAll('.nav-links a').forEach(link => {
-    link.addEventListener('click', closeMobileMenu);
-  });
-
-  // Add profile page to nav
-  const navLinks = document.querySelector('.nav-links');
-  if (navLinks && !document.querySelector('.nav-links a[data-page="profile"]')) {
-    const profileLink = document.createElement('a');
-    profileLink.href = '#';
-    profileLink.dataset.page = 'profile';
-    profileLink.textContent = 'Profile';
-    profileLink.onclick = function(e) {
-      e.preventDefault();
-      navigateTo('profile');
-    };
-    navLinks.appendChild(profileLink);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', init);
