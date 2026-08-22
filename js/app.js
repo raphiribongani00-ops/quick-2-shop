@@ -564,7 +564,7 @@ function starsHTML(rating) {
 }
 
 // ============================================================
-//  PRODUCTS & CATEGORIES
+//  PRODUCTS & CATEGORIES - FIXED
 // ============================================================
 
 async function loadProducts() {
@@ -601,7 +601,9 @@ async function loadProducts() {
     console.log('📦 Products loaded:', p.length, 'for category:', state.currentCategory);
     state.products = p;
     renderProducts(p);
-    renderCategories();
+    
+    // Call renderCategories AFTER products are loaded
+    await renderCategories();
     
   } catch (err) {
     console.error('❌ Failed to load products:', err);
@@ -616,6 +618,7 @@ async function loadProducts() {
       `;
     }
     state.products = [];
+    renderCategories();
   }
 }
 
@@ -744,22 +747,36 @@ async function renderCategories() {
     const g = document.getElementById('categories-grid');
     if (!g) return;
 
+    // If no products are loaded yet, try to load them first
+    if (state.products.length === 0) {
+      await loadProducts();
+      return;
+    }
+
     const activeCategories = cats.filter(c => {
       return state.products.some(p => p.category === c.id);
     });
 
     console.log('🏷️ Active categories (with products):', activeCategories.length);
 
+    // If no active categories, show "All" and a message
+    let html = '';
+    
     if (activeCategories.length === 0) {
-      g.innerHTML = `
-        <div class="cat-card" style="grid-column:1/-1;cursor:default;border-color:var(--gray-200);">
-          No categories with products yet. Add some products in the admin panel.
+      html = `
+        <div class="cat-card active" data-cat="all" onclick="filterCategory('all',this)">
+          <span class="cat-icon">📋</span>
+          All
+        </div>
+        <div class="cat-card" style="grid-column:1/-1;cursor:default;border-color:var(--gray-200);color:var(--muted);">
+          No products found. Add some in the admin panel.
         </div>
       `;
+      g.innerHTML = html;
       return;
     }
 
-    let html = `
+    html = `
       <div class="cat-card active" data-cat="all" onclick="filterCategory('all',this)">
         <span class="cat-icon">📋</span>
         All
@@ -2378,285 +2395,585 @@ async function submitLogin() {
   } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
 
-// ============================================================
-//  ORDERS
-// ============================================================
-
-async function renderOrdersPage() {
-  const s = document.getElementById('orders-section');
-  if (!s) return;
-  if (!state.user) { s.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>'; return; }
-  s.innerHTML = '<div class="container"><div style="text-align:center;padding:60px;">Loading…</div></div>';
-  try {
-    const orders = await fetchOrders();
-    const myOrders = orders.filter(x => x.userId === state.user.id || x.userId === state.user._id || x.customer?.email === state.user?.email);
-    s.innerHTML = `
-      <div class="container">
-        <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">My Orders</h1>
-        ${myOrders.length === 0 ? '<div style="text-align:center;padding:80px;">📦 No orders</div>' : `
-          <div style="overflow-x:auto;">
-            <table class="orders-table">
-              <thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                ${myOrders.reverse().map(o => {
-                  const canCancel = o.status === 'pending' || o.status === 'paid' || o.status === 'pending_payment';
-                  const showInvoice = o.status === 'paid' || o.status === 'completed';
-                  const paymentLabel = '💳 Instant EFT';
-                  return `<tr>
-                    <td style="font-weight:700;font-size:12px;">${o.id}</td>
-                    <td>${new Date(o.createdAt).toLocaleDateString()}</td>
-                    <td>${o.items?.length||0}</td>
-                    <td><strong>R${o.total?.toFixed(2)}</strong></td>
-                    <td><span class="badge badge-info">${paymentLabel}</span></td>
-                    <td><span class="badge ${o.status==='pending'?'badge-warn':o.status==='pending_payment'?'badge-warn':o.status==='paid'?'badge-info':o.status==='completed'?'badge-success':'badge-danger'}">${o.status === 'pending_payment' ? '⏳ Pending Pay' : o.status}</span></td>
-                    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      ${showInvoice ? `<button class="btn btn-outline btn-sm" onclick="viewInvoice(${JSON.stringify(o).replace(/"/g,'&quot;')})">📄</button><button class="btn btn-outline btn-sm" onclick="downloadPDF(${JSON.stringify(o).replace(/"/g,'&quot;')})">📥</button>` : '<span style="font-size:11px;color:var(--muted);">Invoice after payment</span>'}
-                      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancel</button>` : ''}
-                    </div></td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>`}
-      </div>`;
-  } catch { s.innerHTML = '<div class="container"><p>Could not load orders.</p></div>'; }
-}
-
-async function cancelOrder(orderId) {
-  if (!confirm('Are you sure you want to cancel this order? This cannot be undone.')) return;
-  try {
-    const res = await fetch(`${API}/orders/${orderId}`, { method: 'DELETE' });
-    if (!res.ok) { const err = await res.json(); toast('❌ ' + err.error); return; }
-    toast('🗑 Order cancelled');
-    renderOrdersPage();
-  } catch { toast('❌ Failed to cancel order'); }
-}
-
-function viewInvoice(order) {
-  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
-  const d = new Date(order.createdAt);
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal" style="max-width:440px;">
-      <div class="modal-header"><h3>📄 Invoice</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body">
-        <img src="habibiLogo.png" style="width:50px;"><div style="font-weight:700;">Quick 2 Shop</div>
-        <table>${i}</table>
-        <p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p>
-        <p>${order.customer?.name||'Customer'}</p>
-        <p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p>
-        <p>${order.id}</p>
-        <button class="btn btn-primary btn-sm" onclick="downloadPDF(${JSON.stringify(order).replace(/"/g,'&quot;')})">📥 Download PDF</button>
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-async function downloadPDF(order) {
-  const i = (order.items||[]).map(x => `<tr><td>${x.name}</td><td>R${x.price.toFixed(2)}</td></tr>`).join('');
-  const d = new Date(order.createdAt);
-  const h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Inter}.invoice{max-width:380px;margin:0 auto;padding:24px}.logo img{width:60px}.store-name{font-size:18px;font-weight:700}table{width:100%}</style></head><body><div class="invoice"><div class="logo"><img src="habibiLogo.png"><div class="store-name">Quick 2 Shop</div></div><table>${i}</table><p><strong>Total: R${(order.total||0).toFixed(2)}</strong></p><p>${order.customer?.name||'Customer'}</p><p>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</p><p>${order.id}</p></div></body></html>`;
-  const w = window.open('', '_blank');
-  w.document.write(h);
-  w.document.close();
-  setTimeout(() => { w.print(); toast('📄 Save as PDF') }, 500);
-}
-
-// ============================================================
-//  AUTH FUNCTIONS
-// ============================================================
-
-function openAuthModal() {
-  document.getElementById('modal-overlay').innerHTML = `
-    <div class="modal">
-      <div class="modal-header"><h3>Welcome 🛒</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="modal-body">
-        <div class="auth-tabs">
-          <button class="auth-tab active" onclick="switchAuthTab('login',this)">Sign In</button>
-          <button class="auth-tab" onclick="switchAuthTab('register',this)">Register</button>
-        </div>
-        <div id="auth-form-wrap">${loginForm()}</div>
-      </div>
-    </div>`;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function loginForm() {
-  return `<form onsubmit="event.preventDefault();submitLogin();"><div id="auth-error" class="form-error" style="display:none;"></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="auth-email" type="email" required></div><div class="form-group"><label class="form-label">Password</label><input class="form-input" id="auth-password" type="password" required></div><button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Sign In</button><p style="text-align:right;margin-top:8px;"><a href="#" onclick="showForgotPasswordForm()" style="font-size:12px;">Forgot Password?</a></p></form>`;
-}
-
-function registerForm() {
-  return `
-    <form onsubmit="event.preventDefault();submitRegister();">
-      <div id="auth-error" class="form-error" style="display:none;"></div>
-      <div class="form-group">
-        <label class="form-label">Full Name *</label>
-        <input class="form-input" id="auth-name" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email *</label>
-        <input class="form-input" id="auth-email" type="email" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">WhatsApp Number *</label>
-        <input class="form-input" id="auth-whatsapp" type="tel" placeholder="072 405 2868" required>
-        <small style="color:var(--muted);">We'll use this for delivery updates</small>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Delivery Address *</label>
-        <div style="position:relative;">
-          <input type="text" class="form-input" id="auth-address-search" placeholder="Search for your building or street..." oninput="searchRegisterAddress(this.value)">
-          <div id="auth-address-results" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);display:none;margin-top:4px;background:var(--white);position:absolute;z-index:100;width:100%;"></div>
-        </div>
-        <textarea class="form-input" id="auth-address" rows="2" placeholder="Your full delivery address" style="margin-top:8px;"></textarea>
-        <small style="color:var(--muted);">Select from the dropdown or type manually</small>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password *</label>
-        <input class="form-input" id="auth-password" type="password" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Confirm Password *</label>
-        <input class="form-input" id="auth-password-confirm" type="password" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-full" id="auth-submit-btn">Create Account</button>
-    </form>
-  `;
-}
-
-function searchRegisterAddress(query) {
-  const resultsContainer = document.getElementById('auth-address-results');
-  const addressField = document.getElementById('auth-address');
+async function submitRegister() {
+  const n = document.getElementById('auth-name')?.value?.trim();
+  const e = document.getElementById('auth-email')?.value?.trim();
+  const w = document.getElementById('auth-whatsapp')?.value?.trim();
+  const a = document.getElementById('auth-address')?.value?.trim();
+  const p = document.getElementById('auth-password')?.value;
+  const cp = document.getElementById('auth-password-confirm')?.value;
+  const err = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-submit-btn');
   
-  if (!resultsContainer) return;
-
-  if (!query || query.length < 2) {
-    resultsContainer.style.display = 'none';
+  err.style.display = 'none';
+  if (!n || !e || !w || !a || !p || !cp) {
+    err.textContent = 'All fields required';
+    err.style.display = 'block';
     return;
   }
-
-  fetch(`/api/buildings?search=${encodeURIComponent(query)}`)
-    .then(r => r.json())
-    .then(buildings => {
-      if (buildings.length === 0) {
-        resultsContainer.innerHTML = '<div style="padding:8px;color:var(--muted);">No buildings found. Type address manually.</div>';
-        resultsContainer.style.display = 'block';
-        return;
-      }
-
-      resultsContainer.innerHTML = buildings.map(b => `
-        <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--orange-light);"
-             onclick="selectRegisterAddress('${b.name}', '${b.address || b.name}')">
-          <strong>${b.name}</strong>
-          <span style="font-size:11px;color:var(--muted);">${b.address || ''}</span>
-        </div>
-      `).join('');
-      resultsContainer.style.display = 'block';
-    })
-    .catch(() => {
-      resultsContainer.style.display = 'none';
-    });
-}
-
-function selectRegisterAddress(name, address) {
-  document.getElementById('auth-address-search').value = name;
-  document.getElementById('auth-address').value = address;
-  document.getElementById('auth-address-results').style.display = 'none';
-}
-
-function switchAuthTab(t, el) {
-  document.querySelectorAll('.auth-tab').forEach(x => x.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('auth-form-wrap').innerHTML = t === 'login' ? loginForm() : registerForm();
-}
-
-function showForgotPasswordForm() {
-  document.getElementById('auth-form-wrap').innerHTML = `
-    <form onsubmit="event.preventDefault();requestOTP();">
-      <div id="auth-error" class="form-error" style="display:none;"></div>
-      <div id="auth-success" class="form-error" style="display:none;color:green;"></div>
-      <p>Enter your email for an OTP.</p>
-      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reset-email" type="email" required></div>
-      <div id="otp-fields" style="display:none;">
-        <div class="form-group"><label class="form-label">OTP</label><input class="form-input" id="reset-otp" maxlength="6"></div>
-        <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="reset-new-password" type="password"></div>
-        <div class="form-group"><label class="form-label">Confirm</label><input class="form-input" id="reset-confirm-password" type="password"></div>
-      </div>
-      <button type="submit" class="btn btn-primary btn-full" id="reset-submit-btn">Send OTP</button>
-    </form>
-    <p style="text-align:center;margin-top:14px;"><a href="#" onclick="switchAuthTab('login',document.querySelector('.auth-tab:first-child'))">← Back</a></p>
-  `;
-}
-
-let resetEmail = '';
-
-async function requestOTP() {
-  const e = document.getElementById('reset-email').value.trim(), err = document.getElementById('auth-error'), ok = document.getElementById('auth-success'), btn = document.getElementById('reset-submit-btn');
-  err.style.display = 'none';
-  ok.style.display = 'none';
-  if (!e) { err.textContent = 'Enter email'; err.style.display = 'block'; return; }
+  if (p !== cp) {
+    err.textContent = 'Passwords mismatch';
+    err.style.display = 'block';
+    return;
+  }
+  
   btn.disabled = true;
-  btn.textContent = 'Sending…';
+  btn.textContent = 'Creating…';
+  
   try {
-    const r = await fetch(`${API}/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: e })
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
-    resetEmail = e;
-    document.getElementById('otp-fields').style.display = 'block';
-    btn.textContent = 'Reset Password';
-    btn.setAttribute('onclick', 'event.preventDefault();verifyOTPAndReset()');
-    ok.textContent = 'OTP sent!';
-    ok.style.display = 'block';
-  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; }
-}
-
-async function verifyOTPAndReset() {
-  const o = document.getElementById('reset-otp').value.trim(),
-    np = document.getElementById('reset-new-password').value,
-    cp = document.getElementById('reset-confirm-password').value,
-    err = document.getElementById('auth-error'),
-    ok = document.getElementById('auth-success'),
-    btn = document.getElementById('reset-submit-btn');
-  if (!o || !np || !cp) { err.textContent = 'All fields required'; err.style.display = 'block'; return; }
-  if (np !== cp) { err.textContent = 'Passwords mismatch'; err.style.display = 'block'; return; }
-  btn.disabled = true;
-  btn.textContent = 'Resetting…';
-  try {
-    const r = await fetch(`${API}/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: resetEmail, otp: o, newPassword: np })
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
-    ok.textContent = 'Password reset!';
-    ok.style.display = 'block';
-    setTimeout(() => switchAuthTab('login', document.querySelector('.auth-tab:first-child')), 2000);
-  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
-}
-
-async function submitLogin() {
-  const e = document.getElementById('auth-email').value.trim(),
-    p = document.getElementById('auth-password').value,
-    err = document.getElementById('auth-error'),
-    btn = document.getElementById('auth-submit-btn');
-  err.style.display = 'none';
-  if (!e || !p) { err.textContent = 'Fill all fields'; err.style.display = 'block'; return; }
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
-  try {
-    const u = await loginUser(e, p);
+    const u = await registerUser(n, e, p, w, a);
     state.user = u;
     localStorage.setItem('habibi_user', JSON.stringify(u));
     updateAuthUI();
     closeModal();
     await loadUserRewards();
-    toast(`👋 Welcome, ${u.name}!`);
-  } catch (x) { err.textContent = x.message; err.style.display = 'block'; } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+    toast(`🎉 Welcome, ${u.name}!`);
+  } catch (x) {
+    err.textContent = x.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
 }
 
+function logout() {
+  state.user = null;
+  state.points = 0;
+  state.rewardBalance = 0;
+  localStorage.removeItem('habibi_user');
+  updateAuthUI();
+  toast('👋 Signed out');
+  navigateTo('home');
+}
+
+function updatePointsDisplay() {
+  const btn = document.getElementById('points-btn');
+  if (btn && state.user) {
+    btn.style.display = 'inline-flex';
+    btn.innerHTML = `🎁 ${state.points} Pts`;
+  }
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('auth-btn'), userDisplay = document.getElementById('user-display');
+  if (state.user) {
+    if (btn) btn.style.display = 'none';
+    if (userDisplay) {
+      const isStudent = state.user.isStudent || false;
+      const studentVerified = state.user.studentVerified || false;
+      const studentBadge = isStudent && studentVerified ? 
+        '<span class="student-badge verified">🎓 Student</span>' : 
+        (state.user.studentProof ? '<span class="student-badge pending">⏳ Pending</span>' : '');
+      
+      userDisplay.style.display = 'flex';
+      userDisplay.innerHTML = `
+        <div class="user-info">
+          <button id="rewards-btn" class="btn btn-sm btn-outline" onclick="showRewardsModal()" style="margin-right:8px;">
+            🎁 R${state.rewardBalance.toFixed(2)}
+          </button>
+          ${studentBadge}
+          <div class="user-avatar" onclick="navigateTo('profile')" style="cursor:pointer;">
+            ${state.user.profilePicture ? 
+              `<img src="${state.user.profilePicture}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` :
+              state.user.name[0].toUpperCase()
+            }
+          </div>
+          <span onclick="navigateTo('profile')" style="cursor:pointer;">${state.user.name.split(' ')[0]}</span>
+          <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
+        </div>
+      `;
+    }
+  } else {
+    if (btn) btn.style.display = 'flex';
+    if (userDisplay) userDisplay.style.display = 'none';
+  }
+}
+
+// ============================================================
+//  POINTS
+// ============================================================
+
+function showPointsModal() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
+      <div class="modal-header"><h3>🎁 My Points</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body" style="text-align:center;padding:24px;">
+        <div style="font-size:48px;">🎁</div>
+        <div style="font-size:32px;font-weight:800;color:var(--orange);">${state.points||0} Points</div>
+        <p style="color:var(--muted);">= R${(state.points||0).toFixed(2)} discount</p>
+        <p style="font-size:13px;color:var(--muted);">Earn <strong>R0.50</strong> for every <strong>R10</strong> spent.</p>
+        <p style="font-size:12px;color:var(--muted);">Points are awarded when your order is marked as paid.</p>
+        ${(state.points||0)>=10?`<button class="btn btn-orange btn-full" style="margin-top:16px;" onclick="usePointsNow()">Use R${state.points} Off Now</button>`:'<p style="font-size:12px;color:var(--muted);">Earn 10+ points to redeem</p>'}
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function usePointsNow() { closeModal(); navigateTo('checkout'); setTimeout(() => { if (state.points >= 10) redeemAllPoints(); }, 500); }
+
+function redeemAllPoints() {
+  if (state.points < 10) { toast('Need at least 10 points'); return; }
+  fetch(`${API}/user/redeem-points`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: state.user.email, points: state.points })
+  }).then(r => r.json()).then(d => {
+    if (d.success) { state.discountAmount = state.points; state.points = 0; updatePointsDisplay(); renderCheckout(); toast(`✅ R${d.redeemed.toFixed(2)} off!`); }
+    else { toast('❌ ' + d.error); }
+  });
+}
+
+// ============================================================
+//  LOCATION
+// ============================================================
+
+async function shareLocation() {
+  if (!navigator.geolocation) {
+    toast('⚠️ Location sharing is not supported by your browser.');
+    return;
+  }
+
+  const b = document.getElementById('location-btn');
+  const addressElement = document.getElementById('co-address');
+  const streetElement = document.getElementById('co-street');
+  
+  if (b) {
+    b.disabled = true;
+    b.textContent = '📍 Getting precise location…';
+  }
+
+  const options = {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 0
+  };
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const accuracy = position.coords.accuracy;
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const coordsString = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+      let accuracyLabel = '';
+      let accuracyEmoji = '';
+      if (accuracy < 20) {
+        accuracyLabel = 'Excellent (GPS)';
+        accuracyEmoji = '📡';
+      } else if (accuracy < 50) {
+        accuracyLabel = 'Very Good';
+        accuracyEmoji = '✅';
+      } else if (accuracy < 100) {
+        accuracyLabel = 'Good';
+        accuracyEmoji = '👍';
+      } else if (accuracy < 500) {
+        accuracyLabel = 'Fair (Wi-Fi/Cell)';
+        accuracyEmoji = '📶';
+      } else {
+        accuracyLabel = 'Low Accuracy';
+        accuracyEmoji = '⚠️';
+      }
+
+      toast(`${accuracyEmoji} Location found: ±${Math.round(accuracy)}m (${accuracyLabel})`);
+
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await response.json();
+        
+        const fullAddress = data.display_name || `📍 ${coordsString}`;
+        if (addressElement) {
+          addressElement.value = fullAddress;
+          addressElement.style.borderColor = '#E67E22';
+          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
+          setTimeout(() => {
+            addressElement.style.borderColor = '';
+            addressElement.style.boxShadow = '';
+          }, 3000);
+        }
+        if (streetElement) {
+          streetElement.value = fullAddress;
+        }
+        
+        const coordsElement = document.getElementById('co-coordinates');
+        if (coordsElement) {
+          coordsElement.value = coordsString;
+        }
+
+        toast('✏️ Please review and edit the address if needed');
+        
+        if (addressElement) {
+          setTimeout(() => {
+            addressElement.focus();
+            addressElement.select();
+          }, 500);
+        }
+
+      } catch (error) {
+        const fallback = `📍 ${coordsString}`;
+        if (addressElement) {
+          addressElement.value = fallback;
+          addressElement.style.borderColor = '#E67E22';
+          addressElement.style.boxShadow = '0 0 0 3px rgba(230, 126, 34, 0.2)';
+          setTimeout(() => {
+            addressElement.style.borderColor = '';
+            addressElement.style.boxShadow = '';
+          }, 3000);
+        }
+        if (streetElement) {
+          streetElement.value = fallback;
+        }
+        const coordsElement = document.getElementById('co-coordinates');
+        if (coordsElement) {
+          coordsElement.value = coordsString;
+        }
+        toast('✏️ Please review and edit the address if needed');
+        if (addressElement) {
+          setTimeout(() => {
+            addressElement.focus();
+            addressElement.select();
+          }, 500);
+        }
+      }
+
+      if (b) {
+        b.disabled = false;
+        b.textContent = '📍 Share My Location';
+      }
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+      let errorMessage = '⚠️ Could not get your location. ';
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += 'Permission was denied. Please enable location access.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += 'Location information is unavailable.';
+          break;
+        case error.TIMEOUT:
+          errorMessage += 'The request to get your location timed out.';
+          break;
+        default:
+          errorMessage += 'An unknown error occurred.';
+      }
+      toast(errorMessage);
+      if (b) {
+        b.disabled = false;
+        b.textContent = '📍 Share My Location';
+      }
+    },
+    options
+  );
+}
+
+// ============================================================
+//  ABOUT & TERMS
+// ============================================================
+
+function showAboutUs() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>About Quick 2 Shop</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <p><strong>Quick 2 Shop</strong> is your community store — fresh food, clothing, electronics & more delivered to your door.</p>
+        <p>📞 WhatsApp: <strong>072 405 2868</strong></p>
+        <p>📧 habibishoppingsa@gmail.com</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function showTerms() {
+  document.getElementById('modal-overlay').innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Terms & Conditions</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <h4>1. Orders</h4><p>Subject to availability.</p>
+        <h4>2. Pricing</h4><p>In ZAR, incl VAT.</p>
+        <h4>3. Payment</h4><p>Instant EFT only.</p>
+        <h4>4. Delivery</h4><p>Area-based fees in Braamfontein.</p>
+        <h4>5. Student Discount</h4><p>20% off delivery fee for verified students.</p>
+        <h4>6. Returns</h4><p>Within 24 hours.</p>
+        <h4>7. Privacy</h4><p>Never shared.</p>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// ============================================================
+//  ROUTING
+// ============================================================
+
+function navigateTo(p) {
+  state.currentPage = p;
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  
+  if (p === 'profile') {
+    renderProfilePage();
+    document.querySelectorAll('.page').forEach(x => x.style.display = 'none');
+    const profileSection = document.getElementById('profile-section');
+    if (profileSection) profileSection.style.display = 'block';
+    return;
+  }
+  
+  if (p === 'communications') {
+    renderCommunicationsPanel();
+    document.querySelectorAll('.page').forEach(x => x.style.display = 'none');
+    const commSection = document.getElementById('communications-section');
+    if (commSection) commSection.style.display = 'block';
+    return;
+  }
+  
+  const t = document.getElementById(`page-${p}`);
+  if (t) {
+    t.classList.add('active');
+    t.style.display = '';
+  }
+  
+  const profileSection = document.getElementById('profile-section');
+  if (profileSection) profileSection.style.display = 'none';
+  
+  const commSection = document.getElementById('communications-section');
+  if (commSection) commSection.style.display = 'none';
+  
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.toggle('active', a.dataset.page === p));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  closeCart();
+  if (p === 'home') { loadProducts(); loadHeroSlideshow(); }
+  if (p === 'checkout') renderCheckout();
+  if (p === 'orders') renderOrdersPage();
+}
+
+// ============================================================
+//  MOBILE MENU
+// ============================================================
+
+function toggleMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.toggle('mobile-open');
+  hamburger.classList.toggle('active');
+}
+
+function closeMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.remove('mobile-open');
+  hamburger.classList.remove('active');
+}
+
+// ============================================================
+//  INIT - FIXED
+// ============================================================
+
+async function init() {
+  updateCartUI();
+  updateAuthUI();
+
+  const u = localStorage.getItem('habibi_user');
+  if (u) {
+    try {
+      state.user = JSON.parse(u);
+      await loadUserRewards();
+    } catch {
+      localStorage.removeItem('habibi_user');
+    }
+  }
+
+  // Load products first, then categories will be rendered
+  await loadProducts();
+  await loadHeroSlideshow();
+
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  const si = document.getElementById('search-input');
+  if (si) {
+    let d;
+    si.addEventListener('input', e => {
+      clearTimeout(d);
+      state.searchQuery = e.target.value;
+      d = setTimeout(() => loadProducts(), 350);
+    });
+  }
+
+  const ss = document.getElementById('sort-select');
+  if (ss) {
+    ss.addEventListener('change', e => {
+      state.sortBy = e.target.value;
+      renderProducts(state.products);
+    });
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+  document.getElementById('cart-overlay').addEventListener('click', closeCart);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeCart(); closeMobileMenu(); }
+  });
+  
+  const hamburger = document.getElementById('hamburger');
+  if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileMenu);
+  }
+  
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', closeMobileMenu);
+  });
+
+  const navLinks = document.querySelector('.nav-links');
+  if (navLinks && !document.querySelector('.nav-links a[data-page="profile"]')) {
+    const profileLink = document.createElement('a');
+    profileLink.href = '#';
+    profileLink.dataset.page = 'profile';
+    profileLink.textContent = 'Profile';
+    profileLink.onclick = function(e) {
+      e.preventDefault();
+      navigateTo('profile');
+    };
+    navLinks.appendChild(profileLink);
+  }
+}
+
+// ============================================================
+//  COMMUNICATIONS PANEL
+// ============================================================
+
+function renderCommunicationsPanel() {
+  const s = document.getElementById('communications-section');
+  if (!s) {
+    const container = document.createElement('section');
+    container.id = 'communications-section';
+    container.className = 'communications-section';
+    container.style.padding = 'calc(var(--nav-h) + 20px) 0 60px';
+    container.style.minHeight = '100vh';
+    document.body.appendChild(container);
+  }
+  
+  const section = document.getElementById('communications-section');
+  if (!section) return;
+  
+  if (!state.user) {
+    section.innerHTML = '<div class="container"><div style="text-align:center;padding:80px;">🔒 Please sign in</div></div>';
+    return;
+  }
+
+  section.innerHTML = `
+    <div class="container">
+      <h1 style="font-size:24px;font-weight:800;margin-bottom:20px;">💬 Communications</h1>
+      
+      <div class="checkout-card">
+        <h3>Your Orders</h3>
+        <div id="comm-orders-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);">Loading your orders...</div>
+        </div>
+      </div>
+      
+      <div class="checkout-card" id="comm-chat-container" style="display:none;">
+        <h3 id="comm-chat-title">Order #ORD-XXXXX</h3>
+        <div id="comm-messages" style="max-height:400px;overflow-y:auto;padding:12px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <textarea id="comm-message-input" rows="2" placeholder="Type your message..." style="flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);resize:vertical;"></textarea>
+          <button class="btn btn-primary" onclick="sendCommunicationMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  loadUserOrdersForComm();
+}
+
+async function loadUserOrdersForComm() {
+  const list = document.getElementById('comm-orders-list');
+  if (!list) return;
+  
+  try {
+    const orders = await fetchOrders();
+    const myOrders = orders.filter(x => x.userId === state.user._id || x.userId === state.user.id);
+    
+    if (myOrders.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">No orders found</div>';
+      return;
+    }
+    
+    list.innerHTML = myOrders.map(o => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openCommChat('${o.id}')">
+        <div>
+          <strong>${o.id}</strong>
+          <span style="font-size:12px;color:var(--muted);">${new Date(o.createdAt).toLocaleDateString()}</span>
+          <br>
+          <span style="font-size:13px;">Status: <span class="badge ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' || o.status === 'pending_payment' ? 'badge-warn' : o.status === 'completed' ? 'badge-info' : 'badge-danger'}">${o.status}</span></span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCommChat('${o.id}')">💬 Chat</button>
+      </div>
+    `).join('');
+    
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Could not load orders</div>';
+  }
+}
+
+async function openCommChat(orderId) {
+  document.getElementById('comm-chat-container').style.display = 'block';
+  document.getElementById('comm-chat-title').textContent = `Order #${orderId}`;
+  document.getElementById('comm-message-input').dataset.orderId = orderId;
+  
+  try {
+    const response = await fetch(`${API}/communications/${orderId}`);
+    const messages = await response.json();
+    
+    const container = document.getElementById('comm-messages');
+    container.innerHTML = messages.map(m => `
+      <div style="margin-bottom:8px;${m.sender === 'admin' ? 'text-align:left;' : 'text-align:right;'}">
+        <div style="display:inline-block;padding:8px 12px;border-radius:8px;max-width:80%;${m.sender === 'admin' ? 'background:var(--surface);border:1px solid var(--border);' : 'background:var(--orange);color:white;'}">
+          <strong style="font-size:11px;">${m.sender === 'admin' ? '🛒 Admin' : 'You'}</strong>
+          <div style="font-size:14px;">${m.message}</div>
+          <div style="font-size:10px;color:${m.sender === 'admin' ? 'var(--muted)' : 'rgba(255,255,255,0.7)'};margin-top:4px;">${new Date(m.createdAt).toLocaleString()}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    container.scrollTop = container.scrollHeight;
+    
+  } catch (err) {
+    toast('❌ Could not load messages');
+  }
+}
+
+async function sendCommunicationMessage() {
+  const input = document.getElementById('comm-message-input');
+  const message = input.value.trim();
+  const orderId = input.dataset.orderId;
+  
+  if (!message || !orderId) {
+    toast('⚠️ Please enter a message');
+    return;
+  }
+  
+  try {
+    await fetch(`${API}/communications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: orderId,
+        userId: state.user._id,
+        message: message,
+        sender: 'customer'
+      })
+    });
+    
+    input.value = '';
+    toast('✅ Message sent');
+    openCommChat(orderId);
+  } catch (err) {
+    toast('❌ ' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
